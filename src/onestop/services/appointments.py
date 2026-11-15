@@ -1,6 +1,10 @@
 """Native appointment availability and catalog-based booking."""
 
-from datetime import date, datetime, timezone
+from typing import Annotated
+from pydantic import Field
+from ..models import ActionResult, Limit, Offset, RequestDraft, Token
+
+from datetime import datetime, timezone
 import secrets
 
 from ..browser import evaluate
@@ -20,7 +24,8 @@ class AppointmentService:
     def __init__(self, session, forms):
         self.session, self.forms = session, forms
 
-    def list(self, limit=20, offset=0):
+    def list(self, limit: Limit = 20, offset: Offset = 0) -> PortalRecords:
+        "Read your native upcoming appointment list with appointment numbers, published dates/times and locations. This listing exposes no cancellation/rescheduling controls; no appointment is changed."
         return self.session.workflow(self._list, limit, offset)
 
     def _list(self, session, revision, limit, offset):
@@ -54,7 +59,8 @@ class AppointmentService:
             records=records[offset : offset + limit],
         )
 
-    def configuration(self, draft_id):
+    def configuration(self, draft_id: Token) -> AppointmentConfiguration:
+        "Read the native appointment selector's configuration on a local catalog draft: enabled/mandatory flags, duration, booking horizon and weekdays. Use an appointment service's form_item_id to prepare the draft."
         return self.session.workflow(self._configuration, draft_id)
 
     def _configuration(self, session, revision, draft_id):
@@ -91,13 +97,18 @@ class AppointmentService:
             )
         draft.page.wait_for_load_state("networkidle", timeout=20000)
 
-    def slots(self, draft_id, day):
+    def slots(
+        self,
+        draft_id: Token,
+        date: Annotated[str, Field(pattern="^\\d{4}-\\d{2}-\\d{2}$")],
+    ) -> AppointmentSlots:
+        "Read available appointment windows for one day using the draft's current native location/contact/reason configuration. Returned slot IDs are bound to this draft's latest lookup. No time is reserved or booked; availability can change until submission."
         try:
-            if date.fromisoformat(day).isoformat() != day:
+            if datetime.strptime(date, "%Y-%m-%d").date().isoformat() != date:
                 raise ValueError
         except (ValueError, TypeError):
             raise OneStopError("Provide an appointment date as YYYY-MM-DD.") from None
-        return self.session.workflow(self._slots, draft_id, day)
+        return self.session.workflow(self._slots, draft_id, date)
 
     def _slots(self, session, revision, draft_id, day):
         draft = draft_for(session, revision, draft_id)
@@ -156,7 +167,8 @@ class AppointmentService:
             retrieved_at=datetime.now(timezone.utc),
         )
 
-    def select(self, draft_id, slot_id):
+    def select(self, draft_id: Token, slot_id: Token) -> RequestDraft:
+        "Select a slot from this draft's latest availability lookup using the native appointment event. Updates the local form and validation preview only. Changing draft answers requires another availability lookup and selection."
         return self.session.workflow(self._select, draft_id, slot_id)
 
     def _select(self, session, revision, draft_id, slot_id):
@@ -185,7 +197,8 @@ class AppointmentService:
         draft.appointment_selected = True
         return preview(draft)
 
-    def book(self, draft_id, slot_id=None):
+    def book(self, draft_id: Token, slot_id: Token | None = None) -> ActionResult:
+        "Book an appointment by optionally selecting a verified slot and submitting the reviewed native catalog draft once. All native mandatory questions must be complete. Reusing a completed draft returns its receipt; uncertain bookings are never auto-retried."
         return self.session.workflow(self._book, draft_id, slot_id)
 
     def _book(self, session, revision, draft_id, slot_id):

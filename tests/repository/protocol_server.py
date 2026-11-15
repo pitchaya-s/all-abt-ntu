@@ -2,14 +2,16 @@
 
 from unittest.mock import patch
 
+from application import Application
 from tests.repository.fixtures import fake_get
 from tests.repository.oai_fixtures import fake_get as oai_get
 from server import main
 
 
 if __name__ == "__main__":
+    application = Application()
     with (
-        patch("drntu.mcp_server.client.get", side_effect=fake_get),
-        patch("drntu.mcp_server.oai_client.get", side_effect=oai_get),
+        patch.object(application.research, "get", side_effect=fake_get),
+        patch.object(application.research_oai, "get", side_effect=oai_get),
     ):
-        main()
+        main(application=application)

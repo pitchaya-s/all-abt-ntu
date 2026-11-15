@@ -4,7 +4,10 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict
 
 
-class LearnError(RuntimeError):
+from shared.operation import OperationError
+
+
+class LearnError(OperationError):
     """A sanitized NTULearn authentication, network, or response error."""
 
 

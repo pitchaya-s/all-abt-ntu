@@ -18,7 +18,7 @@ async def main(personal=False):
         for key in ("DBUS_SESSION_BUS_ADDRESS", "XDG_RUNTIME_DIR")
         if personal and key in os.environ
     }
-    args = ["-c", "from shared.cli import main; main()"]
+    args = ["-c", "from cli.cli import main; main()", "mcp"]
     if personal:
         args.extend(["--profile", "personal"])
     params = StdioServerParameters(command=sys.executable, args=args, env=env)

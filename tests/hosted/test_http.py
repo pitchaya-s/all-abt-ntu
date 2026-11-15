@@ -84,25 +84,30 @@ def http_client(app=None):
 
 class PublicHTTPTests(unittest.IsolatedAsyncioTestCase):
     async def test_sdk_clients_discovery_calls_schemas_and_resources(self):
+        from application import Application
+
+        application = Application()
+        self.addAsyncCleanup(application.close)
         with ExitStack() as stack:
-            for target, data in [
-                ("faculty.mcp_server.client.http.get", faculty_get),
-                ("library.mcp_server.client.http.get", library_get),
+            for target, attribute, data in [
+                (application.faculty.http, "get", faculty_get),
+                (application.library.http, "get", library_get),
                 (
-                    "mazemap.mcp_server.client._get",
+                    application.mazemap,
+                    "_get",
                     lambda *args, **kwargs: nullcontext(map_get(*args, **kwargs)),
                 ),
-                ("news.mcp_server.client.http.get", news_get),
-                ("drntu.mcp_server.client.get", repository_get),
-                ("service.mcp_server.client.http.get", service_get),
-                ("drntu.mcp_server.oai_client.get", oai_get),
-                ("omnibus.mcp_server.client._post", OmnibusFixtureClient()._post),
+                (application.news.http, "get", news_get),
+                (application.research, "get", repository_get),
+                (application.campus_services.http, "get", service_get),
+                (application.research_oai, "get", oai_get),
+                (application.omnibus, "_post", OmnibusFixtureClient()._post),
             ]:
-                stack.enter_context(patch(target, side_effect=data))
+                stack.enter_context(patch.object(target, attribute, side_effect=data))
             stack.enter_context(
                 patch("stars.tools.academic.fetch_course", return_value=COURSE)
             )
-            async with http_client() as http:
+            async with http_client(create_app(application)) as http:
                 for mode in ("auto", "legacy"):
                     transport = streamable_http_client(
                         "http://localhost/mcp", http_client=http

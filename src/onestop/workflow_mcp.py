@@ -1,0 +1,295 @@
+"""Register One Stop workflow operations and their action policies."""
+
+from shared.operation import ToolPolicy
+
+
+def register(
+    registrar,
+    name,
+    function,
+    *,
+    effect="read",
+    idempotent=False,
+    destructive=False,
+):
+    registrar.tool(
+        name="onestop_" + name,
+        annotations=ToolPolicy(
+            read_only_hint=effect == "read",
+            idempotent_hint=effect == "read" or idempotent,
+            destructive_hint=destructive,
+            open_world_hint=True,
+            confirmation="onestop_" + name if effect == "write" else None,
+            failure_message="One Stop returned an unexpected workflow format or invalid input; no successful action was inferred.",
+            uncertain_message="The action result could not be verified. It may have completed; check the portal before repeating it."
+            if effect == "write"
+            else None,
+        ),
+    )(function)
+
+
+def register_tools(registrar, *, workflows=True):
+    register(registrar, "get_dashboard", registrar.app.onestop_portal.dashboard)
+    register(
+        registrar,
+        "list_announcements",
+        registrar.app.onestop_portal.list_announcements,
+    )
+    register(registrar, "list_my_actions", registrar.app.onestop_portal.list_actions)
+    register(
+        registrar,
+        "list_popular_links",
+        registrar.app.onestop_portal.list_popular_links,
+    )
+    register(registrar, "get_profile", registrar.app.onestop_portal.get_profile)
+    register(
+        registrar,
+        "list_payment_services",
+        registrar.app.onestop_portal.list_payment_services,
+    )
+    register(
+        registrar,
+        "get_payment_service",
+        registrar.app.onestop_portal.get_payment_service,
+    )
+    register(
+        registrar,
+        "get_article_feedback",
+        registrar.app.onestop_knowledge.get_feedback,
+    )
+    register(
+        registrar,
+        "list_article_comments",
+        registrar.app.onestop_knowledge.list_comments,
+    )
+    register(registrar, "get_request_activity", registrar.app.onestop_tickets.activity)
+    register(registrar, "list_attachments", registrar.app.onestop_files.list)
+    register(registrar, "get_cart", registrar.app.onestop_cart.get)
+    register(registrar, "get_saved_cart", registrar.app.onestop_cart.get_saved)
+    register(registrar, "list_favourites", registrar.app.onestop_favourites.list)
+    register(
+        registrar,
+        "list_my_appointments",
+        registrar.app.onestop_appointments.list,
+    )
+    if workflows:
+        register(registrar, "get_request_draft", registrar.app.onestop_forms.get)
+        register(
+            registrar,
+            "search_form_references",
+            registrar.app.onestop_forms.search_references,
+        )
+        register(
+            registrar,
+            "get_appointment_configuration",
+            registrar.app.onestop_appointments.configuration,
+        )
+        register(
+            registrar,
+            "get_appointment_slots",
+            registrar.app.onestop_appointments.slots,
+        )
+        register(
+            registrar,
+            "prepare_request",
+            registrar.app.onestop_forms.prepare,
+            effect="local",
+        )
+        register(
+            registrar,
+            "update_request_draft",
+            registrar.app.onestop_forms.update,
+            effect="local",
+        )
+        register(
+            registrar,
+            "discard_request_draft",
+            registrar.app.onestop_forms.discard,
+            effect="local",
+        )
+        register(
+            registrar,
+            "prepare_cart_checkout",
+            registrar.app.onestop_cart.prepare_checkout,
+            effect="local",
+        )
+        register(
+            registrar,
+            "select_appointment_slot",
+            registrar.app.onestop_appointments.select,
+            effect="local",
+        )
+        register(
+            registrar,
+            "submit_request",
+            registrar.app.onestop_forms.submit,
+            effect="write",
+        )
+        register(
+            registrar,
+            "update_profile",
+            registrar.app.onestop_portal.update_profile,
+            effect="write",
+            idempotent=True,
+        )
+        register(
+            registrar,
+            "update_profile_picture",
+            registrar.app.onestop_portal.update_picture,
+            effect="write",
+        )
+        register(
+            registrar,
+            "set_notifications",
+            registrar.app.onestop_portal.set_notifications,
+            effect="write",
+            idempotent=True,
+        )
+        register(
+            registrar,
+            "set_user_preference",
+            registrar.app.onestop_portal.set_preference,
+            effect="write",
+            idempotent=True,
+        )
+        register(
+            registrar,
+            "prepare_payment",
+            registrar.app.onestop_portal.prepare_payment,
+            effect="write",
+        )
+        register(
+            registrar,
+            "add_article_comment",
+            registrar.app.onestop_knowledge.add_comment,
+            effect="write",
+        )
+        register(
+            registrar,
+            "delete_article_comment",
+            registrar.app.onestop_knowledge.delete_comment,
+            effect="write",
+            destructive=True,
+        )
+        register(
+            registrar,
+            "set_article_comment_like",
+            registrar.app.onestop_knowledge.set_comment_like,
+            effect="write",
+            idempotent=True,
+        )
+        register(
+            registrar,
+            "rate_article",
+            registrar.app.onestop_knowledge.rate,
+            effect="write",
+        )
+        register(
+            registrar,
+            "set_article_helpful",
+            registrar.app.onestop_knowledge.set_helpful,
+            effect="write",
+        )
+        register(
+            registrar,
+            "flag_article",
+            registrar.app.onestop_knowledge.flag,
+            effect="write",
+        )
+        register(
+            registrar,
+            "set_article_subscription",
+            registrar.app.onestop_knowledge.set_subscription,
+            effect="write",
+            idempotent=True,
+        )
+        register(
+            registrar,
+            "set_article_favourite",
+            registrar.app.onestop_knowledge.set_favourite,
+            effect="write",
+            idempotent=True,
+        )
+        register(
+            registrar,
+            "send_article_to_self",
+            registrar.app.onestop_knowledge.send_to_self,
+            effect="write",
+        )
+        register(
+            registrar,
+            "reply_to_request",
+            registrar.app.onestop_tickets.reply,
+            effect="write",
+        )
+        register(
+            registrar,
+            "take_request_action",
+            registrar.app.onestop_tickets.take_action,
+            effect="write",
+            destructive=True,
+        )
+        register(
+            registrar,
+            "upload_attachment",
+            registrar.app.onestop_files.upload,
+            effect="write",
+        )
+        register(
+            registrar,
+            "download_attachment",
+            registrar.app.onestop_files.download,
+            effect="write",
+        )
+        register(
+            registrar,
+            "delete_attachment",
+            registrar.app.onestop_files.delete,
+            effect="write",
+            idempotent=True,
+            destructive=True,
+        )
+        register(
+            registrar,
+            "rename_attachment",
+            registrar.app.onestop_files.rename,
+            effect="write",
+            idempotent=True,
+        )
+        register(
+            registrar,
+            "update_cart",
+            registrar.app.onestop_cart.update,
+            effect="write",
+            destructive=True,
+        )
+        register(
+            registrar, "save_cart", registrar.app.onestop_cart.save, effect="write"
+        )
+        register(
+            registrar,
+            "submit_cart_checkout",
+            registrar.app.onestop_cart.submit_checkout,
+            effect="write",
+        )
+        register(
+            registrar,
+            "update_favourite",
+            registrar.app.onestop_favourites.update,
+            effect="write",
+            idempotent=True,
+            destructive=True,
+        )
+        register(
+            registrar,
+            "set_catalog_favourite",
+            registrar.app.onestop_favourites.set_catalog_favourite,
+            effect="write",
+            idempotent=True,
+        )
+        register(
+            registrar,
+            "book_appointment",
+            registrar.app.onestop_appointments.book,
+            effect="write",
+        )

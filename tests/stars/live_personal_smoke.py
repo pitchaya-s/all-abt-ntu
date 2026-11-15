@@ -20,7 +20,8 @@ async def main() -> None:
                 str(ROOT),
                 "--with",
                 "playwright>=1.50,<2",
-                "all-abt-ntu",
+                "ntu",
+                "mcp",
                 "--profile",
                 "personal",
             ],
@@ -45,7 +46,7 @@ async def main() -> None:
         status = await client.call_tool("stars_auth_status", {})
         assert (
             not status.is_error and status.structured_content["credentials_configured"]
-        ), "Run all-abt-ntu auth save in your local terminal first."
+        ), "Run ntu auth save in your local terminal first."
         planner, audit = await asyncio.gather(
             client.call_tool("stars_get_stars_planner", {"refresh": True}),
             client.call_tool("stars_get_degree_audit", {}),

@@ -4,7 +4,17 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class OneStopError(RuntimeError):
+from shared.operation import OperationError
+
+ID = Annotated[str, Field(pattern=r"^[0-9a-f]{32}$")]
+Query = Annotated[str, Field(min_length=1, max_length=200)]
+Token = Annotated[str, Field(min_length=16, max_length=100)]
+Limit = Annotated[int, Field(ge=1, le=100, strict=True)]
+Offset = Annotated[int, Field(ge=0, strict=True)]
+Message = Annotated[str, Field(min_length=1, max_length=20000)]
+
+
+class OneStopError(OperationError):
     """An error safe to return to an MCP client."""
 
 
@@ -439,6 +449,9 @@ class FileDownload(Model):
 
 
 AttachmentTarget = Annotated[
-    RequestAttachmentTarget | ArticleAttachmentTarget | CommentAttachmentTarget | DraftAttachmentTarget,
+    RequestAttachmentTarget
+    | ArticleAttachmentTarget
+    | CommentAttachmentTarget
+    | DraftAttachmentTarget,
     Field(discriminator="kind"),
 ]

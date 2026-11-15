@@ -4,6 +4,7 @@ import os
 import re
 import time
 from collections import deque
+from contextlib import asynccontextmanager
 from threading import Lock
 
 from mcp.server import MCPServer
@@ -106,7 +107,7 @@ async def health(request):
     return JSONResponse({"name": "all-abt-ntu-mcp", "mode": "public", "mcp": "/mcp"})
 
 
-def create_app():
+def create_app(application=None):
     server = PublicServer(
         "all-abt-ntu-mcp",
         version=VERSION,
@@ -117,11 +118,20 @@ def create_app():
             + public_server.INSTRUCTIONS
         ),
     )
-    public_server.register_tools(server)
+    public_server.register_tools(server, application)
+
+    @asynccontextmanager
+    async def lifespan(app):
+        try:
+            yield
+        finally:
+            await server.ntu_application.close()
+
     return Starlette(
+        lifespan=lifespan,
         routes=[
             Route("/", health),
             Route("/health", health),
             Route("/mcp", PublicMCP(server, transport_security()), methods=["POST"]),
-        ]
+        ],
     )

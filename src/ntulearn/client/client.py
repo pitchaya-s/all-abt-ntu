@@ -3,6 +3,11 @@
 import asyncio
 import re
 from datetime import datetime, timedelta, timezone
+from typing import Annotated
+
+from pydantic import Field
+
+from ..contracts import ID, LearnID, Offset, PageSize
 
 from ..models import (
     Announcement,
@@ -13,6 +18,7 @@ from ..models import (
     CalendarItem,
     Content,
     Contents,
+    Download,
     Course,
     Courses,
     Grade,
@@ -24,7 +30,6 @@ from ..parser.response import records, required, text
 from .session import Session
 
 PREFIX = "/learn/api/public/v1"
-ID = r"[A-Za-z0-9_-]{1,80}"
 
 
 def identifier(value):
@@ -94,7 +99,7 @@ class LearnClient:
                 "NTULearn authentication changed while identifying the current user; retry the request."
             )
 
-    async def _list(self, path, limit, offset, refresh=False, **params):
+    async def list_records(self, path, limit, offset, refresh=False, **params):
         data, freshness = await self.session.get(
             path, {**page_parameters(limit, offset), **params}, refresh
         )
@@ -109,8 +114,11 @@ class LearnClient:
             )
         return rows, next_offset, freshness
 
-    async def list_courses(self, limit=50, offset=0, refresh=False) -> Courses:
-        rows, next_offset, freshness = await self._list(
+    async def list_courses(
+        self, limit: PageSize = 50, offset: Offset = 0, refresh: bool = False
+    ) -> Courses:
+        "List your enrolled NTULearn courses and organizations, including published availability and course IDs."
+        rows, next_offset, freshness = await self.list_records(
             PREFIX + "/users/me/courses", limit, offset, refresh, expand="course"
         )
         courses = []
@@ -136,13 +144,21 @@ class LearnClient:
         )
 
     async def get_course_contents(
-        self, course_id, parent_id=None, limit=50, offset=0, refresh=False
+        self,
+        course_id: LearnID,
+        parent_id: LearnID | None = None,
+        limit: PageSize = 50,
+        offset: Offset = 0,
+        refresh: bool = False,
     ) -> Contents:
+        "Read one level of course content. Omit parent_id for the root; use an item's ID to open a folder. HTML body/description are returned as text."
         course_id = identifier(course_id)
         path = f"{PREFIX}/courses/{course_id}/contents"
         if parent_id is not None:
             path += f"/{identifier(parent_id)}/children"
-        rows, next_offset, freshness = await self._list(path, limit, offset, refresh)
+        rows, next_offset, freshness = await self.list_records(
+            path, limit, offset, refresh
+        )
         contents = [
             model(
                 Content,
@@ -177,10 +193,15 @@ class LearnClient:
         return data
 
     async def get_announcements(
-        self, course_id, limit=50, offset=0, refresh=False
+        self,
+        course_id: LearnID,
+        limit: PageSize = 50,
+        offset: Offset = 0,
+        refresh: bool = False,
     ) -> Announcements:
+        "Read published announcements for one enrolled course. An empty list is distinct from denied access."
         course_id = identifier(course_id)
-        rows, next_offset, freshness = await self._list(
+        rows, next_offset, freshness = await self.list_records(
             f"{PREFIX}/courses/{course_id}/announcements", limit, offset, refresh
         )
         announcements = [
@@ -204,8 +225,15 @@ class LearnClient:
         )
 
     async def get_calendar(
-        self, since=None, until=None, course_id=None, limit=50, offset=0, refresh=False
+        self,
+        since: datetime | None = None,
+        until: datetime | None = None,
+        course_id: LearnID | None = None,
+        limit: PageSize = 50,
+        offset: Offset = 0,
+        refresh: bool = False,
     ) -> Calendar:
+        "Read calendar entries and published deadlines, across your courses or for one course. Defaults to the next 14 days. Supply timezone-aware timestamps and a window no longer than 112 days."
         since = since or datetime.now(timezone.utc)
         until = until or since + timedelta(days=14)
         if (
@@ -219,7 +247,7 @@ class LearnClient:
         params = {"since": since.isoformat(), "until": until.isoformat()}
         if course_id is not None:
             params["courseId"] = identifier(course_id)
-        rows, next_offset, freshness = await self._list(
+        rows, next_offset, freshness = await self.list_records(
             PREFIX + "/calendars/items", limit, offset, refresh, **params
         )
         items = [
@@ -248,77 +276,90 @@ class LearnClient:
         )
 
     async def get_gradebook(
-        self, course_id, limit=50, offset=0, grades_offset=0, refresh=False
+        self,
+        course_id: LearnID,
+        limit: PageSize = 50,
+        offset: Offset = 0,
+        grades_offset: Offset = 0,
+        refresh: bool = False,
     ) -> Gradebook:
-        course_id = identifier(course_id)
-        columns_result, user_id_result = await asyncio.gather(
-            self._list(
-                f"{PREFIX}/courses/{course_id}/gradebook/columns",
+        "Read visible gradebook columns and your own scores/status. Missing scores remain null. Columns and grades paginate independently with offset and grades_offset."
+        async with self.session.operation():
+            course_id = identifier(course_id)
+            columns_result, user_id_result = await asyncio.gather(
+                self.list_records(
+                    f"{PREFIX}/courses/{course_id}/gradebook/columns",
+                    limit,
+                    offset,
+                    refresh,
+                ),
+                self._own_user_id(),
+            )
+            columns, next_offset, freshness = columns_result
+            user_id = user_id_result
+            grades, grades_next_offset, grade_freshness = await self.list_records(
+                f"{PREFIX}/courses/{course_id}/gradebook/users/{user_id}",
                 limit,
-                offset,
+                grades_offset,
                 refresh,
-            ),
-            self._own_user_id(),
-        )
-        columns, next_offset, freshness = columns_result
-        user_id = user_id_result
-        grades, grades_next_offset, grade_freshness = await self._list(
-            f"{PREFIX}/courses/{course_id}/gradebook/users/{user_id}",
-            limit,
-            grades_offset,
-            refresh,
-        )
-        columns = [
-            model(
-                GradeColumn,
-                id=required(row, "id"),
-                name=required(row, "name"),
-                possible_score=mapping(row, "score").get("possible"),
-                due=mapping(row, "grading").get("due"),
-                available=mapping(row, "availability").get("available"),
-                content_id=row.get("contentId"),
             )
-            for row in columns
-        ]
-        grades = [
-            model(
-                Grade,
-                column_id=required(row, "columnId"),
-                score=row.get("score"),
-                text=row.get("text"),
-                status=row.get("status") or row.get("gradingStatus"),
-                exempt=row.get("exempt"),
-                feedback=text(row.get("feedback")),
-                modified=row.get("modified") or row.get("lastGraded"),
+            columns = [
+                model(
+                    GradeColumn,
+                    id=required(row, "id"),
+                    name=required(row, "name"),
+                    possible_score=mapping(row, "score").get("possible"),
+                    due=mapping(row, "grading").get("due"),
+                    available=mapping(row, "availability").get("available"),
+                    content_id=row.get("contentId"),
+                )
+                for row in columns
+            ]
+            grades = [
+                model(
+                    Grade,
+                    column_id=required(row, "columnId"),
+                    score=row.get("score"),
+                    text=row.get("text"),
+                    status=row.get("status") or row.get("gradingStatus"),
+                    exempt=row.get("exempt"),
+                    feedback=text(row.get("feedback")),
+                    modified=row.get("modified") or row.get("lastGraded"),
+                )
+                for row in grades
+            ]
+            freshness = {
+                "retrieved_at": min(
+                    freshness["retrieved_at"], grade_freshness["retrieved_at"]
+                ),
+                "from_cache": freshness["from_cache"] and grade_freshness["from_cache"],
+                "cache_age_seconds": max(
+                    freshness["cache_age_seconds"], grade_freshness["cache_age_seconds"]
+                ),
+            }
+            return model(
+                Gradebook,
+                course_id=course_id,
+                columns=columns,
+                grades=grades,
+                offset=offset,
+                grades_offset=grades_offset,
+                next_offset=next_offset,
+                grades_next_offset=grades_next_offset,
+                **freshness,
             )
-            for row in grades
-        ]
-        freshness = {
-            "retrieved_at": min(
-                freshness["retrieved_at"], grade_freshness["retrieved_at"]
-            ),
-            "from_cache": freshness["from_cache"] and grade_freshness["from_cache"],
-            "cache_age_seconds": max(
-                freshness["cache_age_seconds"], grade_freshness["cache_age_seconds"]
-            ),
-        }
-        return model(
-            Gradebook,
-            course_id=course_id,
-            columns=columns,
-            grades=grades,
-            offset=offset,
-            grades_offset=grades_offset,
-            next_offset=next_offset,
-            grades_next_offset=grades_next_offset,
-            **freshness,
-        )
 
     async def get_content_attachments(
-        self, course_id, content_id, limit=50, offset=0, refresh=False
+        self,
+        course_id: LearnID,
+        content_id: LearnID,
+        limit: PageSize = 50,
+        offset: Offset = 0,
+        refresh: bool = False,
     ) -> Attachments:
+        "List files attached to a course content item. Use a leaf content ID rather than a folder. Some external/LTI content has no downloadable Blackboard attachment."
         course_id, content_id = identifier(course_id), identifier(content_id)
-        rows, next_offset, freshness = await self._list(
+        rows, next_offset, freshness = await self.list_records(
             f"{PREFIX}/courses/{course_id}/contents/{content_id}/attachments",
             limit,
             offset,
@@ -344,7 +385,13 @@ class LearnClient:
         )
 
     async def download_file(
-        self, course_id, content_id, attachment_id, destination, max_bytes=20_000_000
-    ):
+        self,
+        course_id: LearnID,
+        content_id: LearnID,
+        attachment_id: LearnID,
+        destination: str,
+        max_bytes: Annotated[int, Field(ge=1, le=20000000, strict=True)] = 20000000,
+    ) -> Download:
+        "Download a Blackboard attachment to an explicit local file path, up to 20 MB. Never overwrites an existing file. Does not modify NTULearn or forward university cookies to file-delivery hosts."
         path = f"{PREFIX}/courses/{identifier(course_id)}/contents/{identifier(content_id)}/attachments/{identifier(attachment_id)}/download"
         return await self.session.download(path, destination, max_bytes=max_bytes)

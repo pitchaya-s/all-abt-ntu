@@ -4,13 +4,16 @@ from unittest.mock import patch
 
 from contextlib import nullcontext
 
+from application import Application
 from tests.mazemap.fixtures import fake_get
 from server import main
 
 
 if __name__ == "__main__":
-    with patch(
-        "mazemap.mcp_server.client._get",
+    application = Application()
+    with patch.object(
+        application.mazemap,
+        "_get",
         side_effect=lambda *args, **kwargs: nullcontext(fake_get(*args, **kwargs)),
     ):
-        main()
+        main(application=application)

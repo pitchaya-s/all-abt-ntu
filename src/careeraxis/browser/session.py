@@ -69,7 +69,8 @@ class CareerAxisSession:
         self._login_not_before = self._last_request = 0.0
         self._cache = OrderedDict()
 
-    def status(self):
+    def status(self) -> AuthStatus:
+        "Report whether shared NTU keyring credentials can be read and whether this process has verified CareerAxis login; does not log in."
         return self._run(self._status)
 
     def _status(self):

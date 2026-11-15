@@ -1,5 +1,10 @@
 """Stop lookup, caching, and search validation."""
 
+from typing import Annotated
+from pydantic import Field
+from ..contracts import Query, RouteFilter
+
+
 import time
 
 from .. import parser
@@ -46,7 +51,14 @@ class StopMethods:
                 retrieved_times.append(retrieved_at)
         return records, list(dict.fromkeys(urls)), min(retrieved_times), all_cached
 
-    def list_stops(self, query, route_code, limit, offset):
+    def list_stops(
+        self,
+        query: Query = "",
+        route_code: RouteFilter | None = None,
+        limit: Annotated[int, Field(ge=1, le=100, strict=True)] = 20,
+        offset: Annotated[int, Field(ge=0, strict=True)] = 0,
+    ) -> Stops:
+        "Search NTU shuttle and LTA bus stops by stop name or code, optionally limited to a route/service. Follow next_offset for more results."
         self._query(query)
         if (
             type(limit) is not int

@@ -26,11 +26,15 @@ class CredentialCLITests(unittest.TestCase):
         output, errors = StringIO(), StringIO()
         errors.isatty = lambda: True
         with (
-            patch("sys.argv", ["all-abt-ntu", *arguments]),
+            patch("sys.argv", ["ntu", *arguments]),
             redirect_stdout(output),
             redirect_stderr(errors),
         ):
-            main()
+            try:
+                main()
+            except SystemExit as error:
+                if error.code != 0:
+                    raise
         return output.getvalue() + errors.getvalue()
 
     def test_hidden_password_save_status_and_management(self):
@@ -38,7 +42,8 @@ class CredentialCLITests(unittest.TestCase):
             stored_credentials(),
             patch("sys.stdin.isatty", return_value=True),
             patch("builtins.input", return_value="student001") as prompt,
-            patch("cli.cli.getpass", return_value="hidden-test-secret") as password,
+            patch("cli.manage.getpass", return_value="hidden-test-secret") as password,
+            patch("typer.confirm", return_value=True),
         ):
             output = self.call("auth", "save")
             self.assertEqual(read_credentials().password, "hidden-test-secret")
@@ -54,7 +59,7 @@ class CredentialCLITests(unittest.TestCase):
         with (
             patch("sys.stdin.isatty", return_value=False),
             patch("builtins.input") as prompt,
-            patch("cli.cli.getpass") as password,
+            patch("cli.manage.getpass") as password,
         ):
             with self.assertRaises(SystemExit):
                 self.call("auth", "save")
@@ -65,8 +70,8 @@ class CredentialCLITests(unittest.TestCase):
         with (
             patch("sys.stdin.isatty", return_value=True),
             patch("builtins.input", return_value="student001"),
-            patch("cli.cli.getpass", side_effect=EOFError),
-            patch("cli.cli.save_credentials") as save,
+            patch("cli.manage.getpass", side_effect=EOFError),
+            patch("cli.manage.save_credentials") as save,
         ):
             with self.assertRaises(SystemExit):
                 self.call("auth", "save")
@@ -80,8 +85,8 @@ class CredentialCLITests(unittest.TestCase):
         with (
             patch("sys.stdin.isatty", return_value=True),
             patch("builtins.input", return_value="student001"),
-            patch("cli.cli.getpass", side_effect=echo_fallback),
-            patch("cli.cli.save_credentials") as save,
+            patch("cli.manage.getpass", side_effect=echo_fallback),
+            patch("cli.manage.save_credentials") as save,
         ):
             with self.assertRaises(SystemExit):
                 self.call("auth", "save")
@@ -93,7 +98,7 @@ class CredentialCLITests(unittest.TestCase):
             patch(
                 "sys.argv",
                 [
-                    "all-abt-ntu",
+                    "ntu",
                     "auth",
                     "save",
                     "--password",
@@ -109,13 +114,13 @@ class CredentialCLITests(unittest.TestCase):
             "secret-in-invalid-argument", output.getvalue() + errors.getvalue()
         )
 
-    def test_no_command_runs_stdio_server_without_credential_prompts(self):
+    def test_no_command_shows_help_without_credential_prompts(self):
         with (
             patch("server.main") as server,
             patch("builtins.input") as prompt,
-            patch("cli.cli.getpass") as password,
+            patch("cli.manage.getpass") as password,
         ):
-            self.assertEqual(self.call(), "")
-            server.assert_called_once_with("public")
+            self.assertIn("NTU services", self.call())
+            server.assert_not_called()
             prompt.assert_not_called()
             password.assert_not_called()

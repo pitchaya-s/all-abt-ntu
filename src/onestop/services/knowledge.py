@@ -1,5 +1,10 @@
 """Knowledge discussions, feedback, subscriptions and native self-delivery."""
 
+from typing import Annotated
+from typing import Literal
+from pydantic import Field
+from ..models import ActionResult, ID, Limit, Message, Offset
+
 from html import escape
 
 from ..browser import action_result, commit, evaluate
@@ -64,7 +69,8 @@ class KnowledgeService:
             )
         return ArticleFeedback(**snapshot.metadata(), **raw)
 
-    def get_feedback(self, article_id):
+    def get_feedback(self, article_id: ID) -> ArticleFeedback:
+        "Read native knowledge capabilities: ratings, helpfulness, comments, flags/reasons, subscription/inheritance, favourites and self-delivery channels. Only controls actually offered for the article can be used."
         return self.session.workflow(self._get_feedback, sys_id(article_id))
 
     def _get_feedback(self, session, revision, article_id):
@@ -92,7 +98,10 @@ class KnowledgeService:
         """,
         )
 
-    def list_comments(self, article_id, limit=20, offset=0):
+    def list_comments(
+        self, article_id: ID, limit: Limit = 20, offset: Offset = 0
+    ) -> ArticleComments:
+        "Read visible knowledge comments/replies, author display names, text, dates, reactions, attachment IDs and delete permissions. Pagination covers the retrieved tree; exhaustive coverage is not promised."
         return self.session.workflow(
             self._list_comments, sys_id(article_id), limit, offset
         )
@@ -112,7 +121,10 @@ class KnowledgeService:
             comments=comments[offset : offset + limit],
         )
 
-    def add_comment(self, article_id, text, parent_id=None):
+    def add_comment(
+        self, article_id: ID, text: Message, parent_id: ID | None = None
+    ) -> ActionResult:
+        "Publish plain-text feedback to a knowledge article, or reply to a visible parent comment. This is visible to the article's audience. Use only when the user requests publication; returns the server's comment receipt. Attach files afterward using an article_comment attachment target."
         return self.session.workflow(
             self._add_comment,
             sys_id(article_id),
@@ -155,12 +167,16 @@ class KnowledgeService:
             verified=True,
         )
 
-    def delete_comment(self, article_id, comment_id):
+    def delete_comment(self, article_id: ID, comment_id: ID) -> ActionResult:
+        "Delete a visible article comment only when the native menu permits deletion by the current user. This removes published content; it never accepts an unrelated comment ID."
         return self.session.workflow(
             self._change_comment, sys_id(article_id), sys_id(comment_id), "delete", None
         )
 
-    def set_comment_like(self, article_id, comment_id, liked):
+    def set_comment_like(
+        self, article_id: ID, comment_id: ID, liked: bool
+    ) -> ActionResult:
+        "Like or unlike a visible knowledge comment using a desired state. A matching current state is unchanged."
         if type(liked) is not bool:
             raise OneStopError("liked must be a boolean.")
         return self.session.workflow(
@@ -210,7 +226,14 @@ class KnowledgeService:
             )
         return action_result(action, page.source_url, comment_id, verified=True)
 
-    def rate(self, article_id, rating, reason_id=None, details=""):
+    def rate(
+        self,
+        article_id: ID,
+        rating: Annotated[int, Field(ge=1, le=5, strict=True)],
+        reason_id: str | None = None,
+        details: Annotated[str, Field(max_length=10000)] = "",
+    ) -> ActionResult:
+        "Submit a 1–5 star knowledge rating when the native control is enabled. Low ratings can require reason_id from get_article_feedback and optional details; this can create a native feedback task. Does not retry rate-limited or uncertain submissions."
         if type(rating) is not int or not 1 <= rating <= 5:
             raise OneStopError("Article ratings must be integers from 1 to 5.")
         return self.session.workflow(
@@ -299,7 +322,12 @@ class KnowledgeService:
             "article_feedback", page.source_url, article_id, verified=True
         )
 
-    def flag(self, article_id, text):
+    def flag(
+        self,
+        article_id: ID,
+        text: Annotated[str, Field(min_length=1, max_length=10000)],
+    ) -> ActionResult:
+        "Flag a knowledge article with the user's explanation when the native flag control is available. Sends feedback to the knowledge owners."
         return self.session.workflow(
             self._flag, sys_id(article_id), message(text, 10000)
         )
@@ -328,7 +356,14 @@ class KnowledgeService:
             raise OneStopError("The portal did not acknowledge the article flag.")
         return action_result("flag_article", page.source_url, article_id, verified=True)
 
-    def set_helpful(self, article_id, helpful, reason_id=None, details=""):
+    def set_helpful(
+        self,
+        article_id: ID,
+        helpful: bool,
+        reason_id: str | None = None,
+        details: Annotated[str, Field(max_length=10000)] = "",
+    ) -> ActionResult:
+        "Submit helpful/not-helpful feedback only when the article offers that native control. Negative feedback may require a published reason and create a native feedback task."
         if type(helpful) is not bool:
             raise OneStopError("helpful must be a boolean.")
         return self.session.workflow(
@@ -378,7 +413,10 @@ class KnowledgeService:
             "set_article_helpful", page.source_url, article_id, verified=True
         )
 
-    def set_subscription(self, article_id, subscribed, include_knowledge_base=False):
+    def set_subscription(
+        self, article_id: ID, subscribed: bool, include_knowledge_base: bool = False
+    ) -> ActionResult:
+        "Subscribe/unsubscribe to article updates. An inherited knowledge-base subscription can only be removed with include_knowledge_base=true, which affects the whole knowledge base. Use that option only when the user explicitly requests that broader change."
         if type(subscribed) is not bool or type(include_knowledge_base) is not bool:
             raise OneStopError("Subscription choices must be booleans.")
         return self.session.workflow(
@@ -441,7 +479,8 @@ class KnowledgeService:
             "set_article_subscription", page.source_url, article_id, verified=True
         )
 
-    def set_favourite(self, article_id, favourite):
+    def set_favourite(self, article_id: ID, favourite: bool) -> ActionResult:
+        "Set an article's native favourite state when its Favourite control is enabled. Reads current state and avoids toggling an already matching value."
         if type(favourite) is not bool:
             raise OneStopError("favourite must be a boolean.")
         return self.session.workflow(self._set_favourite, sys_id(article_id), favourite)
@@ -483,7 +522,10 @@ class KnowledgeService:
             "set_article_favourite", page.source_url, article_id, verified=True
         )
 
-    def send_to_self(self, article_id, channel):
+    def send_to_self(
+        self, article_id: ID, channel: Literal["email", "sms"] = "email"
+    ) -> ActionResult:
+        "Send this article to your registered email/SMS channel using the native Send to myself action. Use only after the user explicitly requests sending; no alternate recipient is accepted. Acknowledgement does not guarantee delivery."
         if channel not in {"email", "sms"}:
             raise OneStopError("Choose email or sms for article self-delivery.")
         return self.session.workflow(self._send_to_self, sys_id(article_id), channel)

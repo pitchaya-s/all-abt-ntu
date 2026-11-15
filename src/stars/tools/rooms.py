@@ -1,7 +1,6 @@
 """Read-only MCP tools over the shared term-wide teaching snapshot."""
 
-from mcp.server.mcpserver.exceptions import ToolError
-from mcp.types import ToolAnnotations
+from shared.operation import OperationError
 
 from ..domain.rooms import build_catalogue, available_rooms, room_schedule
 from ..client.http import NTURequestError
@@ -20,20 +19,6 @@ from ..schemas.rooms import (
     Limit,
     Offset,
     minutes,
-)
-
-INSTRUCTIONS = (
-    "stars_find_available_rooms and stars_get_room_schedule share a term-wide snapshot of all published "
-    "full-time and part-time undergraduate indexes. Only recognizable room labels observed in teaching "
-    "are candidates. Room types and venue-code prefixes are inferred from labels, not an official room inventory. "
-    "Availability means no known scheduled undergraduate teaching, not occupancy, permission to enter, opening hours, "
-    "or a guarantee against graduate classes, exams, events or other bookings. Unplaced lessons and excluded "
-    "venue labels are counted in coverage. Unknown timings or potentially overlapping unknown teaching weeks "
-    "exclude a candidate from availability; room schedule queries retain uncertain lessons. Multiple requested "
-    "teaching weeks require the same room to be free in all of them. Omit weeks to consider every published "
-    "meeting, not the current calendar week. free_from/free_until are teaching-free bounds on that day, "
-    "not building access hours. No capacity, facilities, accessibility or geographic location is inferred. "
-    "Use stars_get_room_schedule to inspect course/index use, with shared lessons grouped by their index lists. "
 )
 
 
@@ -69,7 +54,7 @@ def find_available_rooms(
             ),
         )
     except (NTURequestError, ValueError) as error:
-        raise ToolError(str(error)) from None
+        raise OperationError(str(error)) from None
 
 
 def get_room_schedule(
@@ -112,12 +97,4 @@ def get_room_schedule(
             ),
         )
     except (NTURequestError, ValueError) as error:
-        raise ToolError(str(error)) from None
-
-
-def register_tools(mcp):
-    read = ToolAnnotations(
-        read_only_hint=True, idempotent_hint=True, open_world_hint=True
-    )
-    for function in (find_available_rooms, get_room_schedule):
-        mcp.tool(name="stars_" + function.__name__, annotations=read)(function)
+        raise OperationError(str(error)) from None

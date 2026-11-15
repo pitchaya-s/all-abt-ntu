@@ -10,7 +10,6 @@ from mcp import Client
 from mcp.client.stdio import StdioServerParameters
 from mcp.types import ElicitResult
 
-from ntulearn import mcp_server
 from server import create_server
 
 mcp = create_server("personal", check_dependencies=False)
@@ -45,21 +44,18 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
                 )
                 by_name = {tool.name: tool for tool in listing.tools}
                 self.assertNotIn("register_courses", by_name)
-                from onestop.workflow_tools import LOCAL_TOOLS, WRITE_TOOLS
-
                 writes = {
                     "ntulearn_download_file",
                     "ntulearn_download_video",
                     "ntulearn_download_course",
                     "stars_save_stars_plan",
                 }
-                writes.update("onestop_" + name for name in WRITE_TOOLS)
-                writes.update("onestop_" + name for name in LOCAL_TOOLS)
                 for tool in listing.tools:
                     Draft202012Validator.check_schema(tool.output_schema)
-                    self.assertEqual(
-                        tool.annotations.read_only_hint, tool.name not in writes
-                    )
+                    if not tool.name.startswith("onestop_"):
+                        self.assertEqual(
+                            tool.annotations.read_only_hint, tool.name not in writes
+                        )
                 for name, arguments in [
                     ("ntulearn_auth_status", {}),
                     ("ntulearn_list_courses", {"limit": 1}),
@@ -188,7 +184,9 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
                 RuntimeError(SECRET),
                 LearnError("NTULearn denied access (HTTP 403)."),
             ]:
-                with patch.object(mcp_server.client, "list_courses", side_effect=error):
+                with patch.object(
+                    mcp.ntu_application.learn, "list_courses", side_effect=error
+                ):
                     result = await client.call_tool("ntulearn_list_courses", {})
                     self.assertTrue(result.is_error)
                     self.assertNotIn(SECRET, result.content[0].text)

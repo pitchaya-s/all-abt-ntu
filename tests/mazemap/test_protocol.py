@@ -8,8 +8,9 @@ from jsonschema import Draft202012Validator
 from mcp import Client
 from mcp.client.stdio import StdioServerParameters
 
-from mazemap import mcp_server
-from server import mcp
+from server import create_server
+
+mcp = create_server()
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -20,8 +21,8 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
     async def test_unexpected_provider_formats_are_sanitized(self):
         async with Client(mcp) as client:
             with patch.object(
-                mcp_server.client,
-                "get_place",
+                mcp.ntu_application.mazemap,
+                "_get",
                 side_effect=KeyError("raw-response-detail"),
             ):
                 result = await client.call_tool("mazemap_get_place", {"poi_id": 1001})

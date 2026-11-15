@@ -51,7 +51,7 @@ Deployment references: [Vercel file-based Python functions](https://vercel.com/d
 
 ## Credential storage
 
-Storage is opt-in. Run `all-abt-ntu auth save` yourself in a local terminal; the username is visible and the password is hidden while typing. Piped input and terminals that cannot hide password input are refused. Credentials are stored encrypted in the native OS keyring and never included in MCP responses sent to the LLM. Running the command again replaces the saved account/password. `auth status` reports whether an account is stored, and `auth delete` removes it. With uvx, append these arguments to your existing uvx command; no standalone CLI installation is needed. No credential management commands are exposed as MCP tools.
+Storage is opt-in. Run `ntu auth save` yourself in a local terminal; the username is visible and the password is hidden while typing. Piped input and terminals that cannot hide password input are refused. Credentials are stored encrypted in the native OS keyring and never included in MCP responses sent to the LLM. Running the command again replaces the saved account/password. `auth status` reports whether an account is stored, and `auth delete` removes it. With uvx, append these arguments to your existing uvx command; no standalone CLI installation is needed. No credential management commands are exposed as MCP tools.
 
 The keyring entry uses service `all-abt-ntu-mcp`, account `ntu-account`. The username, password, and an opaque revision identifier are stored together as the keyring secret. Neither credential is stored in application files, environment variables, or logs, or returned through MCP. Configuration from older versions is not imported automatically; remove any old credentials from `.env` and client settings yourself. A network username is expanded to a student email address for NTULearn; a full NTU email is used as supplied.
 
@@ -90,7 +90,7 @@ If `busctl --user list` cannot connect, point the current shell at its desktop s
 export XDG_RUNTIME_DIR="/run/user/$(id -u)"
 export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
 busctl --user list
-uv run all-abt-ntu auth status
+uv run ntu auth status
 ```
 
 The keyring service must appear in the bus listing, and `auth status` must report the account as stored. Restart the MCP client from this corrected session so it inherits the same bus address.

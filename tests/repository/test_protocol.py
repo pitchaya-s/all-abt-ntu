@@ -8,10 +8,12 @@ from jsonschema import Draft202012Validator
 from mcp import Client
 from mcp.client.stdio import StdioServerParameters
 
-from drntu import mcp_server
-from server import mcp
+from server import create_server
+
 from .fixtures import BUNDLE_ID, CONTAINER_ID, DOI, ITEM_ID
 from .oai_fixtures import IDENTIFIER, TOKEN
+
+mcp = create_server()
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -105,7 +107,7 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_unexpected_provider_metadata_is_sanitized(self):
         with patch.object(
-            mcp_server.client,
+            mcp.ntu_application.research,
             "get",
             return_value=({"type": "item", "untrusted": "provider detail"}, {}),
         ):

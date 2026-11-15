@@ -1,10 +1,12 @@
 from copy import deepcopy
+import asyncio
 import unittest
 from unittest.mock import patch
 
 from mcp.server.mcpserver.exceptions import ToolError
+from shared.mcp_adapter import translate_errors
+from application import Application
 
-from drntu import mcp_server
 from drntu.rest import datasets, parser, repository
 from drntu.models import RepositoryError
 from drntu.rest.models import SearchFilter
@@ -13,14 +15,21 @@ from .fixtures import CONTAINER_ID, DOI, ITEM, ITEM_ID, VERSION, fake_get, hal
 
 class RepositoryTests(unittest.TestCase):
     def setUp(self):
-        self.client = mcp_server.client
+        self.application = Application()
+        self.addCleanup(lambda: asyncio.run(self.application.close()))
+        self.client = self.application.research
         self.mock = patch.object(self.client, "get", side_effect=fake_get)
         self.get = self.mock.start()
         self.addCleanup(self.mock.stop)
 
     def test_publication_default_filters_scope_and_search_pagination(self):
-        results = repository.search(self.client, " learning ", scope_id=CONTAINER_ID,
-                                    filters=[SearchFilter(field="dateIssued", value="[2020 TO 2026]")], page_size=1)
+        results = repository.search(
+            self.client,
+            " learning ",
+            scope_id=CONTAINER_ID,
+            filters=[SearchFilter(field="dateIssued", value="[2020 TO 2026]")],
+            page_size=1,
+        )
         self.assertEqual(results.query, "learning")
         self.assertEqual(results.pagination.next_page, 1)
         self.assertEqual(results.items[0].authors, ["Example, Author"])
@@ -44,7 +53,9 @@ class RepositoryTests(unittest.TestCase):
         self.assertEqual(item.metadata["datacite.rights"][0].value, "restricted")
         value = deepcopy(ITEM)
         value["metadata"]["dc.title"][0]["language"] = "en"
-        value["metadata"]["example.custom"] = [{"value": "unknown but retained", "language": None}]
+        value["metadata"]["example.custom"] = [
+            {"value": "unknown but retained", "language": None}
+        ]
         snapshot = fake_get("/core/items/" + ITEM_ID)[1]
         self.get.return_value = (value, snapshot)
         self.get.side_effect = None
@@ -55,14 +66,24 @@ class RepositoryTests(unittest.TestCase):
     def test_browse_nested_collections_and_unknown_counts(self):
         result = repository.browse(self.client, "collections", CONTAINER_ID)
         self.assertIsNone(result.containers[0].archived_items_count)
-        self.assertEqual(self.get.call_args.args[0], f"/core/communities/{CONTAINER_ID}/collections")
+        self.assertEqual(
+            self.get.call_args.args[0], f"/core/communities/{CONTAINER_ID}/collections"
+        )
         communities = repository.browse(self.client)
         self.assertEqual(communities.kind, "communities")
-        self.assertEqual(communities.containers[0].url, f"https://dr.ntu.edu.sg/communities/{CONTAINER_ID}")
-        self.assertEqual(len(repository.browse(self.client, "communities", CONTAINER_ID).containers), 1)
+        self.assertEqual(
+            communities.containers[0].url,
+            f"https://dr.ntu.edu.sg/communities/{CONTAINER_ID}",
+        )
+        self.assertEqual(
+            len(repository.browse(self.client, "communities", CONTAINER_ID).containers),
+            1,
+        )
 
     def test_facets_return_the_actual_date_filter_instead_of_display_label(self):
-        self.assertEqual(repository.get_facets(self.client).definitions[0].name, "dateIssued")
+        self.assertEqual(
+            repository.get_facets(self.client).definitions[0].name, "dateIssued"
+        )
         result = repository.get_facets(self.client, "dateIssued", "learning")
         value = result.values[0]
         self.assertEqual(value.label, "2020 - 2026")
@@ -82,18 +103,35 @@ class RepositoryTests(unittest.TestCase):
         self.assertNotIn("downloadable", file.model_dump())
 
     def test_blank_search_and_filter_values_are_rejected(self):
-        for fn, args in [(repository.search, (self.client, " ")),
-                         (repository.search, (self.client, "learning", None, "Publication", [SearchFilter(field="subject", value=" ")]))]:
+        for fn, args in [
+            (repository.search, (self.client, " ")),
+            (
+                repository.search,
+                (
+                    self.client,
+                    "learning",
+                    None,
+                    "Publication",
+                    [SearchFilter(field="subject", value=" ")],
+                ),
+            ),
+        ]:
             with self.assertRaises(RepositoryError):
                 fn(*args)
         self.get.assert_not_called()
 
     def test_missing_or_mismatched_records_and_pages_fail(self):
-        for data in [{}, {**ITEM, "uuid": CONTAINER_ID}, {**ITEM, "type": "collection"}]:
+        for data in [
+            {},
+            {**ITEM, "uuid": CONTAINER_ID},
+            {**ITEM, "type": "collection"},
+        ]:
             self.get.side_effect = None
             self.get.return_value = (data, fake_get("/core/items/" + ITEM_ID)[1])
             with self.assertRaises(ToolError):
-                mcp_server.get_item(ITEM_ID)
+                translate_errors(repository.get_item, "drntu_get_item")(
+                    self.client, ITEM_ID
+                )
         with self.assertRaises(RepositoryError):
             parser.pagination(hal("items", [ITEM]), 0, 0, 20)
         with self.assertRaises(RepositoryError):
@@ -105,12 +143,16 @@ class RepositoryTests(unittest.TestCase):
 
 class DatasetTests(unittest.TestCase):
     def setUp(self):
-        self.client = mcp_server.client
+        self.application = Application()
+        self.addCleanup(lambda: asyncio.run(self.application.close()))
+        self.client = self.application.research
 
     def test_latest_version_citation_fields_and_file_pagination(self):
         with patch.object(self.client, "get", side_effect=fake_get):
             first = datasets.get_dataset(self.client, DOI, limit=1)
-            second = datasets.get_dataset(self.client, DOI, version="1.0", limit=1, offset=first.next_offset)
+            second = datasets.get_dataset(
+                self.client, DOI, version="1.0", limit=1, offset=first.next_offset
+            )
         self.assertEqual(first.title, "Synthetic dataset")
         self.assertEqual(first.authors, ["Example, Author"])
         self.assertEqual(first.total_files, 2)
@@ -120,9 +162,20 @@ class DatasetTests(unittest.TestCase):
         self.assertNotEqual(first.files[0].file_id, second.files[0].file_id)
 
     def test_draft_wrong_identifier_and_wrong_version_are_rejected(self):
-        for patch_value in [{"versionState": "DRAFT"}, {"datasetPersistentId": "doi:10.21979/WRONG"}, {"versionNumber": 2}]:
+        for patch_value in [
+            {"versionState": "DRAFT"},
+            {"datasetPersistentId": "doi:10.21979/WRONG"},
+            {"versionNumber": 2},
+        ]:
             data = {**deepcopy(VERSION), **patch_value}
-            with patch.object(self.client, "get", return_value=({"status": "OK", "data": data}, fake_get("/", dataset=True)[1])):
+            with patch.object(
+                self.client,
+                "get",
+                return_value=(
+                    {"status": "OK", "data": data},
+                    fake_get("/", dataset=True)[1],
+                ),
+            ):
                 with self.assertRaises(RepositoryError):
                     datasets.get_dataset(self.client, DOI, "1.0")
 
@@ -130,7 +183,14 @@ class DatasetTests(unittest.TestCase):
         data = deepcopy(VERSION)
         data["metadataBlocks"]["citation"]["fields"] = []
         data.pop("license")
-        with patch.object(self.client, "get", return_value=({"status": "OK", "data": data}, fake_get("/", dataset=True)[1])):
+        with patch.object(
+            self.client,
+            "get",
+            return_value=(
+                {"status": "OK", "data": data},
+                fake_get("/", dataset=True)[1],
+            ),
+        ):
             result = datasets.get_dataset(self.client, DOI, "1.0")
         self.assertIsNone(result.title)
         self.assertIsNone(result.license_name)

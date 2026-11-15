@@ -24,16 +24,27 @@ LIST_PAGES = {
     ("request", "closed"): "my_closed_requests",
 }
 _PAGES = {
-    "__home__": set(), "ntu_announcements": set(), "ntu_to_do_detail": set(),
-    "ntu_popularsites": set(), "ntu_appointment_list": set(), "sc_favourite": set(),
-    "ntu_adhoc_payment": set(), "user_profile": set(), "sc_cart": set(),
-    "search": {"q", "t"}, "sc_home": set(), "sc_category": {"sys_id"},
-    "sc_cat_item": {"sys_id"}, "kb_article_view": {"sys_kb_id"},
-    "sc_request": {"sys_id", "table", "view"}, "ticket": {"sys_id", "table", "view"},
+    "__home__": set(),
+    "ntu_announcements": set(),
+    "ntu_to_do_detail": set(),
+    "ntu_popularsites": set(),
+    "ntu_appointment_list": set(),
+    "sc_favourite": set(),
+    "ntu_adhoc_payment": set(),
+    "user_profile": set(),
+    "sc_cart": set(),
+    "search": {"q", "t"},
+    "sc_home": set(),
+    "sc_category": {"sys_id"},
+    "sc_cat_item": {"sys_id"},
+    "kb_article_view": {"sys_kb_id"},
+    "sc_request": {"sys_id", "table", "view"},
+    "ticket": {"sys_id", "table", "view"},
     **{page: set() for page in LIST_PAGES.values()},
 }
 _CHALLENGE = re.compile(
-    r"captcha|approve (?:the )?sign.in|verify your identity|verification code|authenticator|multi.factor", re.I
+    r"captcha|approve (?:the )?sign.in|verify your identity|verification code|authenticator|multi.factor",
+    re.I,
 )
 
 # Read data from the hydrated widget scope. The initial /api/now/sp/page response
@@ -101,7 +112,11 @@ class PortalPage:
     cached: bool = False
 
     def metadata(self):
-        return dict(retrieved_at=self.retrieved_at, source_url=self.source_url, cached=self.cached)
+        return dict(
+            retrieved_at=self.retrieved_at,
+            source_url=self.source_url,
+            cached=self.cached,
+        )
 
 
 def page_url(page_id, params):
@@ -109,18 +124,28 @@ def page_url(page_id, params):
         raise OneStopError("This One Stop page is not an allowed read operation.")
     for name in ("sys_id", "sys_kb_id"):
         if name in params and not SYS_ID.fullmatch(params[name]):
-            raise OneStopError("One Stop IDs must be 32 lowercase hexadecimal characters.")
+            raise OneStopError(
+                "One Stop IDs must be 32 lowercase hexadecimal characters."
+            )
     if page_id == "search" and (
-        params["t"] not in {"sc", "kb"} or not isinstance(params["q"], str)
+        params["t"] not in {"sc", "kb"}
+        or not isinstance(params["q"], str)
         or not 1 <= len(params["q"].strip()) <= 200
         or any(ord(c) < 32 for c in params["q"])
     ):
-        raise OneStopError("Provide a search query of 1–200 characters without control characters.")
+        raise OneStopError(
+            "Provide a search query of 1–200 characters without control characters."
+        )
     if page_id in {"sc_request", "ticket"} and (
-        not re.fullmatch(r"[a-z][a-z0-9_]{1,79}", params["table"]) or params["view"] != "ntusp"
+        not re.fullmatch(r"[a-z][a-z0-9_]{1,79}", params["table"])
+        or params["view"] != "ntusp"
     ):
         raise OneStopError("One Stop returned an unsupported ticket link.")
-    return PORTAL if page_id == "__home__" else PORTAL + "?" + urlencode({"id": page_id, **params})
+    return (
+        PORTAL
+        if page_id == "__home__"
+        else PORTAL + "?" + urlencode({"id": page_id, **params})
+    )
 
 
 class OneStopSession:
@@ -143,7 +168,9 @@ class OneStopSession:
             return function(*args)
         with self._lock:
             if self._closed:
-                raise OneStopError("The One Stop session is closed; restart the MCP server.")
+                raise OneStopError(
+                    "The One Stop session is closed; restart the MCP server."
+                )
             future = self._executor.submit(self._invoke, function, args)
         try:
             return future.result()
@@ -151,7 +178,9 @@ class OneStopSession:
             raise
         except Exception:
             # Playwright exceptions can embed login arguments and authenticated URLs.
-            raise OneStopError("One Stop returned an unexpected page or the connection failed; retry later.") from None
+            raise OneStopError(
+                "One Stop returned an unexpected page or the connection failed; retry later."
+            ) from None
 
     def _invoke(self, function, args):
         self._worker_id = get_ident()
@@ -216,7 +245,8 @@ class OneStopSession:
             self._revision = credentials.revision
         return credentials
 
-    def status(self):
+    def status(self) -> AuthStatus:
+        "Report shared keyring availability and the last verified One Stop session without logging in or returning identity or credentials. An unavailable keyring reports credentials_configured=null."
         return self._run(self._status)
 
     def _status(self):
@@ -228,13 +258,18 @@ class OneStopSession:
                 status = credential_status()
         else:
             self._dispose()
-        return AuthStatus(**status, session_verified=self._verified, last_verified_at=self._last_verified)
+        return AuthStatus(
+            **status,
+            session_verified=self._verified,
+            last_verified_at=self._last_verified,
+        )
 
     def _open(self):
         if self._browser:
             return
         try:
             from playwright.sync_api import sync_playwright
+
             self._playwright = sync_playwright().start()
             self._browser = self._playwright.chromium.launch(headless=True)
             self._context = self._browser.new_context()
@@ -247,8 +282,12 @@ class OneStopSession:
 
     def _logged_in(self):
         u = urlsplit(self._page.url)
-        return u.scheme == "https" and u.netloc == urlsplit(BASE).netloc and self._page.evaluate(
-            "typeof logged_in !== 'undefined' && logged_in === true"
+        return (
+            u.scheme == "https"
+            and u.netloc == urlsplit(BASE).netloc
+            and self._page.evaluate(
+                "typeof logged_in !== 'undefined' && logged_in === true"
+            )
         )
 
     def _login(self, credentials):
@@ -263,14 +302,22 @@ class OneStopSession:
             self._login_not_before = 0
             return
         from playwright.sync_api import Error
+
         deadline = time.monotonic() + 60
         password_sent = False
         while time.monotonic() < deadline:
             try:
                 u = urlsplit(self._page.url)
-                if (u.scheme != "https" or u.port not in (None, 443) or u.username or u.password
-                    or u.hostname not in {urlsplit(BASE).hostname, "loginfs.ntu.edu.sg"}):
-                    raise OneStopError("One Stop reached an unsupported login host; no further credentials were submitted.")
+                if (
+                    u.scheme != "https"
+                    or u.port not in (None, 443)
+                    or u.username
+                    or u.password
+                    or u.hostname not in {urlsplit(BASE).hostname, "loginfs.ntu.edu.sg"}
+                ):
+                    raise OneStopError(
+                        "One Stop reached an unsupported login host; no further credentials were submitted."
+                    )
                 if self._logged_in():
                     self._verified = True
                     self._last_verified = datetime.now(timezone.utc)
@@ -279,25 +326,48 @@ class OneStopSession:
                 if u.hostname == "loginfs.ntu.edu.sg":
                     body = self._page.locator("body").inner_text(timeout=5000)
                     if _CHALLENGE.search(body):
-                        raise OneStopError("One Stop requires interactive MFA or CAPTCHA; this tool cannot complete it.")
-                    if password_sent and re.search(r"incorrect|invalid password|account.*locked|too many.*attempts", body, re.I):
-                        raise OneStopError("NTU rejected the One Stop login. No automatic password retry was made.")
-                    if not password_sent and u.path == "/adfs/ls/" and self._page.locator("#passwordInput:visible").count():
+                        raise OneStopError(
+                            "One Stop requires interactive MFA or CAPTCHA; this tool cannot complete it."
+                        )
+                    if password_sent and re.search(
+                        r"incorrect|invalid password|account.*locked|too many.*attempts",
+                        body,
+                        re.I,
+                    ):
+                        raise OneStopError(
+                            "NTU rejected the One Stop login. No automatic password retry was made."
+                        )
+                    if (
+                        not password_sent
+                        and u.path == "/adfs/ls/"
+                        and self._page.locator("#passwordInput:visible").count()
+                    ):
                         # This integration is for the student portal, like LibFacilities.
                         if not credentials.email.lower().endswith("@e.ntu.edu.sg"):
-                            raise OneStopError("One Stop student tools require a saved NTU student network account.")
+                            raise OneStopError(
+                                "One Stop student tools require a saved NTU student network account."
+                            )
                         if time.monotonic() < self._login_not_before:
-                            raise OneStopError("A recent One Stop login did not complete. Wait one minute before retrying.")
+                            raise OneStopError(
+                                "A recent One Stop login did not complete. Wait one minute before retrying."
+                            )
                         self._login_not_before = time.monotonic() + 60
-                        self._page.locator("#userNameInput").fill(credentials.username + "@student.main.ntu.edu.sg")
+                        self._page.locator("#userNameInput").fill(
+                            credentials.username + "@student.main.ntu.edu.sg"
+                        )
                         self._page.locator("#passwordInput").fill(credentials.password)
                         password_sent = True
                         self._page.locator("#submitButton").click()
             except Error as error:
-                if not any(message in str(error) for message in ("Execution context was destroyed", "navigation")):
+                if not any(
+                    message in str(error)
+                    for message in ("Execution context was destroyed", "navigation")
+                ):
                     raise
             self._page.wait_for_timeout(300)
-        raise OneStopError("One Stop login timed out. No automatic password retry was made.")
+        raise OneStopError(
+            "One Stop login timed out. No automatic password retry was made."
+        )
 
     def read(self, page_id, params=None, refresh=False):
         params = params or {}
@@ -323,7 +393,9 @@ class OneStopSession:
             self._last_request = time.monotonic()
             response = self._page.goto(url, wait_until="networkidle", timeout=30000)
             if response is not None and response.status >= 400:
-                raise OneStopError(f"One Stop returned HTTP {response.status}; retry later.")
+                raise OneStopError(
+                    f"One Stop returned HTTP {response.status}; retry later."
+                )
             if not self._logged_in():
                 self._verified = False
                 self._last_verified = None
@@ -331,7 +403,9 @@ class OneStopSession:
                 if attempt == 0:
                     self._login(credentials)
                     continue
-                raise OneStopError("One Stop's session expired again after login; retry later.")
+                raise OneStopError(
+                    "One Stop's session expired again after login; retry later."
+                )
             self._page.wait_for_function(
                 "typeof angular !== 'undefined' && !!document.querySelector('div[widget][data]')",
                 timeout=15000,
@@ -357,7 +431,9 @@ class OneStopSession:
             data = self._page.evaluate(_EXTRACT)
             if not isinstance(data, dict):
                 raise OneStopError("One Stop returned an unsupported widget format.")
-            result = PortalPage(data, datetime.now(timezone.utc), url, credentials.revision)
+            result = PortalPage(
+                data, datetime.now(timezone.utc), url, credentials.revision
+            )
             self._cache[url] = (time.monotonic(), deepcopy(result))
             self._cache.move_to_end(url)
             while len(self._cache) > 32:

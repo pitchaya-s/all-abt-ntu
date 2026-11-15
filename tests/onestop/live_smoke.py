@@ -19,7 +19,7 @@ async def main():
     }
     params = StdioServerParameters(
         command=sys.executable,
-        args=["-c", "from shared.cli import main; main()", "--profile", "personal"],
+        args=["-c", "from cli.cli import main; main()", "mcp", "--profile", "personal"],
         env=env,
     )
     async with Client(params) as client:

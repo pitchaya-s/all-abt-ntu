@@ -64,6 +64,7 @@ class Session:
         self._video = VideoSession(self)
 
     async def status(self) -> AuthStatus:
+        """Report credential configuration and this process's last verified login, without logging in."""
         credentials = await asyncio.to_thread(credential_status)
         state = self.auth.state
         return AuthStatus(
@@ -76,7 +77,14 @@ class Session:
 
     @asynccontextmanager
     async def operation(self):
-        """Share one keyring revision check across a multi-request MCP tool call."""
+        """Share a credential check and lifetime across a multi-request workflow."""
+        if self._operation.get() is not None:
+            await self._begin_operation()
+            try:
+                yield
+            finally:
+                await self._end_operation()
+            return
         await self._begin_operation()
         token = self._operation.set(_Operation())
         try:

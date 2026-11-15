@@ -91,23 +91,26 @@ class CredentialTests(unittest.IsolatedAsyncioTestCase):
 
     def test_server_closes_all_sessions_even_if_one_cleanup_fails(self):
         import server
-        from careeraxis import mcp_server as careeraxis
-        from library import personal_tools as library
-        from ntulearn import mcp_server as learn
-        from onestop import mcp_server as onestop
-        from stars.wish.session import wish_session
+        from application import Application
 
-        instance = server.create_server("personal", check_dependencies=False)
+        application = Application()
+        instance = server.create_server(
+            "personal", check_dependencies=False, application=application
+        )
         with (
             patch.object(server, "create_server", return_value=instance),
             patch.object(instance, "run_stdio_async", new=AsyncMock()),
             patch.object(
-                wish_session, "close", side_effect=RuntimeError("test cleanup")
+                application.stars_personal,
+                "close",
+                side_effect=RuntimeError("test cleanup"),
             ) as wish,
-            patch.object(learn.session, "close", new=AsyncMock()) as learn_close,
-            patch.object(library.session, "close") as library_close,
-            patch.object(onestop.session, "close") as onestop_close,
-            patch.object(careeraxis.client.session, "close") as careeraxis_close,
+            patch.object(
+                application.learn_session, "close", new=AsyncMock()
+            ) as learn_close,
+            patch.object(application.library_session, "close") as library_close,
+            patch.object(application.onestop_session, "close") as onestop_close,
+            patch.object(application.careeraxis.session, "close") as careeraxis_close,
         ):
             with self.assertRaisesRegex(RuntimeError, "test cleanup"):
                 server.main("personal")

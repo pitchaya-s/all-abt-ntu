@@ -389,7 +389,7 @@ class PlanMCPTests(unittest.IsolatedAsyncioTestCase):
             "source_url": SAVE_PLAN_URL,
         }
         with patch(
-            "stars.tools.personal.persist_stars_plan", return_value=reply
+            "stars.wish.session.WishSessionManager.save_stars_plan", return_value=reply
         ) as save:
             async with Client(mcp, elicitation_callback=approve) as client:
                 tool = next(

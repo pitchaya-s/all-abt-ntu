@@ -1,5 +1,8 @@
 """Own-ticket conversations and state actions; no unrestricted table arguments."""
 
+from typing import Literal
+from ..models import ActionResult, ID, Message
+
 from dataclasses import dataclass
 from urllib.parse import parse_qs, urlsplit
 
@@ -80,7 +83,8 @@ class TicketService:
             snapshot, target.record_id, target.record_type, permissions
         )
 
-    def activity(self, request_id, record_id=None):
+    def activity(self, request_id: ID, record_id: ID | None = None) -> RequestActivity:
+        "Read visible comments and attachment events on a verified own request/item, plus current reply/upload/state-action permissions. Work notes are excluded. Select record_id from get_my_request when it has multiple records."
         return self.session.workflow(
             self._activity, sys_id(request_id), sys_id(record_id) if record_id else None
         )
@@ -116,7 +120,10 @@ class TicketService:
             can_upload_attachment=context.permissions["can_upload"],
         )
 
-    def reply(self, request_id, text, record_id=None):
+    def reply(
+        self, request_id: ID, text: Message, record_id: ID | None = None
+    ) -> ActionResult:
+        "Post a real additional comment to a verified own ticket/item when its current native state permits replying. Sends only to the comments journal, never work notes. Do not repeat an uncertain reply; inspect activity first."
         return self.session.workflow(
             self._reply,
             sys_id(request_id),
@@ -161,7 +168,13 @@ class TicketService:
             else "A reply response arrived, but the new entry was not identified. Inspect the conversation before replying again.",
         )
 
-    def take_action(self, request_id, action, record_id=None):
+    def take_action(
+        self,
+        request_id: ID,
+        action: Literal["close", "reopen", "accept_solution", "reject_solution"],
+        record_id: ID | None = None,
+    ) -> ActionResult:
+        "Execute a state action currently offered by the native own-ticket page. Read get_request_activity.available_actions first. Does not invent unavailable close/reopen/solution actions or accept arbitrary state/table values."
         if action not in {"close", "reopen", "accept_solution", "reject_solution"}:
             raise OneStopError("Unsupported native ticket action.")
         return self.session.workflow(

@@ -1,11 +1,17 @@
 """Route and live-bus operations."""
 
+from typing import Any
+
+from ..contracts import CampusRoute
+
+
 from .. import parser
 from ..models import BusPositions, OmnibusError, Routes
 
 
 class RouteMethods:
-    def get_live_buses(self, route_code):
+    def get_live_buses(self: Any, route_code: CampusRoute = "Blue") -> BusPositions:
+        "Get current live vehicle positions for one NTU campus shuttle route. An empty list means no positions were reported in this snapshot; source timestamps may be unavailable."
         data, url = self._post(
             "DataActionGetActiveBusServicesData",
             "MainFlow.Shuttle",
@@ -22,7 +28,8 @@ class RouteMethods:
             buses=buses,
         )
 
-    def list_routes(self):
+    def list_routes(self: Any) -> Routes:
+        "List public NTU shuttle routes and their published display colors. This does not include route path geometry."
         route_data, route_url = self._post(
             "DataActionGetRoutesList",
             "MainFlow.Shuttle",

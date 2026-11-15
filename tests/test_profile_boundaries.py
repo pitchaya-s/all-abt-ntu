@@ -10,12 +10,19 @@ from mcp import Client
 from mcp.types import ElicitResult
 
 from onestop.browser import action_result
-from onestop.services.forms import FormService
-from onestop.workflow_tools import LOCAL_TOOLS, WRITE_TOOLS
 from server import create_server
 
 
 class ProfileBoundaryTests(unittest.IsolatedAsyncioTestCase):
+    async def test_public_tools_retain_agent_guidance(self):
+        server = create_server("public", check_dependencies=False)
+        tools = {tool.name: tool for tool in await server.list_tools()}
+        self.assertIn(
+            "not room availability", tools["mazemap_search_places"].description
+        )
+        self.assertIn("Follow next_offset", tools["library_search"].description)
+        self.assertIn("null", tools["omnibus_get_arrivals"].description.lower())
+
     async def test_read_profiles_only_advertise_read_only_tools(self):
         for profile in ("public",):
             async with Client(
@@ -33,8 +40,7 @@ class ProfileBoundaryTests(unittest.IsolatedAsyncioTestCase):
                     profile,
                 )
                 names = {tool.name for tool in tools}
-                for name in (*LOCAL_TOOLS, *WRITE_TOOLS):
-                    self.assertNotIn("onestop_" + name, names)
+                self.assertFalse(any(name.startswith("onestop_") for name in names))
                 for name in (
                     "stars_save_stars_plan",
                     "ntulearn_download_file",
@@ -58,7 +64,11 @@ class ProfileBoundaryTests(unittest.IsolatedAsyncioTestCase):
             requests.append(request.message)
             return ElicitResult(action="accept", content={"confirm": True})
 
-        with patch.object(FormService, "submit", return_value=result_value) as submit:
+        with patch.object(
+            server.ntu_application.onestop_session,
+            "workflow",
+            return_value=result_value,
+        ) as submit:
             async with Client(server, elicitation_callback=decline) as client:
                 self.assertTrue(
                     (await client.call_tool("onestop_submit_request", args)).is_error
@@ -75,7 +85,10 @@ class ProfileBoundaryTests(unittest.IsolatedAsyncioTestCase):
                 self.assertFalse(
                     (await client.call_tool("onestop_submit_request", args)).is_error
                 )
-                submit.assert_called_once_with(args["draft_id"], "submit")
+                submit.assert_called_once()
+                self.assertEqual(
+                    submit.call_args.args[1:], (args["draft_id"], "submit")
+                )
         self.assertEqual(len(requests), 3)
         self.assertTrue(
             all("onestop_submit_request" in message for message in requests)
@@ -88,7 +101,7 @@ class ProfileBoundaryTests(unittest.IsolatedAsyncioTestCase):
         async def malformed(context, request):
             return ElicitResult(action="accept", content={"confirm": "yes"})
 
-        with patch.object(FormService, "submit") as submit:
+        with patch.object(server.ntu_application.onestop_session, "workflow") as submit:
             async with Client(server, elicitation_callback=malformed) as client:
                 result = await client.call_tool(
                     "onestop_submit_request", {"draft_id": "a" * 16}

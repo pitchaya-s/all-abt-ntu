@@ -64,16 +64,16 @@ def fake_facility_get(url, refresh=False):
     return body, snapshot(url)
 
 
-def fake_schedule(day, space_id=None, location_id=None, group_id=None, refresh=False):
+def fake_schedule(date, space_id=None, location_id=None, group_id=None, refresh=False):
     from library.facilities import BASE
     from library.facilities.schedule import parse_slots, schedule_path
 
     path = schedule_path(space_id, location_id, group_id)
     return FacilitySchedule(
-        date=day,
+        date=date,
         title="Example Room",
         description="An example study room.",
-        spaces=parse_slots(GRID, {100: "Example Room"}, day),
+        spaces=parse_slots(GRID, {100: "Example Room"}, date),
         window_end=False,
         **snapshot(BASE + path),
     )

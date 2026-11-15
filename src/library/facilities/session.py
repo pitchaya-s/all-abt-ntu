@@ -12,7 +12,7 @@ from urllib.parse import parse_qs, urlsplit
 
 from shared.credentials import CredentialError, read_credentials
 from . import BASE, requested_time
-from ..models import FacilitySchedule, LibraryError, SpaceSchedule
+from ..models import Day, FacilityID, FacilitySchedule, LibraryError, SpaceSchedule
 from .schedule import parse_slots, schedule_path
 
 
@@ -54,16 +54,22 @@ class FacilitySession:
                     self._executor.shutdown()
 
     def get_schedule(
-        self, day, space_id=None, location_id=None, group_id=None, refresh=False
-    ):
-        requested_time(day, "00:00")
+        self,
+        date: Day,
+        space_id: FacilityID | None = None,
+        location_id: FacilityID | None = None,
+        group_id: FacilityID | None = None,
+        refresh: bool = False,
+    ) -> FacilitySchedule:
+        """Read a day's LibFacilities room/seat time grid, room description and source status classes. Supply space_id, or both location_id and group_id, from facility/map results. Requires saved local NTU student credentials and Chromium. Reuses an in-memory session and caches for 60 seconds. MFA/CAPTCHA returns an error; no booking, cart, checkout, loan, or hold is submitted. Missing slots are unknown, not free."""
+        requested_time(date, "00:00")
         path = schedule_path(space_id, location_id, group_id)
         with self._lock:
             if self._closed:
                 raise LibraryError(
                     "The library session is closed; restart the MCP server."
                 )
-            future = self._executor.submit(self._get_schedule, path, day, refresh)
+            future = self._executor.submit(self._get_schedule, path, date, refresh)
         try:
             return future.result()
         except LibraryError:

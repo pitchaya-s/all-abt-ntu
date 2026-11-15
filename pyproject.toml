@@ -24,6 +24,8 @@ dependencies = [
     "httpx>=0.27,<1",
     "tzdata>=2025.1",
     "questionary>=2.1,<3",
+    "typer>=0.12,<1",
+    "rich>=13,<15",
 ]
 
 [project.optional-dependencies]
@@ -37,7 +39,7 @@ Documentation = "https://github.com/pitchaya-s/all-abt-ntu-mcp/blob/main/README.
 Issues = "https://github.com/pitchaya-s/all-abt-ntu-mcp/issues"
 
 [project.scripts]
-all-abt-ntu = "cli.cli:main"
+ntu = "cli.cli:main"
 
 [tool.hatch.build]
 exclude = [
@@ -64,6 +66,7 @@ only-include = [
     "src/service",
     "src/shared",
     "src/stars",
+    "src/application.py",
     "src/server.py",
     "src/public_server.py",
     "src/public_http_server.py",

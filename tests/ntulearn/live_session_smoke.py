@@ -7,14 +7,13 @@ from pathlib import Path
 from mcp import Client
 from mcp.types import ElicitResult
 
-from ntulearn import mcp_server
 from server import create_server
 
 mcp = create_server("personal")
 
 
 async def main():
-    session = mcp_server.session
+    session = mcp.ntu_application.learn_session
 
     async def approve_temp_download(context, params):
         if "ntulearn_download_file" not in params.message:
@@ -128,7 +127,7 @@ async def main():
                 flush=True,
             )
     finally:
-        await session.close()
+        await mcp.ntu_application.close()
 
 
 if __name__ == "__main__":

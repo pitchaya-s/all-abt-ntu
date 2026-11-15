@@ -1,10 +1,18 @@
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class LibraryError(RuntimeError):
+from shared.operation import OperationError
+
+Query = Annotated[str, Field(min_length=1, max_length=500)]
+RecordID = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,299}$")]
+FacilityID = Annotated[int, Field(ge=1, le=9_999_999_999, strict=True)]
+Day = Annotated[str, Field(pattern=r"^\d{4}-\d{2}-\d{2}$")]
+
+
+class LibraryError(OperationError):
     pass
 
 

@@ -1,9 +1,21 @@
 from datetime import datetime
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class MapError(RuntimeError):
+from shared.operation import OperationError
+
+ID = Annotated[
+    int, Field(gt=0, strict=True, description="Numeric ID returned by a MazeMap tool")
+]
+Query = Annotated[str, Field(min_length=1, max_length=200)]
+Limit = Annotated[int, Field(ge=1, le=50, strict=True)]
+Offset = Annotated[int, Field(ge=0, le=10000, strict=True)]
+Constraint = Literal["NO_CONSTRAINT", "PREFER_ACCESSIBLE", "REQUIRE_ACCESSIBLE"]
+
+
+class MapError(OperationError):
     pass
 
 

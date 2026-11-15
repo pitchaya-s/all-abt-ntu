@@ -1,5 +1,10 @@
 """Own cart, saved carts and catalog favourites using native widget actions."""
 
+from typing import Annotated
+from typing import Literal
+from pydantic import Field
+from ..models import ActionResult, ID, Token
+
 from datetime import datetime, timedelta, timezone
 import hashlib
 import json
@@ -26,7 +31,8 @@ class CartService:
     def __init__(self, session):
         self.session = session
 
-    def get(self):
+    def get(self) -> CartState:
+        "Read your native shopping cart, item quantities/prices, saved-cart IDs/names and checkout defaults. Does not order, load or alter any cart."
         return self.session.workflow(self._get)
 
     def _get(self, session, revision):
@@ -58,7 +64,21 @@ class CartService:
             two_step_checkout=raw["two_step_checkout"],
         )
 
-    def update(self, action, item_id=None, quantity=None, saved_cart_id=None):
+    def update(
+        self,
+        action: Literal[
+            "set_quantity",
+            "remove",
+            "clear",
+            "load_saved",
+            "replace_with_saved",
+            "delete_saved",
+        ],
+        item_id: ID | None = None,
+        quantity: Annotated[int, Field(ge=1, le=100, strict=True)] | None = None,
+        saved_cart_id: ID | None = None,
+    ) -> ActionResult:
+        "Change your native cart: set a permitted quantity, remove/clear items, append a saved cart, replace with a saved cart, or delete a saved cart. IDs must appear in get_cart. replace_with_saved replaces current contents; load_saved appends. Does not checkout."
         if action not in {
             "set_quantity",
             "remove",
@@ -162,7 +182,8 @@ class CartService:
             else "The native action returned; inspect the refreshed cart contents.",
         )
 
-    def get_saved(self, saved_cart_id):
+    def get_saved(self, saved_cart_id: ID) -> PortalRecords:
+        "Inspect items in a verified own saved cart before loading it. Does not merge or replace the active cart."
         return self.session.workflow(self._get_saved, sys_id(saved_cart_id))
 
     def _get_saved(self, session, revision, saved_cart_id):
@@ -193,7 +214,12 @@ class CartService:
             records=records[:100],
         )
 
-    def save(self, name, item_ids=None):
+    def save(
+        self,
+        name: Annotated[str, Field(min_length=1, max_length=100)],
+        item_ids: list[ID] | None = None,
+    ) -> ActionResult:
+        "Save the current cart, or selected own cart item IDs, as a new named cart using native name/selection validation. Existing saved names are not overwritten. Does not submit an order."
         if (
             not isinstance(name, str)
             or not name.strip()
@@ -289,7 +315,12 @@ class CartService:
         )
         return hashlib.sha256(json.dumps(content, sort_keys=True).encode()).hexdigest()
 
-    def prepare_checkout(self, delivery_address=None, special_instructions=None):
+    def prepare_checkout(
+        self,
+        delivery_address: Annotated[str, Field(max_length=10000)] | None = None,
+        special_instructions: Annotated[str, Field(max_length=10000)] | None = None,
+    ) -> CartCheckout:
+        "Create a 15-minute local checkout preview with the current own cart, delivery address and instructions. Does not order anything. submit_cart_checkout rechecks that cart contents have not changed."
         return self.session.workflow(
             self._prepare_checkout, delivery_address, special_instructions
         )
@@ -337,7 +368,8 @@ class CartService:
         }
         return preview
 
-    def submit_checkout(self, checkout_id):
+    def submit_checkout(self, checkout_id: Token) -> ActionResult:
+        "Submit a reviewed cart checkout exactly once after checking account identity, expiry and unchanged cart contents. Returns the native request receipt. Accounts requiring an additional two-step form receive a portal handoff. Uncertain submissions must be inspected before another checkout."
         return self.session.workflow(self._submit_checkout, checkout_id)
 
     def _submit_checkout(self, session, revision, checkout_id):
@@ -424,7 +456,8 @@ class FavouriteService:
     def __init__(self, session):
         self.session = session
 
-    def list(self):
+    def list(self) -> Favourites:
+        "Read your saved catalog favourites and which are pinned to the homepage. The native portal permits up to four pins."
         return self.session.workflow(self._list)
 
     def _list(self, session, revision):
@@ -443,7 +476,12 @@ class FavouriteService:
             pinned_count=int(data["pinned"]),
         )
 
-    def update(self, action, favourite_id=None):
+    def update(
+        self,
+        action: Literal["pin", "unpin", "remove", "clear"],
+        favourite_id: ID | None = None,
+    ) -> ActionResult:
+        "Pin/unpin/remove one own saved favourite or clear all favourites. The native four-pin limit and unpin-before-removal rules apply. clear affects every unpinned favourite; it does not clear the shopping cart."
         if action not in {"pin", "unpin", "remove", "clear"}:
             raise OneStopError("Unsupported favourite action.")
         return self.session.workflow(
@@ -537,7 +575,10 @@ class FavouriteService:
             outcome="completed" if verified else "uncertain",
         )
 
-    def set_catalog_favourite(self, category_id, item_id, favourite):
+    def set_catalog_favourite(
+        self, category_id: ID, item_id: ID, favourite: bool
+    ) -> ActionResult:
+        "Set a catalog item's favourite state through its category's native control. Both IDs must match a visible category item. Uses the desired state and verifies it against your favourites list."
         if type(favourite) is not bool:
             raise OneStopError("favourite must be a boolean.")
         return self.session.workflow(

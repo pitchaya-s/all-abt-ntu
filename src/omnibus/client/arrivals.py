@@ -1,11 +1,22 @@
 """Live arrival and service-status operations."""
 
+from typing import Any
+
+from ..contracts import ArrivalSource, CampusRoute, Query, RouteFilter
+
+
 from .. import parser
 from ..models import Arrivals, OmnibusError, ServiceStatus
 
 
 class ArrivalMethods:
-    def get_arrivals(self, route_filter, stop_query, source):
+    def get_arrivals(
+        self: Any,
+        route_filter: RouteFilter | None = None,
+        stop_query: Query = "",
+        source: ArrivalSource = "all",
+    ) -> Arrivals:
+        "Get arrival estimates for NTU shuttles and/or LTA services 179, 179A, and 199. Filter by route and stop name/code; at most 20 matching route-stop pairs can be fetched per call. Broader matches require a narrower filter. LTA estimates use minutes; unavailable estimates and unpublished seconds are null."
         self._query(stop_query)
         campus_routes = ("Blue", "Brown", "Green", "Grey", "Red")
         lta_services = ("179", "179A", "199")
@@ -37,7 +48,8 @@ class ArrivalMethods:
             raise OmnibusError(
                 "More than 20 route-stop matches. Narrow stop_query or route_filter before requesting live arrivals."
             )
-        shuttle_rows, lta_rows = [], []
+        shuttle_rows: list[Any] = []
+        lta_rows: list[Any] = []
         for stop in stops:
             name = (
                 "GetETAAndNextETA_LTA"
@@ -61,7 +73,10 @@ class ArrivalMethods:
             lta_arrivals=lta_rows,
         )
 
-    def get_service_status(self, route_code):
+    def get_service_status(
+        self: Any, route_code: CampusRoute = "Blue"
+    ) -> ServiceStatus:
+        "Get the published first/last bus schedule, public-holiday/special-day flags, and temporary notices for an NTU campus shuttle route."
         schedule_data, schedule_url = self._post(
             "GetRoutesMinMax", "MainFlow.Shuttle", inputs={"RouteCode": route_code}
         )

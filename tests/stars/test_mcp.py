@@ -200,7 +200,7 @@ class MCPClientTests(unittest.IsolatedAsyncioTestCase):
                 self.assertIn("credentials_configured", status.structured_content)
 
                 with patch(
-                    "stars.tools.personal.fetch_stars_planner",
+                    "stars.wish.session.WishSessionManager.get_stars_planner",
                     return_value={
                         "service": "stars_planner",
                         "page_title": "STARS Planner",
@@ -224,7 +224,7 @@ class MCPClientTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(planner.structured_content["service"], "stars_planner")
 
                 with patch(
-                    "stars.tools.personal.fetch_degree_audit",
+                    "stars.wish.session.WishSessionManager.get_degree_audit",
                     return_value={
                         "service": "degree_audit",
                         "page_title": "Degree Audit",

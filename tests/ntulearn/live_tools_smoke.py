@@ -7,7 +7,6 @@ from pathlib import Path
 from mcp import Client
 from mcp.types import ElicitResult
 
-from ntulearn import mcp_server
 from server import create_server
 
 mcp = create_server("personal")
@@ -232,7 +231,7 @@ async def main():
                     flush=True,
                 )
     finally:
-        await mcp_server.session.close()
+        await mcp.ntu_application.close()
 
 
 if __name__ == "__main__":

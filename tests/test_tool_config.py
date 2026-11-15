@@ -34,12 +34,20 @@ class ToolConfigTests(unittest.TestCase):
         out, err = StringIO(), StringIO()
         out.isatty = lambda: True
         err.isatty = lambda: True
+        if not args:
+            args = ("mcp",)
+        elif args[0] in ("tools", "setup", "--profile"):
+            args = ("mcp", *args)
         with (
-            patch("sys.argv", ["all-abt-ntu", *args]),
+            patch("sys.argv", ["ntu", *args]),
             redirect_stdout(out),
             redirect_stderr(err),
         ):
-            main()
+            try:
+                main()
+            except SystemExit as error:
+                if error.code != 0:
+                    raise
         return out.getvalue()
 
     def test_enable_disable_and_list_persist(self):
@@ -228,8 +236,8 @@ class ToolConfigTests(unittest.TestCase):
                 },
             ),
             patch("builtins.input", return_value="student001"),
-            patch("cli.cli.getpass", return_value="test-password"),
-            patch("cli.cli.save_credentials") as save,
+            patch("cli.manage.getpass", return_value="test-password"),
+            patch("cli.manage.save_credentials") as save,
         ):
             output = self.call("setup")
             auth_dialog.assert_called_once()
@@ -428,7 +436,8 @@ class ToolConfigTests(unittest.TestCase):
         command = [
             sys.executable,
             "-c",
-            "from cli.cli import main; main(); from stars.client.cache import CACHE_TTL_SECONDS; print('TTL:', CACHE_TTL_SECONDS)",
+            "from cli.cli import create_app; create_app()(standalone_mode=False); from stars.client.cache import CACHE_TTL_SECONDS; print('TTL:', CACHE_TTL_SECONDS)",
+            "mcp",
             "tools",
             "list",
         ]
@@ -508,13 +517,15 @@ class FamilyProtocolTests(unittest.IsolatedAsyncioTestCase):
             env = {**os.environ, "XDG_CONFIG_HOME": directory, "APPDATA": directory}
             command = [sys.executable, "-c", "from cli.cli import main; main()"]
             subprocess.run(
-                [*command, "tools", "disable", "news"],
+                [*command, "mcp", "tools", "disable", "news"],
                 env=env,
                 check=True,
                 capture_output=True,
             )
             async with Client(
-                StdioServerParameters(command=command[0], args=command[1:], env=env)
+                StdioServerParameters(
+                    command=command[0], args=[*command[1:], "mcp"], env=env
+                )
             ) as client:
                 names = {tool.name for tool in (await client.list_tools()).tools}
                 self.assertTrue(names)

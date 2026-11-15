@@ -1,5 +1,9 @@
 """Portal attachment context and verified attachment operations."""
 
+from typing import Annotated
+from pydantic import Field
+from ..models import ActionResult, ID
+
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
@@ -166,7 +170,8 @@ class AttachmentService:
             comment=True,
         )
 
-    def list(self, target):
+    def list(self, target: AttachmentTarget) -> Attachments:
+        "List attachments on a verified own request/item, a readable knowledge article/comment, or an active local draft. Returns IDs, names, sizes, URLs and upload/delete permissions. Article assets are read-only; comments are editable only when the native menu permits it."
         return self.session.workflow(self._list, target)
 
     def _list(self, session, revision, target):
@@ -180,8 +185,9 @@ class AttachmentService:
             max_upload_bytes=context.max_bytes,
         )
 
-    def upload(self, target, path):
-        return self.session.workflow(self._upload, target, path)
+    def upload(self, target: AttachmentTarget, file_path: str) -> ActionResult:
+        "Upload an explicitly selected file from the configured One Stop upload directory to the verified target. The default is the dedicated onestop-uploads folder in the app configuration directory; NTU_ONESTOP_UPLOAD_DIR can override it. Requires an absolute path and obeys the smaller of the source limit and 20 MB. Article-comment uploads are visible to the article audience. Never chooses files automatically."
+        return self.session.workflow(self._upload, target, file_path)
 
     def _upload(self, session, revision, target, path):
         context = self.context(session, revision, target)
@@ -263,7 +269,10 @@ class AttachmentService:
             "upload_attachment", context.source_url, file_id, verified=True
         )
 
-    def download(self, target, attachment_id, destination):
+    def download(
+        self, target: AttachmentTarget, attachment_id: ID, destination: str
+    ) -> FileDownload:
+        "Download a listed attachment of the verified target to a new explicit absolute file path, up to 20 MB. Existing files and symbolic-link destinations are refused. Returns file size and SHA-256; does not execute or automatically open files."
         return self.session.workflow(
             self._download, target, sys_id(attachment_id), destination
         )
@@ -335,7 +344,8 @@ class AttachmentService:
             downloaded_at=datetime.now(timezone.utc),
         )
 
-    def delete(self, target, attachment_id):
+    def delete(self, target: AttachmentTarget, attachment_id: ID) -> ActionResult:
+        "Delete an attachment only when it is listed on the verified target and native editing is allowed. Knowledge article assets and closed/read-only ticket attachments cannot be deleted."
         return self.session.workflow(self._delete, target, sys_id(attachment_id))
 
     def _delete(self, session, revision, target, attachment_id):
@@ -364,7 +374,13 @@ class AttachmentService:
             message="The native deletion returned; refresh the attachment list to verify removal.",
         )
 
-    def rename(self, target, attachment_id, file_name):
+    def rename(
+        self,
+        target: AttachmentTarget,
+        attachment_id: ID,
+        file_name: Annotated[str, Field(min_length=1, max_length=200)],
+    ) -> ActionResult:
+        "Rename a listed editable attachment using the native attachment service. The new name cannot contain path separators or control characters."
         if (
             not isinstance(file_name, str)
             or not file_name.strip()

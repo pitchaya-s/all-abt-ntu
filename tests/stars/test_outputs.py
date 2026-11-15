@@ -7,13 +7,16 @@ from unittest.mock import patch
 
 from mcp import Client
 
-from server import mcp
+from server import create_server
+
 from stars import compact
 from stars.client import NTURequestError
 from stars.tools.academic import get_course_indexes, get_index
 from stars.parser import parse_course_page
 
 from .mcp_fixtures import COURSE, EXAM_COURSE, GRADUATE_COURSE
+
+mcp = create_server()
 
 
 class CompactOutputTests(unittest.TestCase):

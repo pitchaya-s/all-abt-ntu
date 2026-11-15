@@ -1,3 +1,4 @@
+import asyncio
 import json
 import unittest
 from datetime import datetime, timezone
@@ -6,8 +7,9 @@ from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 
 from mcp.server.mcpserver.exceptions import ToolError
+from shared.mcp_adapter import translate_errors
 
-from service import mcp_server, parser
+from service import parser
 from service.client import ServiceClient
 from service.models import ServiceError
 from public_http_client import PublicRequestError
@@ -158,15 +160,19 @@ class ServiceTests(unittest.TestCase):
         ]:
             with self.assertRaises((ServiceError, ValueError)):
                 self.client.search(**args)
+        from application import Application
+
+        application = Application()
+        self.addCleanup(lambda: asyncio.run(application.close()))
         for error in (
             PublicRequestError("NTU returned HTTP 503; try again later."),
             KeyError("raw provider detail"),
         ):
             with (
-                patch.object(mcp_server.client, "search", side_effect=error),
+                patch.object(application.campus_services, "search", side_effect=error),
                 self.assertRaises(ToolError) as caught,
             ):
-                mcp_server.search()
+                translate_errors(application.campus_services.search, "service_search")()
             self.assertNotIn("raw provider detail", str(caught.exception))
         with (
             patch.object(

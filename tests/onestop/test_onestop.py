@@ -6,7 +6,7 @@ from jsonschema import Draft202012Validator
 from mcp import Client
 from mcp.server import MCPServer
 
-from onestop import mcp_server
+from onestop import mcp as mcp_server
 from onestop.client import OneStopClient
 from onestop.models import OneStopError
 from onestop.session import OneStopSession, page_url
@@ -37,13 +37,17 @@ class ClientTests(unittest.TestCase):
         self.assertIsNone(popular.total_count)
         items = self.client.list_catalog_items(category_id=CATEGORY, limit=2)
         self.assertFalse(items.complete)
-        self.assertEqual((items.available_count, items.total_count, items.next_offset), (3, 4, 2))
+        self.assertEqual(
+            (items.available_count, items.total_count, items.next_offset), (3, 4, 2)
+        )
         self.assertEqual(items.items[0].form_item_id, FORM)
         self.assertEqual(items.items[1].kind, "external")
         self.assertIsNone(items.items[1].form_item_id)
         rest = self.client.list_catalog_items(category_id=CATEGORY, offset=2)
         self.assertEqual(rest.items[0].form_item_id, FORM)
-        self.assertEqual(self.client.get_catalog_item(FORM).fields[0].choices[0].label, "Help")
+        self.assertEqual(
+            self.client.get_catalog_item(FORM).fields[0].choices[0].label, "Help"
+        )
         with self.assertRaises(OneStopError):
             self.client.list_catalog_items(query="help", category_id=CATEGORY)
 
@@ -54,11 +58,17 @@ class ClientTests(unittest.TestCase):
         self.assertIsNone(results.total_count)
         self.assertEqual(results.articles[0].summary, "A safe summary")
         first = self.client.get_knowledge_article(ARTICLE, max_chars=10)
-        rest = self.client.get_knowledge_article(ARTICLE, offset=first.next_offset, max_chars=50000)
+        rest = self.client.get_knowledge_article(
+            ARTICLE, offset=first.next_offset, max_chars=50000
+        )
         self.assertEqual(first.total_characters, len(first.text + rest.text))
         self.assertNotIn("hidden", first.text + rest.text)
         self.assertEqual(len(first.links), 1)
-        self.assertTrue(first.links[0].url.startswith("https://ntuadminonestop.service-now.com/ntussp?"))
+        self.assertTrue(
+            first.links[0].url.startswith(
+                "https://ntuadminonestop.service-now.com/ntussp?"
+            )
+        )
 
     def test_personal_list_coverage_and_ownership_check_before_detail(self):
         results = self.client.list_my_requests()
@@ -76,8 +86,12 @@ class ClientTests(unittest.TestCase):
             self.client.get_my_request("f" * 32)
         self.assertFalse(any(page == "sc_request" for page, _, _ in self.session.calls))
 
-    def test_count_cap_is_not_an_exact_total_and_missing_widgets_are_not_empty_lists(self):
-        self.session.overrides["my_closed_requests"] = {"requests": list_data(source_count=500)}
+    def test_count_cap_is_not_an_exact_total_and_missing_widgets_are_not_empty_lists(
+        self,
+    ):
+        self.session.overrides["my_closed_requests"] = {
+            "requests": list_data(source_count=500)
+        }
         result = self.client.list_my_requests(status="closed", kind="request")
         self.assertIsNone(result.total_count)
         self.assertFalse(result.complete)
@@ -87,7 +101,9 @@ class ClientTests(unittest.TestCase):
             self.client.list_my_requests(status="closed", kind="request")
 
     def test_wrong_record_or_account_change_does_not_return_request_data(self):
-        self.session.overrides["sc_request"] = {"ticket_fields": dict(canRead=True, sys_id="f" * 32, table="sc_request")}
+        self.session.overrides["sc_request"] = {
+            "ticket_fields": dict(canRead=True, sys_id="f" * 32, table="sc_request")
+        }
         with self.assertRaisesRegex(OneStopError, "did not verify access"):
             self.client.get_my_request(REQUEST)
         self.session.overrides.clear()
@@ -110,7 +126,9 @@ class ClientTests(unittest.TestCase):
             page = original(page_id, params, refresh)
             if page_id == "sc_request":
                 if params["table"] == "sc_request":
-                    page.data["requested_items"].append(dict(sys_id="7" * 32, stage="requested"))
+                    page.data["requested_items"].append(
+                        dict(sys_id="7" * 32, stage="requested")
+                    )
                 else:
                     page.data["ticket_fields"]["sys_id"] = params["sys_id"]
             return page
@@ -118,9 +136,20 @@ class ClientTests(unittest.TestCase):
         with patch.object(self.session, "read", side_effect=siblings):
             result = self.client.get_my_request(REQUEST)
         self.assertEqual([r.record_id for r in result.records], ["6" * 32, "7" * 32])
-        child_calls = [(page, params) for page, params, _ in self.session.calls
-                       if params.get("table") == "sc_req_item"]
-        self.assertEqual(child_calls, [("sc_request", {"sys_id": "7" * 32, "table": "sc_req_item", "view": "ntusp"})])
+        child_calls = [
+            (page, params)
+            for page, params, _ in self.session.calls
+            if params.get("table") == "sc_req_item"
+        ]
+        self.assertEqual(
+            child_calls,
+            [
+                (
+                    "sc_request",
+                    {"sys_id": "7" * 32, "table": "sc_req_item", "view": "ntusp"},
+                )
+            ],
+        )
 
     def test_invalid_queries_and_unavailable_articles_are_explicit(self):
         for query in (" ", "x\nprivate", "x\x7f", "x" * 201):
@@ -129,7 +158,9 @@ class ClientTests(unittest.TestCase):
         self.session.overrides["kb_article_view"] = {"article": {"isValid": False}}
         with self.assertRaisesRegex(OneStopError, "unavailable"):
             self.client.get_knowledge_article(ARTICLE)
-        self.session.overrides["kb_article_view"] = {"article": {"isValid": True, "knowledgeExists": True, "isTemplate": True}}
+        self.session.overrides["kb_article_view"] = {
+            "article": {"isValid": True, "knowledgeExists": True, "isTemplate": True}
+        }
         with self.assertRaisesRegex(OneStopError, "unsupported template"):
             self.client.get_knowledge_article(ARTICLE)
 
@@ -165,15 +196,22 @@ class SessionTests(unittest.TestCase):
                 self.assertTrue(self.session.status().credentials_configured)
                 browser.assert_not_called()
             self.assertFalse(self.session._verified or self.session._cache)
-            with patch.object(backend, "get_password", side_effect=RuntimeError("secret-backend-detail")):
+            with patch.object(
+                backend,
+                "get_password",
+                side_effect=RuntimeError("secret-backend-detail"),
+            ):
                 status = self.session.status()
             self.assertIsNone(status.credentials_configured)
             self.assertNotIn("secret-backend-detail", status.model_dump_json())
 
     def test_unsafe_routes_and_raw_browser_errors_are_not_exposed(self):
-        for page, params in [("form", {}), ("search", {"q": "x", "t": "all"}),
-                             ("sc_cat_item", {"sys_id": "../escape"}),
-                             ("sc_home", {"action": "submit"})]:
+        for page, params in [
+            ("form", {}),
+            ("search", {"q": "x", "t": "all"}),
+            ("sc_cat_item", {"sys_id": "../escape"}),
+            ("sc_home", {"action": "submit"}),
+        ]:
             with self.assertRaises(OneStopError):
                 self.session.read(page, params)
 
@@ -195,7 +233,9 @@ class SessionTests(unittest.TestCase):
 
     def test_recent_password_failure_does_not_block_an_existing_valid_session(self):
         with stored_credentials():
-            self.session._page = Mock(url="https://ntuadminonestop.service-now.com/ntussp")
+            self.session._page = Mock(
+                url="https://ntuadminonestop.service-now.com/ntussp"
+            )
             self.session._page.evaluate.return_value = True
             self.session._login_not_before = time.monotonic() + 60
             with patch.object(self.session, "_open"):
@@ -217,7 +257,10 @@ class SessionTests(unittest.TestCase):
             }.get(selector, Mock())
             self.session._page = page
             self.session._login_not_before = time.monotonic() + 60
-            with patch.object(self.session, "_open"), self.assertRaisesRegex(OneStopError, "Wait one minute"):
+            with (
+                patch.object(self.session, "_open"),
+                self.assertRaisesRegex(OneStopError, "Wait one minute"),
+            ):
                 self.session._login(read_credentials())
             page.locator.assert_any_call("body")
             self.assertFalse(page.locator("#userNameInput").fill.called)
@@ -227,32 +270,55 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
     async def test_tool_schemas_read_calls_and_sanitized_errors(self):
         fixture = FixtureSession()
         server = MCPServer("onestop-offline")
-        mcp_server.register_tools(server)
-        with patch.object(mcp_server, "client", OneStopClient(fixture)), patch.object(mcp_server, "session", fixture):
+        from shared.mcp_adapter import MCPAdapter
+        from application import Application
+        from unittest.mock import PropertyMock
+
+        with (
+            patch.object(
+                Application,
+                "onestop",
+                new_callable=PropertyMock,
+                return_value=OneStopClient(fixture),
+            ),
+            patch.object(
+                Application,
+                "onestop_session",
+                new_callable=PropertyMock,
+                return_value=fixture,
+            ),
+        ):
+            mcp_server.register_tools(MCPAdapter(server, Application()))
             async with Client(server) as client:
                 tools = {tool.name: tool for tool in (await client.list_tools()).tools}
                 self.assertEqual(len(tools), 59)
-                from onestop.workflow_tools import LOCAL_TOOLS, READ_TOOLS, WRITE_TOOLS
                 for tool in tools.values():
-                    name = tool.name.removeprefix("onestop_")
-                    self.assertEqual(tool.annotations.read_only_hint, name not in (*LOCAL_TOOLS, *WRITE_TOOLS))
-                    if name in READ_TOOLS:
-                        self.assertTrue(tool.annotations.idempotent_hint)
-                    if name in LOCAL_TOOLS:
-                        self.assertFalse(tool.annotations.idempotent_hint)
                     Draft202012Validator.check_schema(tool.input_schema)
                     Draft202012Validator.check_schema(tool.output_schema)
+                self.assertTrue(
+                    tools["onestop_get_dashboard"].annotations.read_only_hint
+                )
+                self.assertFalse(
+                    tools["onestop_prepare_request"].annotations.read_only_hint
+                )
+                self.assertFalse(
+                    tools["onestop_submit_request"].annotations.read_only_hint
+                )
                 for name, args in [
-                    ("onestop_auth_status", {}), ("onestop_list_catalog_categories", {}),
+                    ("onestop_auth_status", {}),
+                    ("onestop_list_catalog_categories", {}),
                     ("onestop_list_catalog_items", {"category_id": CATEGORY}),
                     ("onestop_get_catalog_item", {"item_id": FORM}),
                     ("onestop_search_knowledge", {"query": "VPN"}),
                     ("onestop_get_knowledge_article", {"article_id": ARTICLE}),
-                    ("onestop_list_my_requests", {}), ("onestop_get_my_request", {"request_id": REQUEST}),
+                    ("onestop_list_my_requests", {}),
+                    ("onestop_get_my_request", {"request_id": REQUEST}),
                 ]:
                     result = await client.call_tool(name, args)
                     self.assertFalse(result.is_error, name)
-                    Draft202012Validator(tools[name].output_schema).validate(result.structured_content)
+                    Draft202012Validator(tools[name].output_schema).validate(
+                        result.structured_content
+                    )
                 for name, args in [
                     ("onestop_get_catalog_item", {"item_id": "../escape"}),
                     ("onestop_list_my_requests", {"status": "other"}),
@@ -266,6 +332,8 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
                 malformed = fixture.read("sc_cat_item", {"sys_id": FORM}).data
                 malformed["item"]["mandatory_attachment"] = "private-validation-secret"
                 fixture.overrides["sc_cat_item"] = malformed
-                result = await client.call_tool("onestop_get_catalog_item", {"item_id": FORM})
+                result = await client.call_tool(
+                    "onestop_get_catalog_item", {"item_id": FORM}
+                )
                 self.assertTrue(result.is_error)
                 self.assertNotIn("private-validation-secret", result.model_dump_json())

@@ -37,7 +37,13 @@ LATENCY = float(os.environ.get("NTULEARN_BENCH_LATENCY_MS", "50")) / 1000
 ITERATIONS = int(os.environ.get("NTULEARN_BENCH_ITERATIONS", "3"))
 LOGIN_LATENCY = LATENCY
 COOKIES = (
-    SessionCookie("BbRouter", "expires:1,id:synthetic", ".ntu.edu.sg", secure=True, domain_specified=True),
+    SessionCookie(
+        "BbRouter",
+        "expires:1,id:synthetic",
+        ".ntu.edu.sg",
+        secure=True,
+        domain_specified=True,
+    ),
 )
 LOGIN_CREDENTIALS = Credentials(
     "student001", "student001@e.ntu.edu.sg", "synthetic-password", "synthetic-revision"
@@ -109,15 +115,28 @@ def synthetic_handler(*, delay=LATENCY, expiry=False):
             return httpx.Response(401, request=request)
         if request.url.path == USER and not request.headers.get("cookie"):
             return httpx.Response(401, request=request)
-        return httpx.Response(200, json=response_data(request.url.path), request=request)
+        return httpx.Response(
+            200, json=response_data(request.url.path), request=request
+        )
 
     return handle
 
 
 def new_session(*, browser=False, expiry=False):
-    cookie_sets = iter([COOKIES, (SessionCookie(
-        "BbRouter", "expires:1,id:rotated", ".ntu.edu.sg", secure=True, domain_specified=True
-    ),)])
+    cookie_sets = iter(
+        [
+            COOKIES,
+            (
+                SessionCookie(
+                    "BbRouter",
+                    "expires:1,id:rotated",
+                    ".ntu.edu.sg",
+                    secure=True,
+                    domain_specified=True,
+                ),
+            ),
+        ]
+    )
     with patch.dict(os.environ, {"NTULEARN_BROWSER_COOKIES": str(browser).lower()}):
         return Session(
             browser_cookie_reader=lambda: [next(cookie_sets)] if expiry else [COOKIES],
@@ -161,12 +180,22 @@ async def benchmark_case(name, new_action, legacy_action=None):
         if legacy_action is not None:
             started = time.perf_counter()
             measured = await legacy_action()
-            legacy_samples.append(measured if type(measured) is float else time.perf_counter() - started)
+            legacy_samples.append(
+                measured if type(measured) is float else time.perf_counter() - started
+            )
         started = time.perf_counter()
         measured = await new_action()
-        new_samples.append(measured if type(measured) is float else time.perf_counter() - started)
-    old_text = format_seconds(statistics.median(legacy_samples)) if legacy_samples else "unsupported"
-    print(f"{name:<34} {old_text:>14} {format_seconds(statistics.median(new_samples)):>14}")
+        new_samples.append(
+            measured if type(measured) is float else time.perf_counter() - started
+        )
+    old_text = (
+        format_seconds(statistics.median(legacy_samples))
+        if legacy_samples
+        else "unsupported"
+    )
+    print(
+        f"{name:<34} {old_text:>14} {format_seconds(statistics.median(new_samples)):>14}"
+    )
 
 
 def format_seconds(value):
@@ -242,10 +271,9 @@ async def repeated_cached_legacy():
 
 
 async def parallel_reads(session, _client):
-    await asyncio.gather(*(
-        session.get(COURSES, {"offset": offset}, refresh=True)
-        for offset in range(8)
-    ))
+    await asyncio.gather(
+        *(session.get(COURSES, {"offset": offset}, refresh=True) for offset in range(8))
+    )
 
 
 async def multi_course(session, client):
@@ -254,7 +282,7 @@ async def multi_course(session, client):
         client,
         since=now - timedelta(days=7),
         until=now + timedelta(days=14),
-        selected=[f"_{index}_1" for index in range(1, 9)],
+        course_ids=[f"_{index}_1" for index in range(1, 9)],
         max_requests=40,
         refresh=True,
     )
@@ -302,16 +330,25 @@ async def run():
         "NTULEARN_REQUEST_INTERVAL_SECONDS": "0.1",
         "NTULEARN_TIMEOUT_SECONDS": "30",
     }
-    with patch.dict(os.environ, env), patch(
-        "ntulearn.client.auth.read_credentials", return_value=LOGIN_CREDENTIALS
+    with (
+        patch.dict(os.environ, env),
+        patch("ntulearn.client.auth.read_credentials", return_value=LOGIN_CREDENTIALS),
     ):
-        print(f"Synthetic benchmark; {ITERATIONS} iteration(s), {LATENCY * 1000:.0f} ms local HTTP latency")
+        print(
+            f"Synthetic benchmark; {ITERATIONS} iteration(s), {LATENCY * 1000:.0f} ms local HTTP latency"
+        )
         print(f"{'Scenario':<34} {'legacy model':>14} {'async client':>14}")
         print("-" * 64)
-        await benchmark_case("Cold, no authenticated session", cold_sso_new, cold_sso_legacy)
+        await benchmark_case(
+            "Cold, no authenticated session", cold_sso_new, cold_sso_legacy
+        )
         await benchmark_case("Cold, existing browser cookie", cold_browser_new)
-        await benchmark_case("Warm single API request", warm_new_single, warm_legacy_single)
-        await benchmark_case("10 repeated cached requests", repeated_cached_new, repeated_cached_legacy)
+        await benchmark_case(
+            "Warm single API request", warm_new_single, warm_legacy_single
+        )
+        await benchmark_case(
+            "10 repeated cached requests", repeated_cached_new, repeated_cached_legacy
+        )
         await benchmark_case(
             "8 independent API requests",
             lambda: with_new_session(parallel_reads, warm_auth=True),
@@ -322,9 +359,15 @@ async def run():
             lambda: with_new_session(multi_course, warm_auth=True),
             lambda: with_legacy_session(multi_course),
         )
-        await benchmark_case("Session expiry and recovery", recovery_new, recovery_legacy)
-    print("\nLegacy values model one-worker 500 ms pacing; browser-cookie import was unsupported.")
-    print("SSO, HTTP latency, and recovery are simulated; no NTU or browser processes were contacted.")
+        await benchmark_case(
+            "Session expiry and recovery", recovery_new, recovery_legacy
+        )
+    print(
+        "\nLegacy values model one-worker 500 ms pacing; browser-cookie import was unsupported."
+    )
+    print(
+        "SSO, HTTP latency, and recovery are simulated; no NTU or browser processes were contacted."
+    )
 
 
 if __name__ == "__main__":

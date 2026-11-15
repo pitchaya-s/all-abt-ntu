@@ -1,3 +1,4 @@
+import asyncio
 import json
 import unittest
 from copy import deepcopy
@@ -6,8 +7,9 @@ from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 
 from mcp.server.mcpserver.exceptions import ToolError
+from shared.mcp_adapter import translate_errors
 
-from faculty import mcp_server, parser
+from faculty import parser
 from faculty.client import API, DIRECTORY, FacultyClient
 from faculty.models import FacultyError
 from public_http_client import PublicRequestError
@@ -162,6 +164,10 @@ class FacultyTests(unittest.TestCase):
             self.assertTrue(client.search("Example").cached)
             self.assertFalse(client.search("Example", refresh=True).cached)
             self.assertEqual(fetch.call_count, 2)
+        from application import Application
+
+        application = Application()
+        self.addCleanup(lambda: asyncio.run(application.close()))
         for error in (
             PublicRequestError(
                 "NTU faculty directory returned HTTP 503; try again later."
@@ -169,10 +175,10 @@ class FacultyTests(unittest.TestCase):
             KeyError("raw provider detail"),
         ):
             with (
-                patch.object(mcp_server.client, "search", side_effect=error),
+                patch.object(application.faculty, "search", side_effect=error),
                 self.assertRaises(ToolError) as caught,
             ):
-                mcp_server.search()
+                translate_errors(application.faculty.search, "faculty_search")()
             self.assertNotIn("raw provider detail", str(caught.exception))
 
     def test_malformed_page_is_not_reused_after_a_parse_error(self):

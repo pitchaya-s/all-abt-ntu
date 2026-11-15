@@ -7,7 +7,7 @@ from jsonschema import Draft202012Validator
 from mcp import Client
 from mcp.server import MCPServer
 
-from careeraxis import mcp_server, parser
+from careeraxis import mcp as mcp_server, parser
 from careeraxis.client import CareerAxisClient
 from careeraxis.models import CareerAxisError
 from careeraxis.browser.session import CareerAxisSession
@@ -255,11 +255,20 @@ class BrowserTests(unittest.TestCase):
 class ProtocolTests(unittest.IsolatedAsyncioTestCase):
     async def test_nine_read_tools_schemas_calls_and_sanitized_errors(self):
         server = MCPServer("careeraxis-offline")
-        mcp_server.register_tools(server)
+        from shared.mcp_adapter import MCPAdapter
+        from application import Application
+        from unittest.mock import PropertyMock
+
         client_impl = CareerAxisClient()
         client_impl.session.close()
         client_impl.session = FixtureSession()
-        with patch.object(mcp_server, "client", client_impl):
+        with patch.object(
+            Application,
+            "careeraxis",
+            new_callable=PropertyMock,
+            return_value=client_impl,
+        ):
+            mcp_server.register_tools(MCPAdapter(server, Application()))
             async with Client(server) as client:
                 tools = {t.name: t for t in (await client.list_tools()).tools}
                 self.assertEqual(len(tools), 9)

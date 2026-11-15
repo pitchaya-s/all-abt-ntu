@@ -5,13 +5,13 @@ import asyncio
 from jsonschema import Draft202012Validator
 from mcp import Client
 
-from omnibus import mcp_server
 from server import create_server
 
 
 async def main():
+    server = create_server("public")
     try:
-        async with Client(create_server("public")) as client:
+        async with Client(server) as client:
             tools = {tool.name: tool for tool in (await client.list_tools()).tools}
             for name, arguments in (
                 ("omnibus_list_routes", {}),
@@ -29,7 +29,7 @@ async def main():
                 assert result.structured_content["retrieved_at"]
                 print(name + ": OK", flush=True)
     finally:
-        mcp_server.client.close()
+        await server.ntu_application.close()
 
 
 if __name__ == "__main__":

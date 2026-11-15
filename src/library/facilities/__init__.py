@@ -6,9 +6,19 @@ import json
 import re
 from urllib.parse import parse_qs, urlencode, urljoin, urlsplit
 from zoneinfo import ZoneInfo
+from typing import Annotated
+
+from pydantic import Field
 
 from public_http_client import PublicHTTPClient
-from ..models import Facilities, Facility, LibraryError, MapAvailability, SpaceStatus
+from ..models import (
+    Day,
+    Facilities,
+    Facility,
+    LibraryError,
+    MapAvailability,
+    SpaceStatus,
+)
 
 BASE = "https://libcalendar.ntu.edu.sg"
 SGT = ZoneInfo("Asia/Singapore")
@@ -147,16 +157,24 @@ class FacilitiesClient:
             "NTU LibFacilities", ["libcalendar.ntu.edu.sg"], {"text/html"}
         )
 
-    def list_facilities(self, refresh=False):
+    def list_facilities(self, refresh: bool = False) -> Facilities:
+        """List NTU Library facility categories, library/floor maps and closure notices. Public and read-only. Use map_slug for map availability; space_id and location_id/group_id identify directory entries."""
         with self.http.parsed_response(BASE + "/", refresh) as (body, snapshot):
             return directory(body, snapshot)
 
-    def get_map_availability(self, map_slug, day, time, refresh=False):
+    def get_map_availability(
+        self,
+        map_slug: Annotated[str, Field(pattern=r"^[a-f0-9]{12}$")],
+        date: Day,
+        time: Annotated[str, Field(pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")],
+        refresh: bool = False,
+    ) -> MapAvailability:
+        """Read seat/room booking statuses for a library map at date YYYY-MM-DD and time HH:MM in Singapore. Copy map_slug from library_list_facilities. No credentials needed. Available_later is not available at the requested time; a point status does not establish availability for a whole interval or physical occupancy."""
         if not re.fullmatch(r"[a-f0-9]{12}", map_slug):
             raise LibraryError(
                 "Use map_slug exactly as returned by library_list_facilities."
             )
-        at = requested_time(day, time)
+        at = requested_time(date, time)
         with self.http.parsed_response(BASE + "/map/" + map_slug, refresh) as (body, _):
             map_id = script_json(body.decode("utf-8"), "mapId")
             if type(map_id) is not int or map_id <= 0:

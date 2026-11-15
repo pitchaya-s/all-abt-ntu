@@ -1,5 +1,10 @@
 """In-memory native catalog drafts and single-attempt submission."""
 
+from typing import Annotated
+from typing import Literal
+from pydantic import Field
+from ..models import ActionResult, ID, Limit, Token
+
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 import re
@@ -183,7 +188,10 @@ class FormService:
     def __init__(self, session):
         self.session = session
 
-    def prepare(self, item_id, values=None):
+    def prepare(
+        self, item_id: ID, values: dict[str, str] | None = None
+    ) -> RequestDraft:
+        "Prepare a native catalog form in a private in-memory browser tab. Use form_item_id from catalog results. values maps visible editable question names to strings. Runs native change scripts and reports missing/invalid questions without submitting. Password fields, hidden/read-only values and scripts are refused. Drafts expire after 15 minutes; at most four are open."
         return self.session.workflow(self._prepare, sys_id(item_id), values or {})
 
     def _prepare(self, session, revision, item_id, values):
@@ -222,7 +230,8 @@ class FormService:
             page.close()
             raise
 
-    def get(self, draft_id):
+    def get(self, draft_id: Token) -> RequestDraft:
+        "Inspect a local catalog draft's current visible fields, caller-supplied values, choices, missing requirements, native actions and any submission receipt. Personal defaults are omitted. Does not submit."
         return self.session.workflow(self._get, draft_id)
 
     def _get(self, session, revision, draft_id):
@@ -236,13 +245,15 @@ class FormService:
             )
         return preview(draft)
 
-    def update(self, draft_id, values):
+    def update(self, draft_id: Token, values: dict[str, str]) -> RequestDraft:
+        "Change editable questions on an in-memory draft and rerun native change scripts. Set controlling questions first when conditional questions are hidden. Updating answers invalidates the latest appointment slots; select a slot again before booking."
         return self.session.workflow(self._update, draft_id, values)
 
     def _update(self, session, revision, draft_id, values):
         return apply_values(draft_for(session, revision, draft_id), values)
 
-    def discard(self, draft_id):
+    def discard(self, draft_id: Token) -> ActionResult:
+        "Close and discard a local draft. This does not withdraw submitted requests. Previously uploaded server attachments follow ServiceNow retention; use delete_attachment first to remove editable temporary attachments."
         return self.session.workflow(self._discard, draft_id)
 
     def _discard(self, session, revision, draft_id):
@@ -257,7 +268,12 @@ class FormService:
             message="The local draft was discarded. Previously uploaded server attachments follow ServiceNow's retention policy.",
         )
 
-    def submit(self, draft_id, action="submit"):
+    def submit(
+        self,
+        draft_id: Token,
+        action: Literal["submit", "add_to_cart", "save_favourite"] = "submit",
+    ) -> ActionResult:
+        "Execute a native action on a reviewed local draft: submit a real request, add it to your cart, or save it to favourites when that button is offered. Uses native form validation and one submission attempt. Reusing a completed draft returns its receipt. An uncertain result must be checked in the portal before another submission."
         if action not in {"submit", "add_to_cart", "save_favourite"}:
             raise OneStopError("Unsupported request draft action.")
         return self.session.workflow(self._submit, draft_id, action)
@@ -393,7 +409,14 @@ class FormService:
 
         return commit(session, revision, perform)
 
-    def search_references(self, draft_id, field_name, query, limit=20):
+    def search_references(
+        self,
+        draft_id: Token,
+        field_name: str,
+        query: Annotated[str, Field(min_length=1, max_length=100)],
+        limit: Limit = 20,
+    ) -> ReferenceChoices:
+        "Search a visible reference question using its native picker and original reference qualifier. Use returned value IDs in update_request_draft. Supports the portal's leading * wildcard. Encoded-query operators and arbitrary tables/filters are refused."
         if (
             not isinstance(query, str)
             or not 1 <= len(query.strip()) <= 100

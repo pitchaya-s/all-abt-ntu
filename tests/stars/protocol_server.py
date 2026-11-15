@@ -64,13 +64,13 @@ if __name__ == "__main__":
             )
         )
         for target in (
-            "persist_stars_plan",
-            "fetch_stars_planner",
-            "fetch_degree_audit",
+            "save_stars_plan",
+            "get_stars_planner",
+            "get_degree_audit",
         ):
             stack.enter_context(
                 patch(
-                    f"stars.tools.personal.{target}",
+                    f"stars.wish.session.WishSessionManager.{target}",
                     side_effect=NTURequestError(
                         "Personal actions are disabled in protocol fixtures."
                     ),

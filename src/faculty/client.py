@@ -22,6 +22,19 @@ def query_text(value):
     return value.strip()
 
 
+from typing import Annotated
+from pydantic import Field
+from .models import SearchResults
+
+Query = Annotated[str, Field(max_length=200)]
+InterestID = Annotated[
+    str,
+    Field(
+        pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    ),
+]
+
+
 class FacultyClient:
     def __init__(self):
         self.http = PublicHTTPClient(
@@ -34,7 +47,14 @@ class FacultyClient:
         with self.http.parsed_response(DIRECTORY, refresh) as (body, snapshot):
             return parser.interest_options(body), snapshot
 
-    def list_interests(self, query="", limit=50, offset=0, refresh=False):
+    def list_interests(
+        self,
+        query: Query = "",
+        limit: Annotated[int, Field(ge=1, le=100, strict=True)] = 50,
+        offset: Annotated[int, Field(ge=0, strict=True)] = 0,
+        refresh: bool = False,
+    ) -> Interests:
+        "List current faculty research-interest labels and filter IDs from NTU's directory form. Optional query matches labels by case-insensitive substring. Follow next_offset for remaining labels, then pass one interest_id to faculty_search."
         query = query_text(query).casefold()
         if (
             type(limit) is not int
@@ -68,7 +88,14 @@ class FacultyClient:
         with self.http.parsed_response(url, refresh) as (body, snapshot):
             return parser.search_results(body, snapshot, page)
 
-    def search(self, query="", interest_id=None, page=1, refresh=False):
+    def search(
+        self,
+        query: Query = "",
+        interest_id: InterestID | None = None,
+        page: Annotated[int, Field(ge=1, le=10000, strict=True)] = 1,
+        refresh: bool = False,
+    ) -> SearchResults:
+        "Search NTU's public faculty directory by name, optionally filtered by one research interest. Omit query to browse. Copy interest_id from faculty_list_interests. Returns names, schools, public emails, appointments, interests, abbreviated biographies and profile links. Pages start at 1, with up to ten profiles; follow next_page."
         query = query_text(query)
         if type(page) is not int or not 1 <= page <= 10000:
             raise FacultyError(

@@ -1,6 +1,9 @@
 import json
 from contextlib import ExitStack, contextmanager
 from urllib.parse import quote, urlencode, urljoin, urlsplit
+from typing import Annotated, Literal
+
+from pydantic import Field
 
 from public_http_client import PublicHTTPClient
 
@@ -10,6 +13,8 @@ from .models import (
     ElectronicService,
     Holding,
     LibraryError,
+    Query,
+    RecordID,
     RecordDetails,
     SearchResults,
 )
@@ -48,14 +53,16 @@ class LibraryClient:
 
     def search(
         self,
-        query,
-        field="any",
-        match="contains",
-        resource_type=None,
-        limit=10,
-        offset=0,
-        refresh=False,
-    ):
+        query: Query,
+        field: Literal["any", "title", "creator", "isbn", "issn", "sub"] = "any",
+        match: Literal["contains", "exact"] = "contains",
+        resource_type: Annotated[str, Field(pattern=r"^[A-Za-z][A-Za-z0-9_-]{0,49}$")]
+        | None = None,
+        limit: Annotated[int, Field(ge=1, le=50, strict=True)] = 10,
+        offset: Annotated[int, Field(ge=0, strict=True)] = 0,
+        refresh: bool = False,
+    ) -> SearchResults:
+        """Search NTU OneSearch for books, articles, journals and other catalogue resources. Choose a field and contains/exact matching; resource_type is a Primo facet token such as books or articles. Returns canonical IDs, bibliographic summaries and published access signals. Follow next_offset; refine the query if the service limits deep paging."""
         query = query.strip()
         if not query or any(c == ";" or ord(c) < 32 or ord(c) == 127 for c in query):
             raise LibraryError(
@@ -106,7 +113,13 @@ class LibraryClient:
                 **snapshot,
             )
 
-    def get_record(self, record_id, context="L", refresh=False):
+    def get_record(
+        self,
+        record_id: RecordID,
+        context: Literal["L", "PC"] = "L",
+        refresh: bool = False,
+    ) -> RecordDetails:
+        """Read a OneSearch record's bibliographic metadata, descriptions, subjects, identifiers and published access links. Pass record_id and context from library_search; L is local, PC is central-index content. No file is downloaded and reported availability does not guarantee access or a loanable copy."""
         parameters = {"lang": "en"}
         if context == "PC":
             parameters["adaptor"] = "Primo Central"
@@ -124,7 +137,13 @@ class LibraryClient:
                 )
             return RecordDetails(record=record, **snapshot)
 
-    def get_availability(self, record_id, context="L", refresh=False):
+    def get_availability(
+        self,
+        record_id: RecordID,
+        context: Literal["L", "PC"] = "L",
+        refresh: bool = False,
+    ) -> Availability:
+        """Read published physical holdings with library, location, call number and status, plus institutional full-text service links and access notes. Use the record ID/context from library_search. No login is needed; absence does not establish no copies or no access. Links do not prove full-text entitlement, and no file, loan or hold is requested."""
         parameters = {"lang": "en"}
         if context == "PC":
             parameters["adaptor"] = "Primo Central"

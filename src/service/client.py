@@ -12,6 +12,18 @@ DIRECTORY = "https://www.ntu.edu.sg/life-at-ntu/leisure-and-dining/general-direc
 API = DIRECTORY + "GetLocations/"
 
 
+from typing import Annotated
+from pydantic import Field
+
+Query = Annotated[str, Field(max_length=200)]
+FilterID = Annotated[
+    str,
+    Field(
+        pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    ),
+]
+
+
 class ServiceClient:
     def __init__(self):
         self.http = PublicHTTPClient(
@@ -20,7 +32,8 @@ class ServiceClient:
             {"application/json", "text/html"},
         )
 
-    def list_filters(self, refresh=False):
+    def list_filters(self, refresh: bool = False) -> Filters:
+        "List official campus service type and category labels with filter IDs. Pass a returned id as service_search.type_id or category_id. Taxonomy assignments may be incomplete; a filtered empty result does not establish no matching service exists."
         with self.http.parsed_response(DIRECTORY, refresh) as (body, snapshot):
             return Filters(
                 types=form_options(body, "locationTypes"),
@@ -40,14 +53,15 @@ class ServiceClient:
 
     def search(
         self,
-        query="",
-        type_id=None,
-        category_id=None,
-        location_contains="",
-        limit=20,
-        offset=0,
-        refresh=False,
-    ):
+        query: Query = "",
+        type_id: FilterID | None = None,
+        category_id: FilterID | None = None,
+        location_contains: Query = "",
+        limit: Annotated[int, Field(ge=1, le=100, strict=True)] = 20,
+        offset: Annotated[int, Field(ge=0, strict=True)] = 0,
+        refresh: bool = False,
+    ) -> SearchResults:
+        "Find NTU food outlets, shops, clinics and campus services by name/address keyword and optional location substring. Optional type_id/category_id come from service_list_filters. Collects all source pages before local matching and result pagination; returns addresses, published hours, contact details and map links. Source taxonomy filters can omit relevant entries; use an unfiltered keyword search for broader coverage. Hours are not a live open-now check."
         query, location_contains = (
             query_text(query).casefold(),
             query_text(location_contains).casefold(),

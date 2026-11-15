@@ -6,10 +6,10 @@ from datetime import datetime, timezone
 from unittest.mock import patch
 
 from mcp.server.mcpserver.exceptions import ToolError
+from shared.mcp_adapter import translate_errors
 
 from mazemap import parser
 from mazemap.client import MapClient
-from mazemap.mcp_server import _call
 from mazemap.models import MapError
 from public_http_client import PublicRequestError
 
@@ -79,7 +79,7 @@ class ParserTests(unittest.TestCase):
                 self.subTest(function=function.__name__, data=data),
                 self.assertRaises(ToolError),
             ):
-                _call(function, data)
+                translate_errors(function, "mazemap_test")(data)
 
 
 class ClientTests(unittest.TestCase):

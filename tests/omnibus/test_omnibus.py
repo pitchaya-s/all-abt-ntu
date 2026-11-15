@@ -10,7 +10,7 @@ from jsonschema import Draft202012Validator
 from mcp import Client
 from mcp.server import MCPServer
 
-from omnibus import mcp_server, parser
+from omnibus import mcp as mcp_server, parser
 from omnibus.client import (
     _ASSETS,
     _BASE,
@@ -350,8 +350,17 @@ class ClientTests(unittest.TestCase):
 class ProtocolTests(unittest.IsolatedAsyncioTestCase):
     async def test_five_public_tools_schemas_calls_and_validation(self):
         server = MCPServer("omnibus-offline")
-        mcp_server.register_tools(server)
-        with patch.object(mcp_server, "client", FixtureClient()):
+        from shared.mcp_adapter import MCPAdapter
+        from application import Application
+        from unittest.mock import PropertyMock
+
+        with patch.object(
+            Application,
+            "omnibus",
+            new_callable=PropertyMock,
+            return_value=FixtureClient(),
+        ):
+            mcp_server.register_tools(MCPAdapter(server, Application()))
             async with Client(server) as client:
                 tools = {t.name: t for t in (await client.list_tools()).tools}
                 self.assertEqual(len(tools), 5)

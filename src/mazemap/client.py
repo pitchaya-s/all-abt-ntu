@@ -11,10 +11,15 @@ from . import parser
 from .models import (
     Buildings,
     Campuses,
+    Constraint,
     Directions,
+    ID,
+    Limit,
     MapError,
+    Offset,
     PlaceDetails,
     Places,
+    Query,
     RouteBuilding,
     RouteFloor,
 )
@@ -78,10 +83,14 @@ class MapClient:
                 "campus_id must belong to NTU; use mazemap_list_campuses to find valid IDs."
             )
 
-    def list_campuses(self, refresh=False) -> Campuses:
+    def list_campuses(self, refresh: bool = False) -> Campuses:
+        "List campuses in NTU's MazeMap collection with IDs and center coordinates."
         return self._campuses(refresh)
 
-    def list_buildings(self, campus_id=2123, query=None, refresh=False) -> Buildings:
+    def list_buildings(
+        self, campus_id: ID = 2123, query: Query | None = None, refresh: bool = False
+    ) -> Buildings:
+        "List campus buildings and their floor IDs/names/levels. Defaults to NTU Main Campus. Optionally filter by building-name substring."
         self._check_campus(campus_id)
         if query is not None and not query.strip():
             raise MapError("query must contain a building name.")
@@ -103,8 +112,14 @@ class MapClient:
             return Buildings(campus_id=campus_id, buildings=buildings, **metadata)
 
     def search_places(
-        self, query, campus_id=None, limit=10, offset=0, refresh=False
+        self,
+        query: Query,
+        campus_id: ID | None = None,
+        limit: Limit = 10,
+        offset: Offset = 0,
+        refresh: bool = False,
     ) -> Places:
+        "Search NTU rooms, venues and amenities by code, name or category, including aliases such as TR+7. Defaults to all NTU campuses; use campus_id to narrow. Follow next_offset for more matches. This is place search, not room availability."
         query = query.strip()
         if not query:
             raise MapError("query must contain a room code, place name, or category.")
@@ -144,7 +159,8 @@ class MapClient:
                 **metadata,
             )
 
-    def get_place(self, poi_id, refresh=False) -> PlaceDetails:
+    def get_place(self, poi_id: ID, refresh: bool = False) -> PlaceDetails:
+        "Read one NTU place's location, aliases, building, floor, categories and published description/capacity. Missing fields remain null."
         with self._get(API, f"/api/pois/{poi_id}/", {"srid": 4326}, refresh) as (
             data,
             metadata,
@@ -156,8 +172,13 @@ class MapClient:
             return PlaceDetails(place=place, **metadata)
 
     def get_directions(
-        self, from_poi_id, to_poi_id, constraint="NO_CONSTRAINT", refresh=False
+        self,
+        from_poi_id: ID,
+        to_poi_id: ID,
+        constraint: Constraint = "NO_CONSTRAINT",
+        refresh: bool = False,
     ) -> Directions:
+        "Get walking routes between two NTU POIs, estimated metres/seconds and English instructions where available. Choose REQUIRE_ACCESSIBLE to request only accessible paths. Accessibility and travel times do not guarantee current physical access."
         self._campuses()
         with ThreadPoolExecutor(
             max_workers=2, thread_name_prefix="mazemap-place"

@@ -7,9 +7,12 @@ from urllib.parse import parse_qs
 
 from mcp import Client
 
-from server import mcp
+from server import create_server
+
 from stars.client import NTURequestError, vacancy
 from stars.parser import NTUPageError, parse_course_page, parse_course_vacancies
+
+mcp = create_server()
 
 FIXTURES = Path(__file__).parent / "fixtures"
 HTML = (FIXTURES / "zz0001-vacancy-2026-2.html").read_text()

@@ -5,7 +5,10 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class OmnibusError(RuntimeError):
+from shared.operation import OperationError
+
+
+class OmnibusError(OperationError):
     """An upstream response could not be used safely."""
 
 

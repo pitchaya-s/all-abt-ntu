@@ -1,5 +1,10 @@
 """Dashboard, account profile and payment handoffs exposed by the portal."""
 
+from typing import Annotated
+from typing import Literal
+from pydantic import Field
+from ..models import ActionResult, ID, Limit, Offset
+
 from urllib.parse import urlencode
 
 from ..browser import action_result, commit, evaluate, picker_query
@@ -39,7 +44,8 @@ class PortalService:
     def __init__(self, session):
         self.session = session
 
-    def dashboard(self):
+    def dashboard(self) -> Dashboard:
+        "Read your One Stop homepage announcements, actions/payment links, upcoming appointments and popular links. Homepage groups may be limited; use the dedicated list tools for their full pages."
         return self.session.workflow(self._dashboard)
 
     def _dashboard(self, session, revision):
@@ -112,7 +118,10 @@ class PortalService:
             )
         return record(x.get("sys_id"), x.get("name") or "Portal link", url)
 
-    def list_announcements(self, limit=20, offset=0):
+    def list_announcements(
+        self, limit: Limit = 20, offset: Offset = 0
+    ) -> PortalRecords:
+        "Read One Stop announcements, summaries and links from the native announcements collection with local pagination."
         return self.session.workflow(self._list_announcements, limit, offset)
 
     def _list_announcements(self, session, revision, limit, offset):
@@ -141,7 +150,8 @@ class PortalService:
             records=records[offset : offset + limit],
         )
 
-    def list_actions(self, limit=20, offset=0):
+    def list_actions(self, limit: Limit = 20, offset: Offset = 0) -> PortalRecords:
+        "Read your One Stop to-do/billing actions and their published due dates and payment links. Source counts can be capped; inspect complete. Does not perform an action or pay a bill."
         return self.session.workflow(self._list_actions, limit, offset)
 
     def _list_actions(self, session, revision, limit, offset):
@@ -180,7 +190,10 @@ class PortalService:
             records=records[offset : offset + limit],
         )
 
-    def list_popular_links(self, limit=20, offset=0):
+    def list_popular_links(
+        self, limit: Limit = 20, offset: Offset = 0
+    ) -> PortalRecords:
+        "List links on One Stop's Popular Sites page, preserving native catalog, knowledge and external destinations."
         return self.session.workflow(self._list_popular_links, limit, offset)
 
     def _list_popular_links(self, session, revision, limit, offset):
@@ -201,7 +214,8 @@ class PortalService:
             records=records[offset : offset + limit],
         )
 
-    def get_profile(self):
+    def get_profile(self) -> ProfileSettings:
+        "Read your own displayed profile fields, editable flags, preferences/choices, notification setting and picture-upload capability. Does not retrieve another user's profile or change identity/security settings."
         return self.session.workflow(self._get_profile)
 
     def _get_profile(self, session, revision):
@@ -244,7 +258,10 @@ class PortalService:
             can_update_picture=raw["can_update_picture"],
         )
 
-    def update_profile(self, field_name, value):
+    def update_profile(
+        self, field_name: str, value: Annotated[str, Field(max_length=10000)]
+    ) -> ActionResult:
+        "Update one displayed editable own-profile field through its native inline editor. Copy field_name from get_profile; bio addresses the live-profile description. Read-only, hidden and password fields are not editable. The server's field validation and permissions apply."
         if (
             not isinstance(field_name, str)
             or not isinstance(value, str)
@@ -318,7 +335,8 @@ class PortalService:
             outcome="completed" if verified else "uncertain",
         )
 
-    def set_notifications(self, enabled):
+    def set_notifications(self, enabled: bool) -> ActionResult:
+        "Enable or disable your ServiceNow notification preference. Reads the current setting first; an already matching value is unchanged."
         if type(enabled) is not bool:
             raise OneStopError("enabled must be a boolean.")
         return self.session.workflow(self._set_notifications, enabled)
@@ -355,7 +373,8 @@ class PortalService:
             )
         return action_result("set_notifications", info.source_url, verified=True)
 
-    def update_picture(self, file_path):
+    def update_picture(self, file_path: str) -> ActionResult:
+        "Upload the explicitly selected local image as your own ServiceNow profile picture using the native file input. Requires an absolute path, a supported image MIME type and a file at most 20 MB. This changes your profile picture."
         return self.session.workflow(self._update_picture, file_path)
 
     def _update_picture(self, session, revision, file_path):
@@ -420,7 +439,19 @@ class PortalService:
             "update_profile_picture", info.source_url, file_id, verified=True
         )
 
-    def set_preference(self, name, value):
+    def set_preference(
+        self,
+        name: Literal[
+            "accessibility",
+            "voice_input",
+            "analytics",
+            "timezone",
+            "language",
+            "communication_channels",
+        ],
+        value: Annotated[str, Field(max_length=500)],
+    ) -> ActionResult:
+        "Set an enabled own preference returned by get_profile. Use 'true'/'false' for booleans and published choice values for other settings; communication channels are comma-separated choice values. Disabled preferences and identity/MFA/certificate settings are excluded."
         return self.session.workflow(self._set_preference, name, value)
 
     def _set_preference(self, session, revision, name, value):
@@ -496,7 +527,13 @@ class PortalService:
             outcome="completed" if verified else "uncertain",
         )
 
-    def list_payment_services(self, query="", limit=20, offset=0):
+    def list_payment_services(
+        self,
+        query: Annotated[str, Field(max_length=100)] = "",
+        limit: Limit = 20,
+        offset: Offset = 0,
+    ) -> PortalRecords:
+        "Search/browse services in the student's native payment directory, preserving its active/category/access filter. Use leading * for substring search. Does not create a payment or charge anything."
         return self.session.workflow(self._list_payment_services, query, limit, offset)
 
     def _payment_choices(self, session, query):
@@ -557,12 +594,14 @@ class PortalService:
             fixed_amount=str(data["amount"]) if data["fixed"] else None,
         )
 
-    def get_payment_service(self, service_id):
+    def get_payment_service(self, service_id: ID) -> PaymentServiceDetails:
+        "Read a visible payment service's native fixed-amount information. The ID must appear in your payment directory. Variable amounts are completed at the separate payment gateway."
         return self.session.workflow(
             lambda s, r, i: self._select_payment(s, i), sys_id(service_id)
         )
 
-    def prepare_payment(self, service_id):
+    def prepare_payment(self, service_id: ID) -> PaymentHandoff:
+        "Ask One Stop to prepare a checkout link for a visible payment service. Returns the native HTTPS gateway URL for the user to open and complete. Does not enter bank/card credentials, authenticate with a bank, or confirm a charge."
         return self.session.workflow(self._prepare_payment, sys_id(service_id))
 
     def _prepare_payment(self, session, revision, service_id):

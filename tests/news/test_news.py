@@ -1,11 +1,13 @@
+import asyncio
 import json
 import unittest
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 
 from mcp.server.mcpserver.exceptions import ToolError
+from shared.mcp_adapter import translate_errors
 
-from news import mcp_server, parser
+from news import parser
 from news.client import NewsClient
 from news.models import NewsError
 from public_http_client import PublicRequestError
@@ -104,15 +106,19 @@ class NewsTests(unittest.TestCase):
         ]:
             with self.assertRaises((NewsError, ValueError)):
                 self.client.search(**args)
+        from application import Application
+
+        application = Application()
+        self.addCleanup(lambda: asyncio.run(application.close()))
         for error in (
             PublicRequestError("NTU news returned HTTP 503; try again later."),
             KeyError("raw provider detail"),
         ):
             with (
-                patch.object(mcp_server.client, "search", side_effect=error),
+                patch.object(application.news, "search", side_effect=error),
                 self.assertRaises(ToolError) as caught,
             ):
-                mcp_server.search()
+                translate_errors(application.news.search, "news_search")()
             self.assertNotIn("raw provider detail", str(caught.exception))
         with patch.object(
             self.client.http, "get", return_value=(FORM.replace(b"</html>", b""), {})

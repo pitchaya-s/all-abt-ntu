@@ -5,7 +5,8 @@ from unittest.mock import patch
 from mcp import Client
 from pydantic import ValidationError
 
-from server import mcp
+from server import create_server
+
 from stars.client import teaching
 from stars.domain.models import Course, Session
 from stars.domain.rooms import (
@@ -21,6 +22,8 @@ from stars.parser.search import parse_course_search
 from stars.schemas.rooms import RoomFilters, RoomWindow
 
 from .room_fixtures import FULL_TIME, PART_TIME, block, page, snapshot
+
+mcp = create_server()
 
 
 class RoomTests(unittest.TestCase):

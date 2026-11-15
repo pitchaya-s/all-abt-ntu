@@ -3,7 +3,10 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 
-class RepositoryError(RuntimeError):
+from shared.operation import OperationError
+
+
+class RepositoryError(OperationError):
     pass
 
 

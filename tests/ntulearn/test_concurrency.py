@@ -1,6 +1,7 @@
 import asyncio
 import unittest
 from datetime import datetime, timedelta, timezone
+from contextlib import asynccontextmanager
 from types import SimpleNamespace
 
 from ntulearn.services.overview import whats_new
@@ -12,6 +13,11 @@ class ConcurrentWorkflowTests(unittest.IsolatedAsyncioTestCase):
             def __init__(self):
                 self.active = 0
                 self.maximum_active = 0
+                self.session = self
+
+            @asynccontextmanager
+            async def operation(self):
+                yield
 
             async def _delayed(self):
                 self.active += 1
@@ -21,25 +27,33 @@ class ConcurrentWorkflowTests(unittest.IsolatedAsyncioTestCase):
 
             async def get_calendar(self, *args, **kwargs):
                 return SimpleNamespace(
-                    items=[], next_offset=None,
+                    items=[],
+                    next_offset=None,
                     retrieved_at=datetime.now(timezone.utc),
-                    from_cache=False, cache_age_seconds=0,
+                    from_cache=False,
+                    cache_age_seconds=0,
                 )
 
             async def get_announcements(self, course_id, **kwargs):
                 await self._delayed()
                 return SimpleNamespace(
-                    announcements=[], next_offset=None,
+                    announcements=[],
+                    next_offset=None,
                     retrieved_at=datetime.now(timezone.utc),
-                    from_cache=False, cache_age_seconds=0,
+                    from_cache=False,
+                    cache_age_seconds=0,
                 )
 
             async def get_gradebook(self, course_id, **kwargs):
                 await self._delayed()
                 return SimpleNamespace(
-                    columns=[], grades=[], next_offset=None, grades_next_offset=None,
+                    columns=[],
+                    grades=[],
+                    next_offset=None,
+                    grades_next_offset=None,
                     retrieved_at=datetime.now(timezone.utc),
-                    from_cache=False, cache_age_seconds=0,
+                    from_cache=False,
+                    cache_age_seconds=0,
                 )
 
         client = Client()
@@ -49,7 +63,7 @@ class ConcurrentWorkflowTests(unittest.IsolatedAsyncioTestCase):
             client,
             since=now - timedelta(days=1),
             until=now + timedelta(days=14),
-            selected=selected,
+            course_ids=selected,
             max_requests=40,
         )
         self.assertTrue(result.complete)

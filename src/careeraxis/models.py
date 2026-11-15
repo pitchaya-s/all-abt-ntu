@@ -4,7 +4,10 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class CareerAxisError(RuntimeError):
+from shared.operation import OperationError
+
+
+class CareerAxisError(OperationError):
     pass
 
 
@@ -54,7 +57,9 @@ class PortalItem(Model):
 
 
 class PortalResults(Snapshot):
-    section: Literal["events", "resources", "organisations", "appointment_topics", "internship_jobs"]
+    section: Literal[
+        "events", "resources", "organisations", "appointment_topics", "internship_jobs"
+    ]
     query: str
     page: int = Field(ge=1)
     items: list[PortalItem]

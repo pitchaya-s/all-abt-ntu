@@ -3,7 +3,10 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class FacultyError(RuntimeError):
+from shared.operation import OperationError
+
+
+class FacultyError(OperationError):
     pass
 
 
