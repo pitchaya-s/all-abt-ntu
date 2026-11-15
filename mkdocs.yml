@@ -4,7 +4,18 @@ site_url: https://pitchaya-s.github.io/all-abt-ntu/
 repo_url: https://github.com/pitchaya-s/all-abt-ntu
 repo_name: pitchaya-s/all-abt-ntu
 theme:
-  name: mkdocs
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
 markdown_extensions:
   - tables
   - fenced_code

@@ -2,7 +2,7 @@ name: Deploy documentation
 
 on:
   push:
-    branches: [main]
+    branches: [main, cli]
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
@@ -27,13 +27,13 @@ jobs:
         with:
           version: '0.10.11'
       - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
-      - run: uvx --from mkdocs==1.6.1 mkdocs build --strict
+      - run: uvx --from mkdocs-material mkdocs build --strict
       - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
         with:
           path: site
 
   deploy:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/cli'
     needs: build
     runs-on: ubuntu-latest
     permissions:

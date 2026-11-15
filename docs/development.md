@@ -5,8 +5,8 @@
 Documentation is maintained in `docs/` alongside the code. Preview it locally or check the production build with:
 
 ```sh
-uvx --from mkdocs==1.6.1 mkdocs serve
-uvx --from mkdocs==1.6.1 mkdocs build --strict
+uvx --from mkdocs-material mkdocs serve
+uvx --from mkdocs-material mkdocs build --strict
 ```
 
 The GitHub Actions workflow builds the site and deploys it to GitHub Pages when documentation changes reach `main`. To enable publishing, choose **GitHub Actions** under the repository's **Settings → Pages → Build and deployment**. The workflow can also be run manually from the default branch.

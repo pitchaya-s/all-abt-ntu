@@ -28,7 +28,7 @@ jobs:
       - run: uv run --no-sync python tools/check_format_baseline.py
       - name: Build documentation
         if: matrix.python == '3.12'
-        run: uvx --from mkdocs==1.6.1 mkdocs build --strict
+        run: uvx --from mkdocs-material mkdocs build --strict
       - name: Check repository types against existing diagnostics
         if: matrix.python == '3.12'
         run: uv run --no-sync --with mypy==2.4.1 python tools/check_mypy_baseline.py

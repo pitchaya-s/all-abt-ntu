@@ -61,6 +61,6 @@ Browse the [documentation site](https://pitchaya-s.github.io/all-abt-ntu/) or re
 - [Known issues](docs/known-issues.md)
 - [Limitations and disclaimer](docs/limitations.md)
 
-To preview the documentation locally, run `uvx --from mkdocs==1.6.1 mkdocs serve` from the repository root. See the [documentation build and deployment instructions](docs/development.md#documentation).
+To preview the documentation locally, run `uvx --from mkdocs-material mkdocs serve` from the repository root. See the [documentation build and deployment instructions](docs/development.md#documentation).
 
 This independent project is not affiliated with or endorsed by Nanyang Technological University. Use it only for accounts and materials you are authorized to access.
