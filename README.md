@@ -49,6 +49,19 @@ ntu learn courses
 
 Use `-h` for help. Common options also have short forms, including `-r` for refresh, `-l` for limit, `-p` for page, `-j` for JSON, and `-o` for a download destination. The CLI shares OS keyring credentials with MCP. MCP profiles and tool settings apply only to the MCP server; direct commands use service defaults and environment variables. Use `ntu onestop requests apply ITEM_ID`, `ntu onestop appointments book ITEM_ID`, and `ntu onestop cart checkout` for interactive workflows. See the [complete command reference](src/COMMANDS.md) for all commands and options.
 
+### Manual install (CLI)
+
+To run the CLI from a local checkout:
+
+```sh
+git clone https://github.com/pitchaya-s/all-abt-ntu-mcp.git
+cd all-abt-ntu-mcp
+uv sync
+uv run ntu --help
+```
+
+For authenticated services, run `uv sync --extra personal`, follow the [Chromium instructions](#chromium), and save credentials with `uv run ntu auth save`. Run commands from the checkout with `uv run ntu`, for example `uv run ntu map search LT1`.
+
 ## MCP
 
 ### Local setup
