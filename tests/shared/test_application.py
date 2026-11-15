@@ -39,7 +39,7 @@ class CredentialTests(unittest.IsolatedAsyncioTestCase):
             create_server("public")
         with (
             patch("server.find_spec", return_value=object()),
-            patch("server._chromium_installed", return_value=False),
+            patch("server.chromium_installed", return_value=False),
         ):
             with self.assertRaisesRegex(RuntimeError, "Chromium"):
                 create_server("personal")

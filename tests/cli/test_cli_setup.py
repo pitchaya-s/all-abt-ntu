@@ -11,6 +11,12 @@ class CLISetupTests(unittest.TestCase):
     def setUp(self):
         self.runner = CliRunner()
         self.app = create_app()
+        status = patch(
+            "cli.manage.credential_status",
+            return_value={"credentials_configured": False, "credential_error": None},
+        )
+        status.start()
+        self.addCleanup(status.stop)
 
     def invoke(self):
         terminal = Mock(executable=sys.executable)
@@ -23,6 +29,7 @@ class CLISetupTests(unittest.TestCase):
         with (
             patch("questionary.confirm", prompt),
             patch("cli.manage.save_auth") as save,
+            patch("cli.manage.chromium_installed", side_effect=[False, True]),
             patch("cli.manage.find_spec", return_value=object()),
             patch("cli.manage.subprocess.run", return_value=Mock(returncode=0)) as run,
         ):
@@ -39,6 +46,7 @@ class CLISetupTests(unittest.TestCase):
         with (
             patch("questionary.confirm", prompt),
             patch("cli.manage.save_auth") as save,
+            patch("cli.manage.chromium_installed", return_value=False),
             patch("cli.manage.subprocess.run") as run,
         ):
             result = self.invoke()
@@ -58,6 +66,7 @@ class CLISetupTests(unittest.TestCase):
         prompt.return_value.unsafe_ask.side_effect = [False, True]
         with (
             patch("questionary.confirm", prompt),
+            patch("cli.manage.chromium_installed", return_value=False),
             patch("cli.manage.find_spec", return_value=None),
             patch("cli.manage.subprocess.run") as run,
         ):
@@ -71,9 +80,67 @@ class CLISetupTests(unittest.TestCase):
         prompt.return_value.unsafe_ask.side_effect = [False, True]
         with (
             patch("questionary.confirm", prompt),
+            patch("cli.manage.chromium_installed", return_value=False),
             patch("cli.manage.find_spec", return_value=object()),
             patch("cli.manage.subprocess.run", return_value=Mock(returncode=1)),
         ):
             result = self.invoke()
         self.assertNotEqual(result.exit_code, 0)
         self.assertIn("Chromium installation failed", result.output)
+
+    def test_existing_chromium_skips_install_prompt(self):
+        prompt = Mock()
+        prompt.return_value.unsafe_ask.return_value = False
+        with (
+            patch("questionary.confirm", prompt),
+            patch("cli.manage.chromium_installed", return_value=True),
+            patch("cli.manage.subprocess.run") as run,
+        ):
+            result = self.invoke()
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn("Chromium is already installed", result.output)
+        self.assertEqual(prompt.call_count, 1)
+        run.assert_not_called()
+
+    def test_credential_prompt_defaults_depend_on_saved_state(self):
+        prompt = Mock()
+        prompt.return_value.unsafe_ask.return_value = False
+        with (
+            patch("questionary.confirm", prompt),
+            patch("cli.manage.chromium_installed", return_value=True),
+        ):
+            result = self.invoke()
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertTrue(prompt.call_args.kwargs["default"])
+        self.assertIn("Save", prompt.call_args.args[0])
+        prompt.reset_mock()
+        with (
+            patch("questionary.confirm", prompt),
+            patch("cli.manage.chromium_installed", return_value=True),
+            patch(
+                "cli.manage.credential_status",
+                return_value={"credentials_configured": True, "credential_error": None},
+            ),
+        ):
+            result = self.invoke()
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertFalse(prompt.call_args.kwargs["default"])
+        self.assertIn("Replace", prompt.call_args.args[0])
+
+    def test_keyring_error_does_not_assume_credentials_are_absent(self):
+        prompt = Mock()
+        prompt.return_value.unsafe_ask.return_value = False
+        with (
+            patch("questionary.confirm", prompt),
+            patch("cli.manage.chromium_installed", return_value=True),
+            patch(
+                "cli.manage.credential_status",
+                return_value={
+                    "credentials_configured": None,
+                    "credential_error": "keyring unavailable",
+                },
+            ),
+        ):
+            result = self.invoke()
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertFalse(prompt.call_args.kwargs["default"])

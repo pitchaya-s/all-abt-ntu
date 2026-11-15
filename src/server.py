@@ -1,13 +1,12 @@
 """Static local stdio profiles for public and personal tools."""
 
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
 from importlib.util import find_spec
-from pathlib import Path
 
 from mcp.server import MCPServer
 
 import public_server
+from shared.browser import chromium_installed
 from shared.version import VERSION
 
 PROFILES = ("public", "personal")
@@ -21,21 +20,6 @@ PERSONAL_INSTRUCTIONS = (
 )
 
 
-def _chromium_installed() -> bool:
-    # Playwright's synchronous API cannot start in a running asyncio loop.
-    def inspect_browser():
-        from playwright.sync_api import sync_playwright
-
-        with sync_playwright() as playwright:
-            return Path(playwright.chromium.executable_path).is_file()
-
-    try:
-        with ThreadPoolExecutor(max_workers=1) as executor:
-            return executor.submit(inspect_browser).result()
-    except Exception:
-        return False
-
-
 def create_server(
     profile: str = "public", *, check_dependencies: bool = True, application=None
 ) -> MCPServer:
@@ -45,7 +29,7 @@ def create_server(
         raise RuntimeError(
             "Personal profiles require Playwright. Install all-abt-ntu[mcp,personal] and Chromium; see the setup guide."
         )
-    if profile != "public" and check_dependencies and not _chromium_installed():
+    if profile != "public" and check_dependencies and not chromium_installed():
         raise RuntimeError(
             "Personal profiles require Playwright Chromium. Install it using the setup guide before starting this profile."
         )

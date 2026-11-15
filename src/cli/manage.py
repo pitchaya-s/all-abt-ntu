@@ -7,6 +7,7 @@ from getpass import GetPassWarning, getpass
 from importlib.util import find_spec
 import typer
 
+from shared.browser import chromium_installed
 from shared.credentials import (
     CredentialError,
     credential_status,
@@ -44,14 +45,27 @@ def setup_cli():
     import questionary
 
     try:
+        status = credential_status()
+        if status["credential_error"]:
+            print(
+                f"Could not check saved NTU credentials: {status['credential_error']}",
+                file=sys.stderr,
+            )
+        configured = status["credentials_configured"]
         save = questionary.confirm(
-            "Save or replace NTU account credentials in your OS keyring?",
-            default=False,
+            "Replace the NTU credentials saved in your OS keyring?"
+            if configured
+            else "Save NTU account credentials in your OS keyring?",
+            default=configured is False and not status["credential_error"],
         ).unsafe_ask()
         if save is None:
             raise ConfigError("CLI setup cancelled.")
         if save:
             save_auth()
+        if chromium_installed():
+            print("Playwright Chromium is already installed.")
+            print("CLI setup complete.")
+            return
         install = questionary.confirm(
             "Install Playwright Chromium for browser-based personal services?",
             default=False,
@@ -68,7 +82,7 @@ def setup_cli():
                 [sys.executable, "-m", "playwright", "install", "chromium"],
                 check=False,
             )
-            if result.returncode:
+            if result.returncode or not chromium_installed():
                 raise ConfigError(
                     "Chromium installation failed; rerun ntu cli setup to retry."
                 )

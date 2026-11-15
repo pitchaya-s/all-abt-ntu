@@ -4,6 +4,8 @@ import asyncio
 import subprocess
 import sys
 
+from shared.browser import chromium_installed
+
 from ..config import ConfigError, load_config, save_config
 
 FAMILY_LABELS = {
@@ -47,9 +49,8 @@ def tool_names(profile: str) -> list[str]:
 
 
 def ensure_chromium() -> None:
-    from server import _chromium_installed
-
-    if _chromium_installed():
+    if chromium_installed():
+        print("Playwright Chromium is already installed.")
         return
     while True:
         answer = (
@@ -74,7 +75,7 @@ def ensure_chromium() -> None:
         raise ConfigError(
             f"Could not start the Chromium installer: {error}. Your tool choices were saved; rerun setup to retry."
         ) from error
-    if result.returncode or not _chromium_installed():
+    if result.returncode or not chromium_installed():
         raise ConfigError(
             "Chromium installation failed or the browser is unavailable. Your tool choices were saved; rerun setup to retry."
         )

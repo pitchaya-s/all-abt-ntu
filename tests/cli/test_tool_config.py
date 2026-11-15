@@ -472,7 +472,7 @@ class ToolConfigTests(unittest.TestCase):
         import sys
 
         with (
-            patch("server._chromium_installed", side_effect=[False, True]),
+            patch("cli.tools.commands.chromium_installed", side_effect=[False, True]),
             patch("builtins.input", side_effect=["invalid", ""]),
             patch(
                 "cli.tools.commands.subprocess.run", return_value=Mock(returncode=0)
@@ -484,7 +484,7 @@ class ToolConfigTests(unittest.TestCase):
                 [sys.executable, "-m", "playwright", "install", "chromium"], check=False
             )
         with (
-            patch("server._chromium_installed", return_value=False),
+            patch("cli.tools.commands.chromium_installed", return_value=False),
             patch("builtins.input", return_value="n"),
             patch("cli.tools.commands.subprocess.run") as install,
             redirect_stdout(StringIO()),
@@ -492,7 +492,7 @@ class ToolConfigTests(unittest.TestCase):
             ensure_chromium()
             install.assert_not_called()
         with (
-            patch("server._chromium_installed", return_value=True),
+            patch("cli.tools.commands.chromium_installed", return_value=True),
             patch("builtins.input") as prompt,
             patch("cli.tools.commands.subprocess.run") as install,
         ):
@@ -500,7 +500,7 @@ class ToolConfigTests(unittest.TestCase):
             prompt.assert_not_called()
             install.assert_not_called()
         with (
-            patch("server._chromium_installed", return_value=False),
+            patch("cli.tools.commands.chromium_installed", return_value=False),
             patch("builtins.input", return_value="y"),
             patch("cli.tools.commands.subprocess.run", return_value=Mock(returncode=1)),
             redirect_stdout(StringIO()),

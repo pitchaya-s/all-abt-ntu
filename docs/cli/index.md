@@ -11,6 +11,8 @@ ntu cli setup
 
 The `cli` extra installs the terminal interface; `personal` adds browser support for authenticated services. Setup offers to save credentials and install Chromium; you can skip either step. For public CLI services only, install `all-abt-ntu[cli]@latest`. The MCP server is a separate extra and is not installed by those commands.
 
+When no credentials are saved, the credential prompt defaults to yes. If credentials are already saved, replacing them defaults to no. Setup skips the Chromium prompt when the matching Playwright browser is already installed.
+
 To enable optional NTULearn browser-cookie discovery, install `all-abt-ntu[cli,personal,browser-cookies]@latest`.
 
 ## Find the right command
