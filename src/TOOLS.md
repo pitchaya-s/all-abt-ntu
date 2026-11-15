@@ -1,6 +1,6 @@
 # MCP tools
 
-The local MCP server runs with `ntu mcp`. The hosted server provides public, read-only tools. Personal tools require the personal profile; actions and downloads require host confirmation. See the [CLI command reference](COMMANDS.md) for direct commands.
+The local MCP server runs with `ntu mcp` and requires the `mcp` package extra. MCP setup and tool management also require the `cli` extra. The hosted server provides public, read-only tools. Personal tools require the personal profile; actions and downloads require host confirmation. See the [CLI command reference](COMMANDS.md) for direct commands.
 
 ## STARS
 

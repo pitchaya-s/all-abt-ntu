@@ -2,6 +2,7 @@
 
 import sys
 import inspect
+from functools import partial
 
 import typer
 
@@ -33,10 +34,11 @@ def invoke(
         if has_password(arguments):
             raise ValueError("Passwords are not accepted as command arguments.")
         if side_effect:
+            action = operation
+            while isinstance(action, partial):
+                action = action.func
             description = (
-                (inspect.getdoc(operation) or "this action")
-                .split(". ", 1)[0]
-                .rstrip(".")
+                (inspect.getdoc(action) or "this action").split(". ", 1)[0].rstrip(".")
             )
             if (
                 not sys.stdin.isatty()

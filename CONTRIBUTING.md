@@ -1,6 +1,6 @@
 # Contributing
 
-Run `uv sync --extra personal` and `uv run python -m unittest discover -s tests -t . -q` before submitting changes. The personal extra installs Playwright; browser-dependent tests may require `uv run playwright install chromium`. CI runs Ruff across the Python tree, checks formatting of new and changed files against the existing `.github/format-baseline.json`, checks mypy against `.github/mypy-baseline.txt`, and runs the TypeScript interoperability smoke described in the README. Format files you change and remove resolved type diagnostics from the baseline; do not add new deviations to a baseline merely to make CI pass.
+Run `uv sync --extra cli --extra mcp --extra personal` and `uv run python -m unittest discover -s tests -t . -q` before submitting changes. The personal extra installs Playwright; browser-dependent tests may require `uv run playwright install chromium`. CI runs Ruff across the Python tree, checks formatting of new and changed files against the existing `.github/format-baseline.json`, checks mypy against `.github/mypy-baseline.txt`, and runs the TypeScript interoperability smoke described in the README. Format files you change and remove resolved type diagnostics from the baseline; do not add new deviations to a baseline merely to make CI pass.
 
 For a new integration or a change to an upstream adapter:
 

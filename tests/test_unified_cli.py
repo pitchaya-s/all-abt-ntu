@@ -400,6 +400,22 @@ class UnifiedCLITests(unittest.TestCase):
         self.assertNotIn("failed unexpectedly", result.stderr)
         download.assert_not_awaited()
 
+    def test_video_confirmation_describes_action(self):
+        import typer
+        from functools import partial
+        from cli.services import invoke
+        from ntulearn.services.videos import download_video
+
+        with (
+            patch("sys.stdin.isatty", return_value=True),
+            patch("sys.stderr.isatty", return_value=True),
+            patch("typer.confirm", return_value=False) as confirm,
+        ):
+            with self.assertRaises(typer.Exit):
+                invoke(partial(download_video, object()), {}, False, side_effect=True)
+        self.assertIn("Download a Kaltura video", confirm.call_args.args[0])
+        self.assertNotIn("partial(", confirm.call_args.args[0])
+
     def test_apply_reviews_before_submit(self):
         from cli.commands.onestop import cmd_requests_apply
         from onestop.services.forms import FormService

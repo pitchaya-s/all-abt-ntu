@@ -22,7 +22,7 @@ jobs:
         with:
           version: '0.10.11'
           python-version: ${{ matrix.python }}
-      - run: uv sync --locked --extra personal
+      - run: uv sync --locked --extra cli --extra mcp --extra personal
       - run: uv run --no-sync playwright install --with-deps chromium
       - run: uvx ruff==0.17.4 check --select F,E9 src tests tools
       - run: uv run --no-sync python tools/check_format_baseline.py
@@ -30,6 +30,18 @@ jobs:
         if: matrix.python == '3.12'
         run: uv run --no-sync --with mypy==2.4.1 python tools/check_mypy_baseline.py
       - run: uv run --no-sync python -m unittest discover -s tests -t . -q
+      - name: Check isolated interface dependencies and hosted installation
+        if: matrix.python == '3.12'
+        run: |
+          uv build --wheel --out-dir "$RUNNER_TEMP/ntu-wheel"
+          for wheel in "$RUNNER_TEMP"/ntu-wheel/*.whl; do
+            uvx --isolated --from "${wheel}[cli]" ntu --help
+            uvx --isolated --from "${wheel}[mcp]" ntu mcp --help
+            uv run --isolated --no-project --with "${wheel}[cli]" python -I -c 'import importlib.util; import typer, rich; assert importlib.util.find_spec("mcp") is None'
+            uv run --isolated --no-project --with "${wheel}[mcp]" python -I -c 'import importlib.util; from server import create_server; assert importlib.util.find_spec("typer") is None; create_server()'
+          done
+          UV_PROJECT_ENVIRONMENT="$RUNNER_TEMP/ntu-hosted" uv sync --locked --no-dev
+          "$RUNNER_TEMP/ntu-hosted/bin/python" -c 'import importlib.util; from api.index import app; assert importlib.util.find_spec("typer") is None'
       - name: TypeScript SDK interoperability
         if: matrix.python == '3.12'
         run: |

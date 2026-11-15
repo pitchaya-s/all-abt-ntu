@@ -13,12 +13,12 @@ A CLI and MCP server for NTU Singapore schedules, learning materials, campus nav
 Install [uv](https://docs.astral.sh/uv/) and Python 3.10 or newer. To make `ntu` available as a command, run:
 
 ```sh
-uv tool install 'all-abt-ntu-mcp[personal]@latest'
+uv tool install 'all-abt-ntu-mcp[cli,personal]@latest'
 ```
 
-The `personal` extra supports authenticated services. Follow the [Chromium instructions](#chromium) if you use them. For public services only, install `all-abt-ntu-mcp@latest` without the extra. You can also run the MCP setup with `uvx` without installing the command globally, as shown below.
+The `cli` extra installs the terminal interface; `personal` adds browser support for authenticated services. Follow the [Chromium instructions](#chromium) if you use them. For public CLI services only, install `all-abt-ntu-mcp[cli]@latest`. The MCP server is a separate extra and is not installed by those commands.
 
-To enable optional NTULearn browser-cookie discovery, install with both extras: `uv tool install 'all-abt-ntu-mcp[personal,browser-cookies]@latest'`.
+To enable optional NTULearn browser-cookie discovery, install `all-abt-ntu-mcp[cli,personal,browser-cookies]@latest`.
 
 ## Credentials
 
@@ -41,26 +41,50 @@ Some Linux installations do not include a keyring service. Install a provider su
 Use `ntu --help` to explore all eleven service families. For example:
 
 ```sh
-ntu stars courses search "data structures" -y 2026 -s 1 -j
-ntu map search LT1
-ntu bus arrivals --route Blue
-ntu learn courses
+# STARS: search courses, inspect a course, and browse its indexes
+ntu stars courses search "data structures" --year 2026 --semester 1 --limit 10 --offset 0
+ntu stars course ZZ0001 --year 2026 --semester 1
+ntu stars indexes ZZ0001 --year 2026 --semester 1 --limit 10 --offset 0
+ntu stars prerequisites ZZ0001 --year 2026 --semester 1 --prerequisite-depth 2 --dependent-depth 2
+
+# NTULearn: list courses, browse content, and download materials
+ntu learn courses --limit 20 --offset 0
+ntu learn content ZZ0001 --limit 20 --offset 0
+ntu learn attachments ZZ0001 "_67890_1" --limit 20 --offset 0
+ntu learn files download ZZ0001 "_67890_1" "_24680_1" --output "./lecture.pdf" --max-bytes 20000000
+ntu learn courses download ZZ0001 --output "./course-materials" --max-files 50 --max-total-mb 200
+ntu learn videos download ZZ0001 "_67890_1" --output "./lecture.mp4" --max-mb 500
+ntu learn announcements ZZ0001 --limit 20 --offset 0
+ntu learn upcoming --since 2026-01-01 --until 2026-12-31
+
+# Other NTU services
+ntu career opportunities search "software engineer" --page 1 --limit 10
+ntu map search "LT1" --limit 10 --offset 0
+ntu research search "machine learning" --entity-type Publication --page 0 --page-size 10
+ntu library search "machine learning" --field title --match contains --limit 10 --offset 0
+ntu faculty search "Tan" --page 1
+ntu news search "artificial intelligence" --sort latest --page 1
+ntu services search "coffee" --location "North Spine" --limit 10 --offset 0
+ntu bus arrivals --route Blue --stop "North Spine" --source shuttle
+ntu onestop catalog search "transcript" --limit 10 --offset 0
 ```
+
+`ZZ0001` is a fictional course. For NTULearn, replace it and the example content and attachment IDs with the IDs returned by the preceding commands; NTULearn uses its own course IDs. Downloads require local confirmation; choose new file paths for individual files and videos. NTULearn, CareerAxis, and One Stop commands require an authenticated account.
 
 Use `-h` for help. Common options also have short forms, including `-r` for refresh, `-l` for limit, `-p` for page, `-j` for JSON, and `-o` for a download destination. The CLI shares OS keyring credentials with MCP. MCP profiles and tool settings apply only to the MCP server; direct commands use service defaults and environment variables. Use `ntu onestop requests apply ITEM_ID`, `ntu onestop appointments book ITEM_ID`, and `ntu onestop cart checkout` for interactive workflows. See the [complete command reference](src/COMMANDS.md) for all commands and options.
 
-### Manual install (CLI)
+### Manual install
 
 To run the CLI from a local checkout:
 
 ```sh
 git clone https://github.com/pitchaya-s/all-abt-ntu.git
 cd all-abt-ntu
-uv sync
-uv run ntu --help
+uv sync --no-default-groups --extra cli
+uv run --no-sync ntu --help
 ```
 
-For authenticated services, run `uv sync --extra personal`, follow the [Chromium instructions](#chromium), and save credentials with `uv run ntu auth save`. Run commands from the checkout with `uv run ntu`, for example `uv run ntu map search LT1`.
+For authenticated services, run `uv sync --no-default-groups --extra cli --extra personal`, follow the [Chromium instructions](#chromium), and save credentials with `uv run --no-sync ntu auth save`. Run commands from the checkout with `uv run --no-sync ntu`, for example `uv run --no-sync ntu map search LT1`.
 
 ## MCP
 
@@ -69,22 +93,28 @@ For authenticated services, run `uv sync --extra personal`, follow the [Chromium
 Run setup in your terminal:
 
 ```sh
-uvx --from 'all-abt-ntu-mcp[personal]@latest' ntu mcp setup
+uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp setup
 ```
 
-Choose a profile and select the tool families you want, such as STARS or NTULearn. Setup saves your choices on this machine. Follow the prompts for any additional setup, then connect your client using one of the examples below. If you installed `ntu` above, you can run `ntu mcp setup` instead.
+Choose a profile and select the tool families you want, such as STARS or NTULearn. Setup saves your choices on this machine. Follow the prompts for any additional setup, then connect your client using one of the examples below. Setup and tool-management commands require both the `cli` and `mcp` extras; the server itself needs only `mcp`, plus `personal` for authenticated tools.
+
+To start the public stdio server directly without installing the CLI dependencies:
+
+```sh
+uvx --from 'all-abt-ntu-mcp[mcp]@latest' ntu mcp --profile public
+```
 
 ### Choose tools
 
 To list or change families and individual tools later, run:
 
 ```sh
-uvx --from 'all-abt-ntu-mcp[personal]@latest' ntu mcp tools list
-uvx --from 'all-abt-ntu-mcp[personal]@latest' ntu mcp tools list --all
-uvx --from 'all-abt-ntu-mcp[personal]@latest' ntu mcp tools disable ntulearn
-uvx --from 'all-abt-ntu-mcp[personal]@latest' ntu mcp tools enable ntulearn
-uvx --from 'all-abt-ntu-mcp[personal]@latest' ntu mcp tools disable mazemap_get_directions
-uvx --from 'all-abt-ntu-mcp[personal]@latest' ntu mcp tools enable mazemap_get_directions
+uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp tools list
+uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp tools list --all
+uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp tools disable ntulearn
+uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp tools enable ntulearn
+uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp tools disable mazemap_get_directions
+uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp tools enable mazemap_get_directions
 ```
 
 Run `setup` again to change your profile or family selection. `tools list` shows families; `--all` shows individual tools. `[~]` means a family is partially enabled. Commands manage tools available in the active profile. Disabling a family also disables tools added to it later. Explicitly enabling a family enables all its tools in the active profile, including actions and downloads; individual tools can then be disabled. Restart the MCP server after changes. Settings do not affect the hosted server.
@@ -108,11 +138,9 @@ In a cloud AI client that supports custom remote MCP servers:
 
 1. Open the MCP or connector settings and add a server with any name you like.
 2. Enter this server URL:
-
    ```text
-   https://all-abt-ntu-mcp.vercel.app/mcp
+    https://all-abt-ntu-mcp.vercel.app/mcp
    ```
-
 3. Select **No authentication** and, if asked, **Streamable HTTP** as the transport.
 4. Save and enable the server.
 
@@ -129,7 +157,7 @@ Add to `~/.codex/config.toml`:
 ```toml
 [mcp_servers.all-abt-ntu-mcp]
 command = "uvx"
-args = ["--from", "all-abt-ntu-mcp[personal]@latest", "ntu", "mcp"]
+args = ["--from", "all-abt-ntu-mcp[mcp,personal]@latest", "ntu", "mcp"]
 startup_timeout_sec = 120
 tool_timeout_sec = 240
 ```
@@ -148,7 +176,7 @@ Register for your user:
 
 ```sh
 claude mcp add --scope user all-abt-ntu-mcp \
-  -- uvx --from 'all-abt-ntu-mcp[personal]@latest' ntu mcp
+  -- uvx --from 'all-abt-ntu-mcp[mcp,personal]@latest' ntu mcp
 claude mcp list
 ```
 
@@ -164,7 +192,7 @@ Add to `~/.config/opencode/opencode.json`:
   "mcp": {
     "all-abt-ntu-mcp": {
       "type": "local",
-      "command": ["uvx", "--from", "all-abt-ntu-mcp[personal]@latest", "ntu", "mcp"],
+      "command": ["uvx", "--from", "all-abt-ntu-mcp[mcp,personal]@latest", "ntu", "mcp"],
       "enabled": true,
       "timeout": 240000
     }
@@ -181,11 +209,11 @@ Clone the repository and run the server from a local checkout:
 ```sh
 git clone --branch main https://github.com/pitchaya-s/all-abt-ntu.git
 cd all-abt-ntu
-uv sync
-uv run ntu mcp
+uv sync --no-default-groups --extra mcp
+uv run --no-sync ntu mcp
 ```
 
-For personal tools, run `uv sync --extra personal`, then `uv run ntu mcp setup` to choose your tools. See [Credentials](#credentials) to manage your account.
+For setup and personal tools, run `uv sync --no-default-groups --extra cli --extra mcp --extra personal`, then `uv run --no-sync ntu mcp setup` to choose your tools. See [Credentials](#credentials) to manage your account.
 
 The process uses MCP stdio, so it stays open while its MCP client is connected. Course responses are cached in memory for one hour by default; vacancy snapshots are cached for at most 60 seconds. Set `NTU_CACHE_TTL_SECONDS` to change the cache time or use `0` to disable caching.
 
@@ -197,7 +225,7 @@ Authenticated CLI services that use a browser and the MCP personal profile need 
 uvx --from 'all-abt-ntu-mcp[personal]@latest' playwright install chromium
 ```
 
-For a repository checkout, run `uv sync --extra personal` followed by `uv run --no-sync playwright install chromium`. Playwright versions can require different Chromium builds, so repeat the matching command after upgrading. NTULearn can optionally reuse an existing browser session without launching Chromium, although the shared personal profiles still require Chromium for their other tools.
+For a repository checkout, include `--extra personal` in the appropriate `uv sync` command above, then run `uv run --no-sync playwright install chromium`. Playwright versions can require different Chromium builds, so repeat the matching command after upgrading. NTULearn can optionally reuse an existing browser session without launching Chromium, although the shared personal profiles still require Chromium for their other tools.
 
 ### Run an HTTP server on localhost
 
@@ -243,16 +271,18 @@ uv run ntu config list
 uv run ntu config unset ntulearn.headless
 ```
 
-For a PyPI install, use the same `uvx --from 'all-abt-ntu-mcp[personal]@latest'` prefix as in [local setup](#local-setup) instead of `uv run`. The supported settings under `env` are:
+For a PyPI install, use the same `uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest'` prefix as in [local setup](#local-setup) instead of `uv run`. The supported settings under `env` are:
 
-| Group | Settings |
-| --- | --- |
-| `stars` | `cache_ttl_seconds`, `personal_cache_ttl_seconds` |
-| `ntulearn` | `cache_ttl_seconds`, `headless`, `browser_cookies`, `request_concurrency`, `request_interval_seconds`, `timeout_seconds` |
-| `careeraxis` | `cache_ttl_seconds`, `headless` |
-| `onestop` | `upload_dir` |
-| `public_http` | `concurrency`, `interval_seconds`, `timeout_seconds`, `max_retry_delay_seconds` |
-| `browser` | `browsers_path` for Playwright |
+
+| Group         | Settings                                                                                                                 |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `stars`       | `cache_ttl_seconds`, `personal_cache_ttl_seconds`                                                                        |
+| `ntulearn`    | `cache_ttl_seconds`, `headless`, `browser_cookies`, `request_concurrency`, `request_interval_seconds`, `timeout_seconds` |
+| `careeraxis`  | `cache_ttl_seconds`, `headless`                                                                                          |
+| `onestop`     | `upload_dir`                                                                                                             |
+| `public_http` | `concurrency`, `interval_seconds`, `timeout_seconds`, `max_retry_delay_seconds`                                          |
+| `browser`     | `browsers_path` for Playwright                                                                                           |
+
 
 Use JSON booleans for switches, numbers for durations and limits, and strings for paths. Other environment variables can be stored under `env.other`, for example with `config set other.CUSTOM_SETTING value`. Configuration-location variables such as `XDG_CONFIG_HOME` must be set outside the file. Process environment variables take precedence over saved settings. Restart the server after changing settings. This file is plain text; use the keyring for credentials.
 

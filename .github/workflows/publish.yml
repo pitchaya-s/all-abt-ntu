@@ -34,14 +34,18 @@ jobs:
           if tag.removeprefix("v") != version:
               raise SystemExit(f"Release tag {tag!r} does not match package version {version!r}.")
           PY
-      - run: uv sync --locked --extra personal
+      - run: uv sync --locked --extra cli --extra mcp --extra personal
       - run: uv run --no-sync python -m unittest discover -s tests -t . -q
       - run: uv build --no-sources
       - run: uvx --from twine==7.0.0 twine check --strict dist/*
       - name: Check installed wheel
         run: |
-          uvx --from ./dist/*.whl all-abt-ntu --help
-          uv run --no-project --with ./dist/*.whl python -I -c 'from server import mcp'
+          for wheel in dist/*.whl; do
+            uvx --isolated --from "${wheel}[cli]" ntu --help
+            uvx --isolated --from "${wheel}[mcp]" ntu mcp --help
+            uv run --isolated --no-project --with "${wheel}[cli]" python -I -c 'import importlib.util; import typer, rich; assert importlib.util.find_spec("mcp") is None'
+            uv run --isolated --no-project --with "${wheel}[mcp]" python -I -c 'import importlib.util; from server import create_server; assert importlib.util.find_spec("typer") is None; create_server()'
+          done
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: python-distributions

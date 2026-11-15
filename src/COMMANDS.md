@@ -1,6 +1,6 @@
 # CLI commands
 
-Run `ntu --help` or append `--help` to any command for current details and shell completion. `VALUE` denotes an option value; required arguments and options are marked. Direct commands use service defaults and environment variables, independently of MCP profiles and tool settings. Commands accept `--json` where listed. JSON writes results to stdout; diagnostics go to stderr. Personal operations require authentication. Actions and downloads require local confirmation.
+Run `ntu --help` or append `--help` to any command for current details and shell completion. CLI commands require the `cli` package extra; MCP setup and tool management also require `mcp`. `VALUE` denotes an option value; required arguments and options are marked. Direct commands use service defaults and environment variables, independently of MCP profiles and tool settings. Commands accept `--json` where listed. JSON writes results to stdout; diagnostics go to stderr. Personal operations require authentication. Actions and downloads require local confirmation.
 
 Some resource groups also run their `list` or `show` command when the subcommand is omitted (for example, `ntu learn courses` and `ntu onestop appointments`).
 

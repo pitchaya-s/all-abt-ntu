@@ -43,7 +43,7 @@ def create_server(
         raise ValueError(f"Unknown server profile: {profile!r}")
     if profile != "public" and check_dependencies and find_spec("playwright") is None:
         raise RuntimeError(
-            "Personal profiles require Playwright. Install all-abt-ntu-mcp[personal] and Chromium; see the setup guide."
+            "Personal profiles require Playwright. Install all-abt-ntu-mcp[mcp,personal] and Chromium; see the setup guide."
         )
     if profile != "public" and check_dependencies and not _chromium_installed():
         raise RuntimeError(

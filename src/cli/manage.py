@@ -45,16 +45,11 @@ def mcp_main(
         fail(error)
     ctx.obj = profile
     if ctx.invoked_subcommand is None:
-        from server import main as server_main
-        from .tools.commands import effective_disabled
+        from .mcp import run_server
 
         try:
-            current = load_config()
-            selected = profile or current["profile"]
-            server_main(
-                selected, disabled_tools=sorted(effective_disabled(current, selected))
-            )
-        except (ConfigError, RuntimeError) as error:
+            run_server(profile)
+        except (ConfigError, ValueError, RuntimeError) as error:
             fail(error)
 
 
