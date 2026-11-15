@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 from ntulearn.client.session import Session
 from shared.credentials import read_credentials
 from stars.wish.session import WishSessionManager
-from tests.credential_fixtures import MemoryKeyring, stored_credentials
+from tests.shared.credential_fixtures import MemoryKeyring, stored_credentials
 
 
 class CredentialTests(unittest.IsolatedAsyncioTestCase):

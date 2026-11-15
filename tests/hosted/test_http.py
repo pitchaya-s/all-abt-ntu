@@ -20,8 +20,8 @@ from tests.mazemap.fixtures import fake_get as map_get
 from tests.news.fixtures import ARTICLE_URL
 from tests.news.fixtures import fake_get as news_get
 from tests.omnibus.fixtures import FixtureClient as OmnibusFixtureClient
-from tests.repository.fixtures import fake_get as repository_get
-from tests.repository.oai_fixtures import fake_get as oai_get
+from tests.drntu.fixtures import fake_get as repository_get
+from tests.drntu.oai_fixtures import fake_get as oai_get
 from tests.service.fixtures import fake_get as service_get
 from tests.stars.mcp_fixtures import COURSE
 

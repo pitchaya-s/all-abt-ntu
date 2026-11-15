@@ -3,8 +3,8 @@
 from unittest.mock import patch
 
 from application import Application
-from tests.repository.fixtures import fake_get
-from tests.repository.oai_fixtures import fake_get as oai_get
+from tests.drntu.fixtures import fake_get
+from tests.drntu.oai_fixtures import fake_get as oai_get
 from server import main
 
 

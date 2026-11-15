@@ -12,8 +12,8 @@ from drntu.rest import repository
 from drntu.rest.client import RepositoryClient
 from library.client import LibraryClient
 from tests.library.fixtures import LOCAL
-from tests.repository.fixtures import ITEM, ITEM_ID
-from tests.repository.oai_fixtures import envelope, fake_get as oai_fixture
+from tests.drntu.fixtures import ITEM, ITEM_ID
+from tests.drntu.oai_fixtures import envelope, fake_get as oai_fixture
 
 
 class CacheValidationTests(unittest.TestCase):

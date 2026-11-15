@@ -25,7 +25,7 @@ from shared.credentials import (
 )
 from stars.wish.models import NTUAuthError
 from stars.wish.session import WishSessionManager
-from tests.credential_fixtures import MemoryKeyring, stored_credentials
+from tests.shared.credential_fixtures import MemoryKeyring, stored_credentials
 
 
 class KeyringTests(unittest.TestCase):

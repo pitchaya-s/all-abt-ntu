@@ -46,4 +46,4 @@ jobs:
         if: matrix.python == '3.12'
         run: |
           npm install --prefix "$RUNNER_TEMP/ntu-sdk" --ignore-scripts --no-audit --no-fund @modelcontextprotocol/sdk@1.32.1
-          uv run --no-sync node tests/typescript_smoke.mjs "$RUNNER_TEMP/ntu-sdk"
+          uv run --no-sync node tests/mcp/typescript_smoke.mjs "$RUNNER_TEMP/ntu-sdk"

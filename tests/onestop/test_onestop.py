@@ -11,7 +11,7 @@ from onestop.client import OneStopClient
 from onestop.models import OneStopError
 from onestop.session import OneStopSession, page_url
 from shared.credentials import delete_credentials, read_credentials, save_credentials
-from tests.credential_fixtures import stored_credentials
+from tests.shared.credential_fixtures import stored_credentials
 from tests.onestop.fixtures import (
     ARTICLE,
     CATEGORY,

@@ -387,17 +387,21 @@ src/
     ├── services/           Catalog, form, ticket, cart, knowledge, and portal workflows
     └── attachments/        Verified attachment actions and safe local-file handling
 tests/
-├── stars/                  STARS tests and fictionalized fixtures
-├── ntulearn/               NTULearn tests and synthetic fixtures
-├── mazemap/                MazeMap tests and synthetic fixtures
-├── repository/             DR-NTU tests and synthetic fixtures
-├── library/                OneSearch and LibFacilities tests and fixtures
-├── faculty/                Faculty directory tests and synthetic fixtures
-├── news/                   News search and article tests with synthetic fixtures
-├── service/                Campus directory tests and synthetic fixtures
+├── cli/                    CLI commands, setup, and authentication
+├── mcp/                    MCP profiles, confirmation, and SDK interoperability
+├── shared/                 Credentials, caching, HTTP, and application lifecycle
 ├── hosted/                 Public HTTP protocol, isolation, and deployment checks
-├── test_*.py               Keyring, local CLI, and shared lifecycle tests
-└── typescript_smoke.mjs     Shared MCP interoperability check
+├── careeraxis/             CareerAxis tests and synthetic fixtures
+├── drntu/                  DR-NTU tests and synthetic fixtures
+├── faculty/                Faculty directory tests and synthetic fixtures
+├── library/                OneSearch and LibFacilities tests and fixtures
+├── mazemap/                MazeMap tests and synthetic fixtures
+├── news/                   News search and article tests with synthetic fixtures
+├── ntulearn/               NTULearn tests and synthetic fixtures
+├── omnibus/                Shuttle tests and synthetic fixtures
+├── onestop/                One Stop workflows and upload safety
+├── service/                Campus directory tests and synthetic fixtures
+└── stars/                  STARS tests and fictionalized fixtures
 ```
 
 ## Service reference
@@ -435,7 +439,7 @@ An optional check uses the official TypeScript SDK. Node dependencies stay in a 
 ```sh
 NTU_MCP_TEST_SDK="$(mktemp -d)"
 npm install --prefix "$NTU_MCP_TEST_SDK" --ignore-scripts --no-audit --no-fund @modelcontextprotocol/sdk@1.32.1
-uv run node tests/typescript_smoke.mjs "$NTU_MCP_TEST_SDK"
+uv run node tests/mcp/typescript_smoke.mjs "$NTU_MCP_TEST_SDK"
 ```
 
 These interoperability checks use offline fixtures and never edit saved plans.

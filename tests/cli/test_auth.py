@@ -9,7 +9,7 @@ import warnings
 
 from cli.cli import main
 from shared.credentials import credential_status, read_credentials
-from tests.credential_fixtures import stored_credentials
+from tests.shared.credential_fixtures import stored_credentials
 
 
 class CredentialCLITests(unittest.TestCase):

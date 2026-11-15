@@ -13,7 +13,7 @@ from careeraxis.models import CareerAxisError
 from careeraxis.browser.session import CareerAxisSession
 from careeraxis.browser.snapshots import _PORTAL_SNAPSHOT, _SEARCH_SNAPSHOT
 from shared.credentials import read_credentials, delete_credentials, save_credentials
-from tests.credential_fixtures import stored_credentials
+from tests.shared.credential_fixtures import stored_credentials
 from tests.careeraxis.fixtures import BASE, SNAPSHOT, FixtureSession, records
 
 

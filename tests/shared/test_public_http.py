@@ -232,7 +232,7 @@ class PublicHTTPTests(unittest.TestCase):
                 client.get(URL)
             self.assertEqual(len(seen), 1)
 
-    def test_independent_requests_can_overlap_but_same_url_is_single_flight(self):
+    def test_independent_requests_can_overlap(self):
         both_started = Barrier(2)
         requests = []
 

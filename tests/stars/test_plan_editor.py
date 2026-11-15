@@ -13,7 +13,7 @@ from stars.wish import plan_editor as editor
 from stars.wish.models import NTUAuthError, NTUPersonalDataError
 from stars.wish.planner import PLANNER_VIEW_URL, SAVE_PLAN_URL, _post
 from stars.wish.session import WishSessionManager
-from tests.credential_fixtures import stored_credentials
+from tests.shared.credential_fixtures import stored_credentials
 
 COURSES = [{"course_code": "ZZ0001", "index": "00001"}]
 

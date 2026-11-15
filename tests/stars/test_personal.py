@@ -16,7 +16,7 @@ from stars.wish.session import (
     PLANNER_URL,
     WishSessionManager,
 )
-from tests.credential_fixtures import stored_credentials
+from tests.shared.credential_fixtures import stored_credentials
 
 FIXTURES = Path(__file__).parent / "fixtures"
 PLANNER_HTML = (FIXTURES / "personal-stars-planner-sanitized.html").read_text()

@@ -110,7 +110,7 @@ class ProfileBoundaryTests(unittest.IsolatedAsyncioTestCase):
             submit.assert_not_called()
 
     def test_public_import_does_not_load_personal_modules(self):
-        root = Path(__file__).resolve().parents[1]
+        root = Path(__file__).resolve().parents[2]
         program = (
             "import sys; import server; "
             "assert not any(name in sys.modules for name in "

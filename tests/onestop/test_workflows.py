@@ -21,7 +21,7 @@ from onestop.models import OneStopError
 from onestop.services.portal import PortalService
 from onestop.session import BASE, OneStopSession, PortalPage
 from onestop.services.tickets import TicketContext, TicketService
-from tests.credential_fixtures import stored_credentials
+from tests.shared.credential_fixtures import stored_credentials
 
 
 ITEM, RECORD, COMMENT = "a" * 32, "b" * 32, "c" * 32

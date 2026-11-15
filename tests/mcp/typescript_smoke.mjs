@@ -12,7 +12,7 @@ const require = createRequire(join(resolve(prefix), "package.json"));
 const { Client } = require("@modelcontextprotocol/sdk/client/index.js");
 const { StdioClientTransport } = require("@modelcontextprotocol/sdk/client/stdio.js");
 const { ElicitRequestSchema } = require("@modelcontextprotocol/sdk/types.js");
-const tests = dirname(fileURLToPath(import.meta.url));
+const tests = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 for (const profile of ["public", "personal"]) {
   const profileCwd = await mkdtemp(join(tmpdir(), "ntu-profile-client-"));
   const profileClient = new Client({ name: "ntu-profile-test", version: "1.0" });
@@ -148,7 +148,7 @@ const repositoryCwd = await mkdtemp(join(tmpdir(), "ntu-repository-client-"));
 const repository = new Client({ name: "ntu-repository-typescript-test", version: "1.0" });
 try {
   await repository.connect(new StdioClientTransport({
-    command: "python", args: [join(tests, "repository", "protocol_server.py")], cwd: repositoryCwd,
+    command: "python", args: [join(tests, "drntu", "protocol_server.py")], cwd: repositoryCwd,
     env: { PYTHONPATH: [join(tests, "..", "src"), join(tests, "..")].join(delimiter) },
   }));
   assert.equal((await repository.listTools()).tools.filter(tool => tool.name.startsWith("drntu_")).length, 12);

@@ -691,19 +691,19 @@ Primary references: [DSpace REST contract](https://github.com/DSpace/RestContrac
 Offline parsers, pagination, filters, caching, network failures, CAPTCHA/error handling, and MCP schemas use synthetic records:
 
 ```sh
-uv run python -m unittest discover -s tests/repository -t . -v
+uv run python -m unittest discover -s tests/drntu -t . -v
 ```
 
 Opt-in live stdio checks search pages, publication filtering, item abstracts, browsing, facets and their filters, file discovery, and both dataset version endpoints. Prints statuses and never downloads research file bodies:
 
 ```sh
-uv run python -m tests.repository.live_smoke
+uv run python -m tests.drntu.live_smoke
 ```
 
 OAI-only live stdio checks exercise all six protocol verbs, provider continuation, date filters, alternate-format XML, empty results, and expired/invalid token errors. Prints statuses and counts without saving or printing research metadata:
 
 ```sh
-uv run python -m tests.repository.live_oai_smoke
+uv run python -m tests.drntu.live_oai_smoke
 ```
 
 ### Limitation
