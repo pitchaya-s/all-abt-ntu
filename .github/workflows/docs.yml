@@ -2,7 +2,7 @@ name: Deploy documentation
 
 on:
   push:
-    branches: [main, cli]
+    branches: [main]
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
@@ -33,7 +33,7 @@ jobs:
           path: site
 
   deploy:
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/cli'
+    if: github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     permissions:
