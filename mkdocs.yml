@@ -38,93 +38,115 @@ nav:
       - Overview: services/index.md
       - STARS:
           - Overview: services/stars/index.md
-          - CLI: services/stars/cli/index.md
-          - CLI courses, prerequisites and exams: services/stars/cli/courses.md
-          - CLI indexes and timetables: services/stars/cli/indexes.md
-          - CLI rooms: services/stars/cli/rooms.md
-          - CLI personal planner and audit: services/stars/cli/personal.md
-          - MCP overview: services/stars/mcp/index.md
-          - MCP courses and exams: services/stars/mcp/courses.md
-          - MCP indexes: services/stars/mcp/indexes.md
-          - MCP rooms: services/stars/mcp/rooms.md
-          - MCP personal tools: services/stars/mcp/personal.md
-          - MCP data types: services/stars/mcp/types.md
+          - CLI:
+              - Overview: services/stars/cli/index.md
+              - Courses, prerequisites and exams: services/stars/cli/courses.md
+              - Indexes and timetables: services/stars/cli/indexes.md
+              - Rooms: services/stars/cli/rooms.md
+              - Personal planner and audit: services/stars/cli/personal.md
+          - MCP:
+              - Overview: services/stars/mcp/index.md
+              - Courses and exams: services/stars/mcp/courses.md
+              - Indexes: services/stars/mcp/indexes.md
+              - Rooms: services/stars/mcp/rooms.md
+              - Personal tools: services/stars/mcp/personal.md
+              - Data types: services/stars/mcp/types.md
       - NTULearn:
           - Overview: services/ntulearn/index.md
-          - CLI: services/ntulearn/cli/index.md
-          - CLI courses, folders and search: services/ntulearn/cli/courses.md
-          - CLI attachments and downloads: services/ntulearn/cli/files.md
-          - CLI announcements, calendar and grades: services/ntulearn/cli/activity.md
-          - CLI messages, participants and groups: services/ntulearn/cli/people.md
-          - MCP overview: services/ntulearn/mcp/index.md
-          - MCP courses and search: services/ntulearn/mcp/courses.md
-          - MCP attachments and downloads: services/ntulearn/mcp/files.md
-          - MCP announcements and grades: services/ntulearn/mcp/activity.md
-          - MCP messages and people: services/ntulearn/mcp/people.md
-          - MCP data types: services/ntulearn/mcp/types.md
+          - CLI:
+              - Overview: services/ntulearn/cli/index.md
+              - Courses, folders and search: services/ntulearn/cli/courses.md
+              - Attachments and downloads: services/ntulearn/cli/files.md
+              - Announcements, calendar and grades: services/ntulearn/cli/activity.md
+              - Messages, participants and groups: services/ntulearn/cli/people.md
+          - MCP:
+              - Overview: services/ntulearn/mcp/index.md
+              - Courses and search: services/ntulearn/mcp/courses.md
+              - Attachments and downloads: services/ntulearn/mcp/files.md
+              - Announcements and grades: services/ntulearn/mcp/activity.md
+              - Messages and people: services/ntulearn/mcp/people.md
+              - Data types: services/ntulearn/mcp/types.md
       - CareerAxis:
           - Overview: services/careeraxis/index.md
-          - CLI: services/careeraxis/cli/index.md
-          - MCP: services/careeraxis/mcp/index.md
-          - MCP data types: services/careeraxis/mcp/types.md
+          - CLI:
+              - Overview: services/careeraxis/cli/index.md
+          - MCP:
+              - Overview: services/careeraxis/mcp/index.md
+              - Data types: services/careeraxis/mcp/types.md
       - MazeMap:
           - Overview: services/mazemap/index.md
-          - CLI: services/mazemap/cli/index.md
-          - MCP: services/mazemap/mcp/index.md
-          - MCP data types: services/mazemap/mcp/types.md
+          - CLI:
+              - Overview: services/mazemap/cli/index.md
+          - MCP:
+              - Overview: services/mazemap/mcp/index.md
+              - Data types: services/mazemap/mcp/types.md
       - DR-NTU:
           - Overview: services/drntu/index.md
-          - CLI: services/drntu/cli/index.md
-          - CLI search and browse: services/drntu/cli/repository.md
-          - CLI oai-pmh: services/drntu/cli/oai.md
-          - MCP overview: services/drntu/mcp/index.md
-          - MCP repository: services/drntu/mcp/repository.md
-          - MCP OAI-PMH: services/drntu/mcp/oai.md
-          - MCP data types: services/drntu/mcp/types.md
+          - CLI:
+              - Overview: services/drntu/cli/index.md
+              - Search and browse: services/drntu/cli/repository.md
+              - OAI-PMH: services/drntu/cli/oai.md
+          - MCP:
+              - Overview: services/drntu/mcp/index.md
+              - Repository: services/drntu/mcp/repository.md
+              - OAI-PMH: services/drntu/mcp/oai.md
+              - Data types: services/drntu/mcp/types.md
       - Library:
           - Overview: services/library/index.md
-          - CLI: services/library/cli/index.md
-          - MCP: services/library/mcp/index.md
-          - MCP data types: services/library/mcp/types.md
+          - CLI:
+              - Overview: services/library/cli/index.md
+          - MCP:
+              - Overview: services/library/mcp/index.md
+              - Data types: services/library/mcp/types.md
       - Faculty:
           - Overview: services/faculty/index.md
-          - CLI: services/faculty/cli/index.md
-          - MCP: services/faculty/mcp/index.md
-          - MCP data types: services/faculty/mcp/types.md
+          - CLI:
+              - Overview: services/faculty/cli/index.md
+          - MCP:
+              - Overview: services/faculty/mcp/index.md
+              - Data types: services/faculty/mcp/types.md
       - News:
           - Overview: services/news/index.md
-          - CLI: services/news/cli/index.md
-          - MCP: services/news/mcp/index.md
-          - MCP data types: services/news/mcp/types.md
+          - CLI:
+              - Overview: services/news/cli/index.md
+          - MCP:
+              - Overview: services/news/mcp/index.md
+              - Data types: services/news/mcp/types.md
       - Campus Services:
           - Overview: services/campus-services/index.md
-          - CLI: services/campus-services/cli/index.md
-          - MCP: services/campus-services/mcp/index.md
-          - MCP data types: services/campus-services/mcp/types.md
+          - CLI:
+              - Overview: services/campus-services/cli/index.md
+          - MCP:
+              - Overview: services/campus-services/mcp/index.md
+              - Data types: services/campus-services/mcp/types.md
       - Omnibus:
           - Overview: services/omnibus/index.md
-          - CLI: services/omnibus/cli/index.md
-          - MCP: services/omnibus/mcp/index.md
-          - MCP data types: services/omnibus/mcp/types.md
+          - CLI:
+              - Overview: services/omnibus/cli/index.md
+          - MCP:
+              - Overview: services/omnibus/mcp/index.md
+              - Data types: services/omnibus/mcp/types.md
       - One Stop:
           - Overview: services/one-stop/index.md
-          - CLI overview: services/one-stop/cli/index.md
-          - CLI catalog: services/one-stop/cli/catalog.md
-          - CLI requests: services/one-stop/cli/requests.md
-          - CLI appointments: services/one-stop/cli/appointments.md
-          - CLI knowledge: services/one-stop/cli/knowledge.md
-          - CLI attachments: services/one-stop/cli/attachments.md
-          - CLI payments and cart: services/one-stop/cli/commerce.md
-          - CLI dashboard and profile: services/one-stop/cli/account.md
-          - MCP overview: services/one-stop/mcp/index.md
-          - MCP catalog and access: services/one-stop/mcp/catalog.md
-          - MCP knowledge: services/one-stop/mcp/knowledge.md
-          - MCP requests and drafts: services/one-stop/mcp/requests.md
-          - MCP dashboard and profile: services/one-stop/mcp/account.md
-          - MCP attachments: services/one-stop/mcp/attachments.md
-          - MCP payments and cart: services/one-stop/mcp/commerce.md
-          - MCP appointments: services/one-stop/mcp/appointments.md
-          - MCP data types: services/one-stop/mcp/types.md
+          - CLI:
+              - Overview: services/one-stop/cli/index.md
+              - Catalog: services/one-stop/cli/catalog.md
+              - Requests: services/one-stop/cli/requests.md
+              - Appointments: services/one-stop/cli/appointments.md
+              - Knowledge: services/one-stop/cli/knowledge.md
+              - Attachments: services/one-stop/cli/attachments.md
+              - Payments and cart: services/one-stop/cli/commerce.md
+              - Dashboard and profile: services/one-stop/cli/account.md
+          - MCP:
+              - Overview: services/one-stop/mcp/index.md
+              - Catalog and access: services/one-stop/mcp/catalog.md
+              - Knowledge: services/one-stop/mcp/knowledge.md
+              - Requests and drafts: services/one-stop/mcp/requests.md
+              - Dashboard and profile: services/one-stop/mcp/account.md
+              - Attachments: services/one-stop/mcp/attachments.md
+              - Payments and cart: services/one-stop/mcp/commerce.md
+              - Appointments: services/one-stop/mcp/appointments.md
+              - Data types: services/one-stop/mcp/types.md
   - Architecture:
       - Overview: architecture/index.md
       - Interfaces and lifecycle: architecture/interfaces.md
