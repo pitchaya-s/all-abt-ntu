@@ -2,468 +2,65 @@
 
 A CLI and MCP server for NTU Singapore schedules, learning materials, campus navigation, research, faculty, library discovery, career opportunities, news, campus services, shuttle arrivals, and student administration.
 
-**Available services**
-
-[STARS](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/stars/README.md) · [NTULearn](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/ntulearn/README.md) · [CareerAxis](src/careeraxis/README.md) · [MazeMap](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/mazemap/README.md) · [DR-NTU](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/drntu/README.md) · [Library](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/library/README.md) · [Faculty](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/faculty/README.md) · [News](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/news/README.md) · [Campus services](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/service/README.md) · [NTU Omnibus](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/omnibus/README.md) · [One Stop @ SAC](src/onestop/README.md).
+**Available services:** [STARS](docs/services/stars/index.md) · [NTULearn](docs/services/ntulearn/index.md) · [CareerAxis](docs/services/careeraxis/index.md) · [MazeMap](docs/services/mazemap/index.md) · [DR-NTU](docs/services/drntu/index.md) · [Library](docs/services/library/index.md) · [Faculty](docs/services/faculty/index.md) · [News](docs/services/news/index.md) · [Campus Services](docs/services/campus-services/index.md) · [Omnibus](docs/services/omnibus/index.md) · [One Stop @ SAC](docs/services/one-stop/index.md).
 
 ## Quickstart
 
-Install [uv](https://docs.astral.sh/uv/) and Python 3.10 or newer. Install the CLI:
+Install [uv](https://docs.astral.sh/uv/) and Python 3.10 or newer.
+
+Install the CLI:
 
 ```sh
 uv tool install 'all-abt-ntu-mcp[cli,personal]@latest'
 ```
 
-Or configure the MCP server:
+Or set up the MCP server and select your client:
 
 ```sh
 uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp setup
 ```
 
-See [CLI](#cli) and [MCP](#mcp) for installation details and usage.
-
-## Credentials
-
-Public services need no credentials. For authenticated services, manage your account **yourself in a local terminal**:
-
-```sh
-ntu auth save
-```
-
-Your password is hidden while typing and stored encrypted locally in your OS keyring. The server never includes it in MCP responses sent to the LLM.
-
-The prompts save one account for STARS, NTULearn, LibFacilities, One Stop and CareerAxis and enable automatic login/session recovery. Run `ntu auth save` again to update it, `ntu auth status` to check storage without revealing credentials, or `ntu auth delete` to remove it. MCP setup can also offer to save credentials when you enable personal tools.
-
-The keyring must be available and unlocked: Secret Service or KWallet on Linux, Keychain on macOS, Credential Manager on Windows. There is no plaintext fallback. Passwords are not accepted through MCP, command arguments, environment variables, `.env`, or client configuration. Remove any credentials left in your old configuration; the server no longer reads them. More details: [shared credential storage](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/shared/README.md#credential-storage).
-
-Some Linux installations do not include a keyring service. Install a provider such as GNOME Keyring or KWallet using your distribution's package manager, then follow your desktop's setup instructions to start and unlock it before running `ntu auth save`.
+For authenticated services, follow the [credentials and Chromium instructions](docs/getting-started.md).
 
 ## CLI
 
-### Installation
-
-To make `ntu` available as a command, run:
-
 ```sh
-uv tool install 'all-abt-ntu-mcp[cli,personal]@latest'
-```
-
-The `cli` extra installs the terminal interface; `personal` adds browser support for authenticated services. Follow the [Chromium instructions](#chromium) if you use them. For public CLI services only, install `all-abt-ntu-mcp[cli]@latest`. The MCP server is a separate extra and is not installed by those commands.
-
-To enable optional NTULearn browser-cookie discovery, install `all-abt-ntu-mcp[cli,personal,browser-cookies]@latest`.
-
-### Examples
-
-Use `ntu --help` to explore all eleven service families. For example:
-
-```sh
-# STARS: search courses, inspect a course, and browse its indexes
+# STARS
 ntu stars courses search "data structures" --year 2026 --semester 1 --limit 10 --offset 0
 ntu stars course ZZ0001 --year 2026 --semester 1
 ntu stars indexes ZZ0001 --year 2026 --semester 1 --limit 10 --offset 0
-ntu stars prerequisites ZZ0001 --year 2026 --semester 1 --prerequisite-depth 2 --dependent-depth 2
 
-# NTULearn: list courses, browse content, and download materials
+# NTULearn
 ntu learn courses --limit 20 --offset 0
 ntu learn content ZZ0001 --limit 20 --offset 0
 ntu learn attachments ZZ0001 "_67890_1" --limit 20 --offset 0
 ntu learn files download ZZ0001 "_67890_1" "_24680_1" --output "./lecture.pdf" --max-bytes 20000000
-ntu learn courses download ZZ0001 --output "./course-materials" --max-files 50 --max-total-mb 200
 ntu learn videos download ZZ0001 "_67890_1" --output "./lecture.mp4" --max-mb 500
-ntu learn announcements ZZ0001 --limit 20 --offset 0
-ntu learn upcoming --since 2026-01-01 --until 2026-12-31
-
-# Other NTU services
-ntu career opportunities search "software engineer" --page 1 --limit 10
-ntu map search "LT1" --limit 10 --offset 0
-ntu research search "machine learning" --entity-type Publication --page 0 --page-size 10
-ntu library search "machine learning" --field title --match contains --limit 10 --offset 0
-ntu faculty search "Tan" --page 1
-ntu news search "artificial intelligence" --sort latest --page 1
-ntu services search "coffee" --location "North Spine" --limit 10 --offset 0
-ntu bus arrivals --route Blue --stop "North Spine" --source shuttle
-ntu onestop catalog search "transcript" --limit 10 --offset 0
 ```
 
-`ZZ0001` is a fictional course. For NTULearn, replace it and the example content and attachment IDs with the IDs returned by the preceding commands; NTULearn uses its own course IDs. Downloads require local confirmation; choose new file paths for individual files and videos. NTULearn, CareerAxis, and One Stop commands require an authenticated account.
+`ZZ0001` and the example IDs are fictional. Replace them with the IDs returned by NTULearn. Downloads require local confirmation.
 
-You can also pass an NTULearn document or lecture launch URL in place of the course and content IDs. The `https://` prefix is optional. Quote the URL so the shell preserves its query string:
-
-```sh
-ntu learn attachments 'https://ntulearn.ntu.edu.sg/ultra/courses/_100_1/document/_200_1?view=content&state=view'
-ntu learn videos download 'https://ntulearn.ntu.edu.sg/ultra/courses/_100_1/document/_200_1?view=content&state=view' --output './lecture.mp4'
-```
-
-For `learn files read` and `learn files download`, the attachment ID is still required: the page URL identifies the content item, not an individual attachment. List attachments first to find it.
-
-Use `-h` for help. Common options also have short forms, including `-r` for refresh, `-l` for limit, `-p` for page, `-j` for JSON, and `-o` for a download destination. See the [complete command reference](src/COMMANDS.md) for all commands and options.
-
-### Manual install
-
-To run the CLI from a local checkout:
-
-```sh
-git clone https://github.com/pitchaya-s/all-abt-ntu.git
-cd all-abt-ntu
-uv sync --no-default-groups --extra cli
-source .venv/bin/activate
-ntu --help
-```
-
-On Windows, use `.venv\Scripts\activate.bat` in Command Prompt or `.venv\Scripts\Activate.ps1` in PowerShell instead. For authenticated services, install the personal dependencies and Chromium, then save your credentials:
-
-```sh
-uv sync --no-default-groups --extra cli --extra personal
-playwright install chromium
-ntu auth save
-```
-
-Playwright versions can require different Chromium builds, so repeat the install command after upgrading. NTULearn can optionally reuse an existing browser session without launching Chromium. While the environment is active, run commands directly, for example `ntu map search LT1`.
+See the [CLI guide](docs/cli/index.md), [command reference](docs/cli/commands.md), and [service references](docs/services/index.md).
 
 ## MCP
 
-### Local setup
+Run `ntu mcp setup` to choose a profile, tools, and client. The hosted MCP server provides public, read-only information; personal tools require a local server.
 
-Run setup in your terminal:
+See [MCP setup](docs/mcp/index.md), the [tool reference](docs/mcp/tools.md), and the [service references](docs/services/index.md).
 
-```sh
-uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp setup
-```
+## Documentation
 
-Choose a profile, select tool families, and choose the MCP clients to configure. Setup can register the server with Codex, Claude Code and OpenCode, or you can skip client configuration. Codex and Claude Code must be installed to use their registration commands. On Linux, Codex is configured with the current D-Bus session address for OS keyring access. OpenCode JSONC configurations need manual setup to preserve comments; see the example below. Setup and tool-management commands require both the `cli` and `mcp` extras; the server itself needs only `mcp`, plus `personal` for authenticated tools.
+Browse the [documentation site](https://pitchaya-s.github.io/all-abt-ntu/) or read the guides in this repository:
 
-To start the public stdio server directly without installing the CLI dependencies:
+- [Getting started](docs/getting-started.md)
+- [CLI guide and commands](docs/cli/index.md)
+- [MCP setup and tools](docs/mcp/index.md)
+- [Service guides](docs/services/index.md)
+- [Development and testing](docs/development.md)
+- [Contributing](docs/contributing.md)
+- [Known issues](docs/known-issues.md)
+- [Limitations and disclaimer](docs/limitations.md)
 
-```sh
-uvx --from 'all-abt-ntu-mcp[mcp]@latest' ntu mcp --profile public
-```
+To preview the documentation locally, run `uvx --from mkdocs==1.6.1 mkdocs serve` from the repository root. See the [documentation build and deployment instructions](docs/development.md#documentation).
 
-### Choose tools
-
-To list or change families and individual tools later, run:
-
-```sh
-uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp tools list
-uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp tools list --all
-uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp tools disable ntulearn
-uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp tools enable ntulearn
-uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp tools disable mazemap_get_directions
-uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp tools enable mazemap_get_directions
-```
-
-Run `setup` again to change your profile or family selection. `tools list` shows families; `--all` shows individual tools. `[~]` means a family is partially enabled. Commands manage tools available in the active profile. Disabling a family also disables tools added to it later. Explicitly enabling a family enables all its tools in the active profile, including actions and downloads; individual tools can then be disabled. Restart the MCP server after changes. Settings do not affect the hosted server.
-
-Without saved settings, the server uses the public profile. See [Configuration file](#configuration-file) for the file format and service settings.
-
-### Profiles
-
-Profiles limit which tools a local server can offer:
-
-- **public:** public information only.
-- **personal:** public and authenticated tools, with action and download tools unchecked until you enable them. Newly added action tools also start unchecked.
-
-Setup saves your choice, so you do not need to pass `--profile` normally. The optional flag overrides the saved profile for a particular invocation; disabled tools remain disabled. Actions and downloads require MCP host confirmation; configure your client to show these requests, since a host may answer automatically.
-
-### Custom MCP for Cloud AI
-
-Use this server only if you trust the author of this repository.
-
-In a cloud AI client that supports custom remote MCP servers:
-
-1. Open the MCP or connector settings and add a server with any name you like.
-2. Enter this server URL:
-   ```text
-    https://all-abt-ntu-mcp.vercel.app/mcp
-   ```
-3. Select **No authentication** and, if asked, **Streamable HTTP** as the transport.
-4. Save and enable the server.
-
-The hosted server provides **public tools only**. No NTU credentials are needed. Personal tools, such as NTULearn and saving STARS plans, require the [local setup](#local-setup).
-
-For self-hosting, start with [Manual install](#manual-install). To connect a private server to ChatGPT or other supported OpenAI products, we recommend [OpenAI's `tunnel-client` (Secure MCP Tunnel)](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels). It supports the local stdio server without exposing a public HTTP endpoint.
-
-With other methods, use HTTPS and authentication and review how your data is handled. **Do not expose personal tools through an unauthenticated public endpoint**: they can access private NTU data and act through your saved account.
-
-### Codex
-
-Add to `~/.codex/config.toml`:
-
-```toml
-[mcp_servers.all-abt-ntu-mcp]
-command = "uvx"
-args = ["--from", "all-abt-ntu-mcp[mcp,personal]@latest", "ntu", "mcp"]
-startup_timeout_sec = 120
-tool_timeout_sec = 240
-```
-
-On Linux, depending on your distribution and Secret Service or KWallet setup, you may need to add this optional line to the same MCP server block for keyring access:
-
-```toml
-env_vars = ["DBUS_SESSION_BUS_ADDRESS", "XDG_RUNTIME_DIR"]
-```
-
-These variables forward the current desktop session; they contain no NTU credentials. Start Codex from a terminal where `ntu auth status` succeeds. Restart Codex and check `codex mcp list`. Personal tools use your locally saved keyring account.
-
-### Claude Code
-
-Register for your user:
-
-```sh
-claude mcp add --scope user all-abt-ntu-mcp \
-  -- uvx --from 'all-abt-ntu-mcp[mcp,personal]@latest' ntu mcp
-claude mcp list
-```
-
-Personal tools use your locally saved keyring account. Check `claude mcp list` or `/mcp` inside Claude Code. See [Claude Code's MCP guide](https://code.claude.com/docs/en/mcp) for details.
-
-### OpenCode
-
-Add to `~/.config/opencode/opencode.json`:
-
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "mcp": {
-    "all-abt-ntu-mcp": {
-      "type": "local",
-      "command": ["uvx", "--from", "all-abt-ntu-mcp[mcp,personal]@latest", "ntu", "mcp"],
-      "enabled": true,
-      "timeout": 240000
-    }
-  }
-}
-```
-
-Personal tools use your locally saved keyring account. Check `opencode mcp list`. See [OpenCode's MCP guide](https://docs.opencode.ai/docs/mcp-servers/) for details.
-
-### Manual install
-
-Clone the repository and run the server from a local checkout:
-
-```sh
-git clone --branch main https://github.com/pitchaya-s/all-abt-ntu.git
-cd all-abt-ntu
-uv sync --no-default-groups --extra mcp
-uv run --no-sync ntu mcp
-```
-
-For setup and personal tools, run `uv sync --no-default-groups --extra cli --extra mcp --extra personal`, then `uv run --no-sync ntu mcp setup` to choose your tools. See [Credentials](#credentials) to manage your account.
-
-The process uses MCP stdio, so it stays open while its MCP client is connected. Course responses are cached in memory for one hour by default; vacancy snapshots are cached for at most 60 seconds. Set `NTU_CACHE_TTL_SECONDS` to change the cache time or use `0` to disable caching.
-
-### Chromium
-
-Authenticated CLI services that use a browser and the MCP personal profile need Playwright and its matching Chromium build. If you use the PyPI package, install Chromium from the same package environment:
-
-```sh
-uvx --from 'all-abt-ntu-mcp[personal]@latest' playwright install chromium
-```
-
-For a repository checkout, include `--extra personal` in the appropriate `uv sync` command above, then run `uv run --no-sync playwright install chromium`. Playwright versions can require different Chromium builds, so repeat the matching command after upgrading. NTULearn can optionally reuse an existing browser session without launching Chromium, although the shared personal profiles still require Chromium for their other tools.
-
-### Run an HTTP server on localhost
-
-To connect an MCP client using Streamable HTTP, start the public server from the repository root:
-
-```sh
-uv run uvicorn api.index:app --host 127.0.0.1 --port 8000
-```
-
-Configure the client with `http://127.0.0.1:8000/mcp` and select **Streamable HTTP**. The server listens only on this computer. This HTTP endpoint provides public tools; personal tools require the local stdio command above.
-
-### Configuration file
-
-MCP settings are stored in `$XDG_CONFIG_HOME/all-abt-ntu/tools.json` (normally `~/.config/all-abt-ntu/tools.json`), or `%APPDATA%\all-abt-ntu\tools.json` on Windows. MCP setup and the configuration commands update this file. Direct service commands do not read it. For example:
-
-```json
-{
-  "profile": "personal",
-  "tools": {
-    "enabled": ["stars_save_stars_plan"],
-    "disabled": ["mazemap_get_directions"],
-    "families": {
-      "enabled": ["stars", "mazemap"],
-      "disabled": ["news"]
-    }
-  },
-  "env": {
-    "stars": {"cache_ttl_seconds": 3600},
-    "ntulearn": {"headless": false},
-    "onestop": {"upload_dir": "/home/me/ntu-uploads"}
-  }
-}
-```
-
-Family settings apply to tools added later. An individually enabled tool can be used within a disabled family; an individually disabled tool stays off within an enabled family. Personal actions and downloads remain disabled unless explicitly enabled. `tools enable` and `tools disable` accept families or individual names and update the file.
-
-All sections are optional; omitted values use their defaults. You can edit the file or use the CLI:
-
-```sh
-uv run ntu config set ntulearn.headless false
-uv run ntu config set stars.cache_ttl_seconds 600
-uv run ntu config list
-uv run ntu config unset ntulearn.headless
-```
-
-For a PyPI install, use the same `uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest'` prefix as in [local setup](#local-setup) instead of `uv run`. The supported settings under `env` are:
-
-
-| Group         | Settings                                                                                                                 |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `stars`       | `cache_ttl_seconds`, `personal_cache_ttl_seconds`                                                                        |
-| `ntulearn`    | `cache_ttl_seconds`, `headless`, `browser_cookies`, `request_concurrency`, `request_interval_seconds`, `timeout_seconds` |
-| `careeraxis`  | `cache_ttl_seconds`, `headless`                                                                                          |
-| `onestop`     | `upload_dir`                                                                                                             |
-| `public_http` | `concurrency`, `interval_seconds`, `timeout_seconds`, `max_retry_delay_seconds`                                          |
-| `browser`     | `browsers_path` for Playwright                                                                                           |
-
-
-Use JSON booleans for switches, numbers for durations and limits, and strings for paths. Other environment variables can be stored under `env.other`, for example with `config set other.CUSTOM_SETTING value`. Configuration-location variables such as `XDG_CONFIG_HOME` must be set outside the file. Process environment variables take precedence over saved settings. Restart the server after changing settings. This file is plain text; use the keyring for credentials.
-
-## Source layout
-
-```text
-src/
-├── cli/                    CLI commands, dispatch, and rendering
-├── application.py          Lazy service resources and cleanup
-├── server.py               Local public/personal stdio server
-├── public_server.py        Public tool registry
-├── public_http_server.py   Hosted ASGI app and transport security
-├── public_http_client.py   Pooled public HTTP client
-├── shared/                 Operation catalog, MCP adapter, credentials, and shared helpers
-├── stars/
-│   ├── tools/               Academic, personal, and teaching-room tool groups
-│   ├── schemas/             Course and room tool schemas
-│   ├── domain/             Course models, timetable matching and room searches
-│   ├── client/             Public NTU requests and caching
-│   ├── parser/             Schedule and personal-page parsing
-│   └── wish/               WISH login and saved-plan editing
-├── ntulearn/
-│   ├── mcp.py       Shared NTULearn operations and input schemas
-│   ├── models/             Typed responses grouped by domain
-│   ├── client/             Login, sessions, and REST requests
-│   ├── parser/             Response and document parsing
-│   └── services/           Content, files, mailbox, people, and activity
-├── careeraxis/
-│   ├── mcp.py       Authenticated CareerAxis operations
-│   ├── client.py            Section searches and record detail requests
-│   ├── browser/             ADFS login, browser session, and page snapshots
-│   ├── parser.py            Rendered section and record normalization
-│   └── models.py            Search, detail, and auth status responses
-├── mazemap/
-│   ├── mcp.py       Public map operations and input schemas
-│   ├── models.py           Typed place and direction responses
-│   ├── client.py           HTTP requests, pacing, and caching
-│   └── parser.py           Place and route normalization
-├── drntu/
-│   ├── mcp.py       Public repository operations and schemas
-│   ├── models.py           Shared metadata, snapshots, and errors
-│   ├── rest/               DSpace search, files, and Dataverse datasets
-│   └── oai/                OAI-PMH client, parser, models, and service
-├── library/
-│   ├── mcp.py       Public library operations and schemas
-│   ├── personal_tools.py    Local authenticated facility tool
-│   ├── models.py           Catalogue, access and facility responses
-│   ├── client.py           OneSearch requests and pagination
-│   ├── facilities/         Directory, map availability, browser, and schedules
-│   └── parser.py           Primo record normalization
-├── faculty/
-│   ├── mcp.py       Public faculty operations and input schemas
-│   ├── models.py           Typed profile and research-interest responses
-│   ├── client.py           Directory requests, filters, and pagination
-│   └── parser.py           Profile cards and interest form parsing
-├── news/
-│   ├── mcp.py       Public news operations and input schemas
-│   ├── models.py           Typed story, category, and article responses
-│   ├── client.py           News search and bounded article retrieval
-│   └── parser.py           Story cards and article body extraction
-├── service/
-│   ├── mcp.py       Public campus service operations and input schemas
-│   ├── models.py           Typed location and filter responses
-│   ├── client.py           Complete directory collection and local search
-│   └── parser.py           Contact, hours, and map normalization
-├── omnibus/                Public shuttle and LTA stops, positions, arrivals and schedules
-└── onestop/                Local ServiceNow reads and native workflows
-    ├── services/           Catalog, form, ticket, cart, knowledge, and portal workflows
-    └── attachments/        Verified attachment actions and safe local-file handling
-tests/
-├── cli/                    CLI commands, setup, and authentication
-├── mcp/                    MCP profiles, confirmation, and SDK interoperability
-├── shared/                 Credentials, caching, HTTP, and application lifecycle
-├── hosted/                 Public HTTP protocol, isolation, and deployment checks
-├── careeraxis/             CareerAxis tests and synthetic fixtures
-├── drntu/                  DR-NTU tests and synthetic fixtures
-├── faculty/                Faculty directory tests and synthetic fixtures
-├── library/                OneSearch and LibFacilities tests and fixtures
-├── mazemap/                MazeMap tests and synthetic fixtures
-├── news/                   News search and article tests with synthetic fixtures
-├── ntulearn/               NTULearn tests and synthetic fixtures
-├── omnibus/                Shuttle tests and synthetic fixtures
-├── onestop/                One Stop workflows and upload safety
-├── service/                Campus directory tests and synthetic fixtures
-└── stars/                  STARS tests and fictionalized fixtures
-```
-
-## Service reference
-
-- **Interfaces**
-  - [CLI commands](src/COMMANDS.md)
-  - [MCP tools](src/TOOLS.md)
-- **Services**
-  - [STARS](src/stars/README.md)
-  - [NTULearn](src/ntulearn/README.md)
-  - [CareerAxis](src/careeraxis/README.md)
-  - [MazeMap](src/mazemap/README.md)
-  - [DR-NTU](src/drntu/README.md)
-  - [Library](src/library/README.md)
-  - [Faculty](src/faculty/README.md)
-  - [News](src/news/README.md)
-  - [Campus Services](src/service/README.md)
-  - [NTU Omnibus](src/omnibus/README.md)
-  - [One Stop @ SAC](src/onestop/README.md)
-
-Each service guide includes command details, examples, and limitations.
-
-## Tests
-
-Personal-data, map, repository, library, faculty, news, and service fixtures are synthetic. Timetable fixtures use fictional course labels and indexes while retaining the HTML structures needed for parser tests. Opt-in live tests print counts and statuses; they do not save academic records or learning materials in the repository.
-
-The offline tests cover keyring storage and failure handling, local credential prompts, session recovery, parsing, scheduling, lossless compaction, output-schema validation, tool calls/errors, and resource discovery. Protocol tests use Python SDK clients and an independent JSON-RPC client over stdio, including protocol versions `2025-06-18` and `2025-11-25`:
-
-```sh
-uv run python -m unittest discover -s tests -t . -v
-```
-
-An optional check uses the official TypeScript SDK. Node dependencies stay in a temporary directory:
-
-```sh
-NTU_MCP_TEST_SDK="$(mktemp -d)"
-npm install --prefix "$NTU_MCP_TEST_SDK" --ignore-scripts --no-audit --no-fund @modelcontextprotocol/sdk@1.32.1
-uv run node tests/mcp/typescript_smoke.mjs "$NTU_MCP_TEST_SDK"
-```
-
-These interoperability checks use offline fixtures and never edit saved plans.
-
-Hosted HTTP checks cover public-only registration, rejected personal calls, output schemas, both modern and legacy Python SDK clients, Host/Origin validation, request-size limits, and independent serverless event loops. See the [HTTP test instructions](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/shared/README.md#http-tests) for the TypeScript client and opt-in live smoke.
-
-Live checks and service-specific testing instructions: [STARS](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/stars/README.md#tests) · [NTULearn](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/ntulearn/README.md#tests) · [CareerAxis](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/careeraxis/README.md#validation) · [MazeMap](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/mazemap/README.md#tests) · [DR-NTU](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/drntu/README.md#tests) · [Library](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/library/README.md#tests) · [Faculty](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/faculty/README.md#tests) · [News](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/news/README.md#tests) · [Campus services](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/service/README.md#tests) · [NTU Omnibus](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/omnibus/README.md#checks) · [One Stop @ SAC](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/onestop/README.md#coverage-runtime-and-checks).
-
-## Limitation
-
-- Access depends on service availability and NTU permissions.
-- Timetables are published schedules; vacancies are snapshots.
-- NTULearn may restrict content, and large collections can return partial results. Inline document reading extracts text without OCR.
-- MazeMap directions are estimates. Map data does not establish room availability or current physical access.
-- NTU Omnibus positions and arrivals are live snapshots that can be empty or stale; route path geometry is outside the tool outputs.
-- DR-NTU file metadata does not establish download permission. The dataset service may interrupt requests with CAPTCHA.
-- Room searches cover published undergraduate teaching only, excluding occupancy, graduate classes, exams, other bookings, and access permissions. Unplaced lesson venues remain outside room-specific coverage.
-- Library records and access labels do not establish subscription entitlement, anonymous full-text access, or a loanable copy.
-- Facility booking statuses do not establish occupancy. MFA stops library login; no borrowing or facility bookings are submitted.
-
-## Disclaimer
-
-This is an independent project and is not affiliated with, sponsored by, or endorsed by Nanyang Technological University (NTU), Singapore.
-
-Your NTU credentials are retrieved locally from your OS keyring and submitted over HTTPS to NTU or its Microsoft sign-in service. They are never returned through MCP. Academic data returned by tools is visible to the AI client. Keyring storage protects credentials at rest; it does not isolate them from other programs or agents allowed to access your unlocked keyring or the server process.
-
-Use this software only to access accounts and materials you are authorized to access. Do not download, copy, store, or redistribute course recordings, lecture files, library resources, research data, or other restricted or copyrighted material unless you have permission. Follow NTU policies, copyright and license notices, source-service terms, and applicable law. Do not bypass authentication, CAPTCHA, DRM, paywalls, or other access restrictions. **You are responsible for ensuring your access, downloads, retention, and reuse are authorized.**
+This independent project is not affiliated with or endorsed by Nanyang Technological University. Use it only for accounts and materials you are authorized to access.

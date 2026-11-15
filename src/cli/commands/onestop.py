@@ -736,7 +736,7 @@ def cmd_cart_quantity(
     quantity: int,
     json_output: bool = typer.Option(False, "--json", "-j"),
 ):
-    """Change your native cart: set a permitted quantity, remove/clear items, append a saved cart, replace with a saved cart, or delete a saved cart."""
+    """Set the quantity of an item in your active cart."""
     with application_scope() as application:
         return invoke(
             application.onestop_cart.update,
@@ -751,7 +751,7 @@ def cmd_cart_remove(
     item_id: str,
     json_output: bool = typer.Option(False, "--json", "-j"),
 ):
-    """Change your native cart: set a permitted quantity, remove/clear items, append a saved cart, replace with a saved cart, or delete a saved cart."""
+    """Remove an item from your active cart."""
     with application_scope() as application:
         return invoke(
             application.onestop_cart.update,
@@ -763,7 +763,7 @@ def cmd_cart_remove(
 
 @g_cart.command("clear")
 def cmd_cart_clear(json_output: bool = typer.Option(False, "--json", "-j")):
-    """Change your native cart: set a permitted quantity, remove/clear items, append a saved cart, replace with a saved cart, or delete a saved cart."""
+    """Remove all items from your active cart."""
     with application_scope() as application:
         return invoke(
             application.onestop_cart.update,
@@ -778,7 +778,7 @@ def cmd_cart_saved_load(
     saved_cart_id: str,
     json_output: bool = typer.Option(False, "--json", "-j"),
 ):
-    """Change your native cart: set a permitted quantity, remove/clear items, append a saved cart, replace with a saved cart, or delete a saved cart."""
+    """Append items from a saved cart to your active cart."""
     with application_scope() as application:
         return invoke(
             application.onestop_cart.update,
@@ -793,7 +793,7 @@ def cmd_cart_saved_replace(
     saved_cart_id: str,
     json_output: bool = typer.Option(False, "--json", "-j"),
 ):
-    """Change your native cart: set a permitted quantity, remove/clear items, append a saved cart, replace with a saved cart, or delete a saved cart."""
+    """Replace your active cart with items from a saved cart."""
     with application_scope() as application:
         return invoke(
             application.onestop_cart.update,
@@ -808,7 +808,7 @@ def cmd_cart_saved_delete(
     saved_cart_id: str,
     json_output: bool = typer.Option(False, "--json", "-j"),
 ):
-    """Change your native cart: set a permitted quantity, remove/clear items, append a saved cart, replace with a saved cart, or delete a saved cart."""
+    """Delete a saved cart."""
     with application_scope() as application:
         return invoke(
             application.onestop_cart.update,
@@ -842,7 +842,7 @@ def cmd_favourites_pin(
     favourite_id: str,
     json_output: bool = typer.Option(False, "--json", "-j"),
 ):
-    """Pin/unpin/remove one own saved favourite or clear all favourites."""
+    """Pin a saved favourite to the homepage."""
     with application_scope() as application:
         return invoke(
             application.onestop_favourites.update,
@@ -857,7 +857,7 @@ def cmd_favourites_unpin(
     favourite_id: str,
     json_output: bool = typer.Option(False, "--json", "-j"),
 ):
-    """Pin/unpin/remove one own saved favourite or clear all favourites."""
+    """Unpin a favourite from the homepage."""
     with application_scope() as application:
         return invoke(
             application.onestop_favourites.update,
@@ -872,7 +872,7 @@ def cmd_favourites_remove(
     favourite_id: str,
     json_output: bool = typer.Option(False, "--json", "-j"),
 ):
-    """Pin/unpin/remove one own saved favourite or clear all favourites."""
+    """Remove a saved favourite."""
     with application_scope() as application:
         return invoke(
             application.onestop_favourites.update,
@@ -884,7 +884,7 @@ def cmd_favourites_remove(
 
 @g_favourites.command("clear")
 def cmd_favourites_clear(json_output: bool = typer.Option(False, "--json", "-j")):
-    """Pin/unpin/remove one own saved favourite or clear all favourites."""
+    """Remove eligible saved favourites."""
     with application_scope() as application:
         return invoke(
             application.onestop_favourites.update,

@@ -21,7 +21,7 @@ class ClientSetupTests(unittest.TestCase):
         environment.start()
         self.addCleanup(environment.stop)
 
-    def test_codex_linux_receives_dbus(self):
+    def test_codex_linux_forwards_dbus_dynamically(self):
         missing = SimpleNamespace(returncode=1, stdout="", stderr="not found")
         success = SimpleNamespace(returncode=0, stdout="", stderr="")
         with (
@@ -32,11 +32,13 @@ class ClientSetupTests(unittest.TestCase):
             patch(
                 "cli.tools.clients.subprocess.run", side_effect=[missing, success]
             ) as run,
+            patch("cli.tools.clients.configure_codex_forwarding") as forwarding,
         ):
             clients.register_command("codex")
         command = run.call_args.args[0]
-        self.assertIn("DBUS_SESSION_BUS_ADDRESS=unix:path=/example/bus", command)
+        self.assertNotIn("--env", command)
         self.assertEqual(command[-5:], clients.COMMAND)
+        forwarding.assert_called_once_with()
 
     def test_claude_does_not_receive_dbus(self):
         missing = SimpleNamespace(returncode=1, stdout="", stderr="not found")
@@ -49,22 +51,48 @@ class ClientSetupTests(unittest.TestCase):
         self.assertIn("--scope", command)
         self.assertNotIn("--env", command)
 
-    def test_codex_uses_runtime_bus_when_address_is_unset(self):
-        missing = SimpleNamespace(returncode=1, stdout="", stderr="not found")
-        success = SimpleNamespace(returncode=0, stdout="", stderr="")
-        with (
-            patch("cli.tools.clients.sys.platform", "linux"),
-            patch.dict(os.environ, {"XDG_RUNTIME_DIR": "/run/user/123"}),
-            patch(
-                "cli.tools.clients.subprocess.run", side_effect=[missing, success]
-            ) as run,
-        ):
-            os.environ.pop("DBUS_SESSION_BUS_ADDRESS", None)
-            clients.register_command("codex")
-        self.assertIn(
-            "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/123/bus",
-            run.call_args.args[0],
+    def test_codex_forwarding_preserves_config_and_does_not_freeze_bus_address(self):
+        import tomlkit
+
+        path = Path(self.directory.name) / "config.toml"
+        path.write_text(
+            '# keep this comment\nmodel = "example"\n'
+            '[mcp_servers.all-abt-ntu-mcp]\ncommand = "uvx"\n'
+            'env_vars = ["EXISTING"]\n',
+            encoding="utf-8",
         )
+        with (
+            patch.dict(
+                os.environ,
+                {
+                    "CODEX_HOME": self.directory.name,
+                    "DBUS_SESSION_BUS_ADDRESS": "unix:path=/example/session-a",
+                },
+            ),
+        ):
+            clients.configure_codex_forwarding()
+        written = path.read_text(encoding="utf-8")
+        config = tomlkit.parse(written)
+        server = config["mcp_servers"][clients.NAME]
+        self.assertIn("# keep this comment", written)
+        self.assertEqual(config["model"], "example")
+        self.assertNotIn("/example/session-a", written)
+        self.assertEqual(
+            list(server["env_vars"]),
+            ["EXISTING", "DBUS_SESSION_BUS_ADDRESS", "XDG_RUNTIME_DIR"],
+        )
+        self.assertEqual(server["startup_timeout_sec"], 120)
+        self.assertEqual(server["tool_timeout_sec"], 240)
+
+    def test_codex_forwarding_rejects_invalid_config_without_overwriting(self):
+        path = Path(self.directory.name) / "config.toml"
+        path.write_text("invalid = [", encoding="utf-8")
+        with (
+            patch.dict(os.environ, {"CODEX_HOME": self.directory.name}),
+            self.assertRaises(ConfigError),
+        ):
+            clients.configure_codex_forwarding()
+        self.assertEqual(path.read_text(encoding="utf-8"), "invalid = [")
 
     def test_existing_codex_requires_confirmation(self):
         existing = SimpleNamespace(returncode=0, stdout="", stderr="")
@@ -90,17 +118,78 @@ class ClientSetupTests(unittest.TestCase):
         self.assertEqual(data["mcp"][clients.NAME]["command"], clients.COMMAND)
         clients.register_opencode()
 
-    def test_opencode_jsonc_and_invalid_config_are_not_overwritten(self):
+    def test_opencode_jsonc_preserves_comments_and_other_servers(self):
+        directory = Path(self.directory.name) / "opencode"
+        directory.mkdir()
+        jsonc = directory / "opencode.jsonc"
+        jsonc.write_text("""{
+  // model comment
+  "model": "https://example.test/model",
+  "mcp": {
+    "other": {"type": "local"}, // server comment
+  },
+}
+""")
+        clients.register_opencode()
+        from json5.loader import loads
+
+        content = jsonc.read_text()
+        self.assertIn("// model comment", content)
+        self.assertIn("// server comment", content)
+        data = loads(content)
+        self.assertEqual(data["model"], "https://example.test/model")
+        self.assertIn("other", data["mcp"])
+        self.assertEqual(data["mcp"][clients.NAME]["command"], clients.COMMAND)
+        clients.register_opencode()
+        self.assertEqual(jsonc.read_text(), content)
+
+    def test_opencode_jsonc_replace_requires_confirmation(self):
+        directory = Path(self.directory.name) / "opencode"
+        directory.mkdir()
+        path = directory / "opencode.jsonc"
+        original = '{ /* keep */ "mcp": {"all-abt-ntu-mcp": {"type":"local"}} }'
+        path.write_text(original)
+        dialog = Mock()
+        dialog.return_value.unsafe_ask.return_value = False
+        with patch("questionary.confirm", dialog):
+            clients.register_opencode()
+        self.assertEqual(path.read_text(), original)
+        dialog.return_value.unsafe_ask.return_value = True
+        with patch("questionary.confirm", dialog):
+            clients.register_opencode()
+        self.assertIn("/* keep */", path.read_text())
+        from json5.loader import loads
+
+        self.assertEqual(
+            loads(path.read_text())["mcp"][clients.NAME]["command"], clients.COMMAND
+        )
+
+    def test_opencode_jsonc_without_mcp_preserves_comments(self):
+        directory = Path(self.directory.name) / "opencode"
+        directory.mkdir()
+        path = directory / "opencode.jsonc"
+        path.write_text('{ // keep\n model: "example",\n}')
+        clients.register_opencode()
+        from json5.loader import loads
+
+        content = path.read_text()
+        self.assertIn("// keep", content)
+        self.assertEqual(
+            loads(content)["mcp"][clients.NAME]["command"], clients.COMMAND
+        )
+
+    def test_opencode_invalid_and_conflicting_configs_are_not_overwritten(self):
         directory = Path(self.directory.name) / "opencode"
         directory.mkdir()
         jsonc = directory / "opencode.jsonc"
         jsonc.write_text('{ /* keep */ "mcp": {} }')
+        path = directory / "opencode.json"
+        path.write_text("{broken")
         with self.assertRaises(ConfigError):
             clients.register_opencode()
         self.assertIn("/* keep */", jsonc.read_text())
+        self.assertEqual(path.read_text(), "{broken")
         jsonc.unlink()
-        path = directory / "opencode.json"
-        path.write_text("{broken")
         with self.assertRaises(ConfigError):
             clients.register_opencode()
         self.assertEqual(path.read_text(), "{broken")

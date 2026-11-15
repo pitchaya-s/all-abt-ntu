@@ -1,0 +1,132 @@
+site_name: All About NTU
+site_description: CLI and MCP documentation for NTU services
+site_url: https://pitchaya-s.github.io/all-abt-ntu/
+repo_url: https://github.com/pitchaya-s/all-abt-ntu
+repo_name: pitchaya-s/all-abt-ntu
+theme:
+  name: mkdocs
+markdown_extensions:
+  - tables
+  - fenced_code
+  - attr_list
+extra_css:
+  - stylesheets/reference.css
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - CLI:
+      - Guide: cli/index.md
+      - Command reference: cli/commands.md
+      - MCP management: cli/mcp.md
+      - Authentication: cli/auth.md
+      - Configuration: cli/config.md
+  - MCP:
+      - Setup and clients: mcp/index.md
+      - Configuration: mcp/configuration.md
+      - Hosted server: mcp/hosting.md
+      - Tool reference: mcp/tools.md
+  - Services:
+      - Overview: services/index.md
+      - STARS:
+          - Overview: services/stars/index.md
+          - CLI: services/stars/cli/index.md
+          - CLI courses, prerequisites and exams: services/stars/cli/courses.md
+          - CLI indexes and timetables: services/stars/cli/indexes.md
+          - CLI rooms: services/stars/cli/rooms.md
+          - CLI personal planner and audit: services/stars/cli/personal.md
+          - MCP overview: services/stars/mcp/index.md
+          - MCP courses and exams: services/stars/mcp/courses.md
+          - MCP indexes: services/stars/mcp/indexes.md
+          - MCP rooms: services/stars/mcp/rooms.md
+          - MCP personal tools: services/stars/mcp/personal.md
+          - MCP data types: services/stars/mcp/types.md
+      - NTULearn:
+          - Overview: services/ntulearn/index.md
+          - CLI: services/ntulearn/cli/index.md
+          - CLI courses, folders and search: services/ntulearn/cli/courses.md
+          - CLI attachments and downloads: services/ntulearn/cli/files.md
+          - CLI announcements, calendar and grades: services/ntulearn/cli/activity.md
+          - CLI messages, participants and groups: services/ntulearn/cli/people.md
+          - MCP overview: services/ntulearn/mcp/index.md
+          - MCP courses and search: services/ntulearn/mcp/courses.md
+          - MCP attachments and downloads: services/ntulearn/mcp/files.md
+          - MCP announcements and grades: services/ntulearn/mcp/activity.md
+          - MCP messages and people: services/ntulearn/mcp/people.md
+          - MCP data types: services/ntulearn/mcp/types.md
+      - CareerAxis:
+          - Overview: services/careeraxis/index.md
+          - CLI: services/careeraxis/cli/index.md
+          - MCP: services/careeraxis/mcp/index.md
+          - MCP data types: services/careeraxis/mcp/types.md
+      - MazeMap:
+          - Overview: services/mazemap/index.md
+          - CLI: services/mazemap/cli/index.md
+          - MCP: services/mazemap/mcp/index.md
+          - MCP data types: services/mazemap/mcp/types.md
+      - DR-NTU:
+          - Overview: services/drntu/index.md
+          - CLI: services/drntu/cli/index.md
+          - CLI search and browse: services/drntu/cli/repository.md
+          - CLI oai-pmh: services/drntu/cli/oai.md
+          - MCP overview: services/drntu/mcp/index.md
+          - MCP repository: services/drntu/mcp/repository.md
+          - MCP OAI-PMH: services/drntu/mcp/oai.md
+          - MCP data types: services/drntu/mcp/types.md
+      - Library:
+          - Overview: services/library/index.md
+          - CLI: services/library/cli/index.md
+          - MCP: services/library/mcp/index.md
+          - MCP data types: services/library/mcp/types.md
+      - Faculty:
+          - Overview: services/faculty/index.md
+          - CLI: services/faculty/cli/index.md
+          - MCP: services/faculty/mcp/index.md
+          - MCP data types: services/faculty/mcp/types.md
+      - News:
+          - Overview: services/news/index.md
+          - CLI: services/news/cli/index.md
+          - MCP: services/news/mcp/index.md
+          - MCP data types: services/news/mcp/types.md
+      - Campus Services:
+          - Overview: services/campus-services/index.md
+          - CLI: services/campus-services/cli/index.md
+          - MCP: services/campus-services/mcp/index.md
+          - MCP data types: services/campus-services/mcp/types.md
+      - Omnibus:
+          - Overview: services/omnibus/index.md
+          - CLI: services/omnibus/cli/index.md
+          - MCP: services/omnibus/mcp/index.md
+          - MCP data types: services/omnibus/mcp/types.md
+      - One Stop:
+          - Overview: services/one-stop/index.md
+          - CLI overview: services/one-stop/cli/index.md
+          - CLI catalog: services/one-stop/cli/catalog.md
+          - CLI requests: services/one-stop/cli/requests.md
+          - CLI appointments: services/one-stop/cli/appointments.md
+          - CLI knowledge: services/one-stop/cli/knowledge.md
+          - CLI attachments: services/one-stop/cli/attachments.md
+          - CLI payments and cart: services/one-stop/cli/commerce.md
+          - CLI dashboard and profile: services/one-stop/cli/account.md
+          - MCP overview: services/one-stop/mcp/index.md
+          - MCP catalog and access: services/one-stop/mcp/catalog.md
+          - MCP knowledge: services/one-stop/mcp/knowledge.md
+          - MCP requests and drafts: services/one-stop/mcp/requests.md
+          - MCP dashboard and profile: services/one-stop/mcp/account.md
+          - MCP attachments: services/one-stop/mcp/attachments.md
+          - MCP payments and cart: services/one-stop/mcp/commerce.md
+          - MCP appointments: services/one-stop/mcp/appointments.md
+          - MCP data types: services/one-stop/mcp/types.md
+  - Architecture:
+      - Overview: architecture/index.md
+      - Interfaces and lifecycle: architecture/interfaces.md
+      - Security boundaries: architecture/security.md
+      - Credentials and keyring: architecture/credentials.md
+      - Public HTTP reads: architecture/public-http.md
+  - Development: development.md
+  - Testing: testing.md
+  - Contributing: contributing.md
+  - Known issues: known-issues.md
+  - Limitations: limitations.md
+validation:
+  links:
+    anchors: warn
