@@ -71,6 +71,15 @@ ntu onestop catalog search "transcript" --limit 10 --offset 0
 
 `ZZ0001` is a fictional course. For NTULearn, replace it and the example content and attachment IDs with the IDs returned by the preceding commands; NTULearn uses its own course IDs. Downloads require local confirmation; choose new file paths for individual files and videos. NTULearn, CareerAxis, and One Stop commands require an authenticated account.
 
+You can also pass an NTULearn document or lecture launch URL in place of the course and content IDs. The `https://` prefix is optional. Quote the URL so the shell preserves its query string:
+
+```sh
+ntu learn attachments 'https://ntulearn.ntu.edu.sg/ultra/courses/_100_1/document/_200_1?view=content&state=view'
+ntu learn videos download 'https://ntulearn.ntu.edu.sg/ultra/courses/_100_1/document/_200_1?view=content&state=view' --output './lecture.mp4'
+```
+
+For `learn files read` and `learn files download`, the attachment ID is still required: the page URL identifies the content item, not an individual attachment. List attachments first to find it.
+
 Use `-h` for help. Common options also have short forms, including `-r` for refresh, `-l` for limit, `-p` for page, `-j` for JSON, and `-o` for a download destination. The CLI shares OS keyring credentials with MCP. MCP profiles and tool settings apply only to the MCP server; direct commands use service defaults and environment variables. Use `ntu onestop requests apply ITEM_ID`, `ntu onestop appointments book ITEM_ID`, and `ntu onestop cart checkout` for interactive workflows. See the [complete command reference](src/COMMANDS.md) for all commands and options.
 
 ### Manual install

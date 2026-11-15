@@ -4,6 +4,8 @@ Run `ntu --help` or append `--help` to any command for current details and shell
 
 Some resource groups also run their `list` or `show` command when the subcommand is omitted (for example, `ntu learn courses` and `ntu onestop appointments`).
 
+NTULearn attachment, file, and video commands also accept a quoted NTULearn document or lecture launch URL instead of the course and content IDs. File commands still require an attachment ID. A content URL can also be used with `learn content --parent`.
+
 Common short options are `-h` for help, `-j` for JSON, `-r` for refresh, `-l` for limit, `-p` for page, `-y` for academic year, `-s` for semester, and `-o` for a download destination, wherever the corresponding long option is supported.
 
 One Stop request applications, appointment bookings and cart checkout run as standalone interactive workflows. Their temporary state remains in the process. Attachments must be selected from the configured upload directory.
@@ -57,7 +59,7 @@ One Stop request applications, appointment bookings and cart checkout run as sta
 
 | Command | Arguments and options | Purpose |
 | --- | --- | --- |
-| `ntu learn attachments` | `COURSE_ID (required)`, `CONTENT_ID (required)`, `--limit/-l VALUE (default: 50)`, `--offset VALUE`, `--refresh/-r`, `--json/-j` | List files attached to a course content item. |
+| `ntu learn attachments` | `COURSE_ID CONTENT_ID` or `URL`, `--limit/-l VALUE (default: 50)`, `--offset VALUE`, `--refresh/-r`, `--json/-j` | List files attached to a course content item. |
 | `ntu learn announcements` | `COURSE_ID (required)`, `--limit/-l VALUE (default: 50)`, `--offset VALUE`, `--refresh/-r`, `--json/-j` | Read published announcements for one enrolled course. |
 | `ntu learn grades` | `COURSE_ID (required)`, `--limit/-l VALUE (default: 50)`, `--offset VALUE`, `--grades-offset VALUE`, `--refresh/-r`, `--json/-j` | Read visible gradebook columns and your own scores/status. |
 | `ntu learn calendar` | `--since VALUE`, `--until VALUE`, `--course VALUE`, `--limit/-l VALUE (default: 50)`, `--offset VALUE`, `--refresh/-r`, `--json/-j` | Read calendar entries and published deadlines, across your courses or for one course. |
@@ -69,15 +71,15 @@ One Stop request applications, appointment bookings and cart checkout run as sta
 | `ntu learn content show` | `COURSE_ID (required)`, `--parent VALUE`, `--limit/-l VALUE (default: 50)`, `--offset VALUE`, `--refresh/-r`, `--json/-j` | Read one level of course content. |
 | `ntu learn courses download` | `COURSE_ID (required)`, `--output/-o VALUE (required)`, `--max-depth VALUE (default: 5)`, `--max-nodes VALUE (default: 1000)`, `--max-files VALUE (default: 100)`, `--max-total-mb VALUE (default: 200)`, `--max-requests VALUE (default: 200)`, `--refresh/-r`, `--json/-j` | Recursively save readable Blackboard attachments under destination/course_id with content folder names and stable file IDs. |
 | `ntu learn courses list` | `--limit/-l VALUE (default: 50)`, `--offset VALUE`, `--refresh/-r`, `--json/-j` | List your enrolled NTULearn courses and organizations, including published availability and course IDs. |
-| `ntu learn files read` | `COURSE_ID (required)`, `CONTENT_ID (required)`, `ATTACHMENT_ID (required)`, `--max-chars VALUE (default: 20000)`, `--max-pages VALUE (default: 20)`, `--json/-j` | Read an attachment inline as text: PDF, DOCX, PPTX, XLSX and UTF text/code. |
-| `ntu learn files download` | `COURSE_ID (required)`, `CONTENT_ID (required)`, `ATTACHMENT_ID (required)`, `--output/-o VALUE (required)`, `--max-bytes VALUE (default: 20000000)`, `--json/-j` | Download a Blackboard attachment to an explicit local file path, up to 20 MB. |
+| `ntu learn files read` | `COURSE_ID CONTENT_ID ATTACHMENT_ID` or `URL ATTACHMENT_ID`, `--max-chars VALUE (default: 20000)`, `--max-pages VALUE (default: 20)`, `--json/-j` | Read an attachment inline as text: PDF, DOCX, PPTX, XLSX and UTF text/code. |
+| `ntu learn files download` | `COURSE_ID CONTENT_ID ATTACHMENT_ID` or `URL ATTACHMENT_ID`, `--output/-o VALUE (required)`, `--max-bytes VALUE (default: 20000000)`, `--json/-j` | Download a Blackboard attachment to an explicit local file path, up to 20 MB. |
 | `ntu learn groups members` | `COURSE_ID (required)`, `GROUP_ID (required)`, `--limit/-l VALUE (default: 50)`, `--offset VALUE`, `--refresh/-r`, `--json/-j` | List visible members of a course group through Blackboard's browser membership API. |
 | `ntu learn groups list` | `COURSE_ID (required)`, `--limit/-l VALUE (default: 50)`, `--offset VALUE`, `--refresh/-r`, `--json/-j` | List groups and group sets defined in a course. |
 | `ntu learn messages list` | `--folder VALUE [inbox, sent] (default: inbox)`, `--course VALUE`, `--since VALUE`, `--unread-only`, `--limit/-l VALUE (default: 50)`, `--offset VALUE`, `--max-requests VALUE (default: 100)`, `--refresh/-r`, `--json/-j` | List Blackboard inbox/sent messages through readable course conversations, without marking them read. |
 | `ntu learn messages read` | `MESSAGE_ID (required)`, `--course VALUE`, `--conversation-id VALUE`, `--max-requests VALUE (default: 100)`, `--refresh/-r`, `--json/-j` | Read a message's full body and published conversation recipients. |
 | `ntu learn search all` | `QUERY (required)`, `--course-ids VALUE`, `--max-depth VALUE (default: 5)`, `--max-nodes VALUE (default: 1000)`, `--max-results VALUE (default: 50)`, `--max-requests VALUE (default: 100)`, `--refresh/-r`, `--json/-j` | Recursively search content across available enrolled courses, or selected course_ids. |
 | `ntu learn search course` | `COURSE_ID (required)`, `QUERY (required)`, `--max-depth VALUE (default: 5)`, `--max-nodes VALUE (default: 1000)`, `--max-results VALUE (default: 50)`, `--max-requests VALUE (default: 100)`, `--refresh/-r`, `--json/-j` | Recursively search one course's content titles, body and description for a case-insensitive substring. |
-| `ntu learn videos download` | `COURSE_ID (required)`, `CONTENT_ID (required)`, `--output/-o VALUE (required)`, `--max-mb VALUE (default: 1000)`, `--json/-j` | Download a Kaltura video embedded in an NTULearn content item to a new local file. |
+| `ntu learn videos download` | `COURSE_ID CONTENT_ID` or `URL`, `--output/-o VALUE (required)`, `--max-mb VALUE (default: 1000)`, `--json/-j` | Download a Kaltura video embedded in an NTULearn content item to a new local file. |
 
 ## career
 

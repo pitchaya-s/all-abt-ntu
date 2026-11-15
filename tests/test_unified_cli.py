@@ -87,6 +87,111 @@ class UnifiedCLITests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_ntulearn_content_urls(self):
+        document = "https://ntulearn.ntu.edu.sg/ultra/courses/_100_1/document/_200_1?view=content&state=view"
+        video = "https://ntulearn.ntu.edu.sg/ultra/courses/_101_1/document/_201_1?view=content&state=view"
+        launch = (
+            "https://ntulearn.ntu.edu.sg/ultra/courses/_100_1/lti/launchFrame?"
+            "toolHref=https:~2F~2Fntulearn.ntu.edu.sg~2Fwebapps~2Fblackboard~2Fexecute~2Fblti~2FlaunchPlacement"
+            "%3Fblti_placement_id%3D_10_1%26content_id%3D_202_1%26course_id%3D_100_1%26wrapped%3Dtrue%26from_ultra%3Dtrue"
+        )
+        cases = (
+            (["learn", "attachments", document], "_100_1", "_200_1"),
+            (
+                ["learn", "attachments", document.removeprefix("https://")],
+                "_100_1",
+                "_200_1",
+            ),
+            (
+                ["learn", "attachments", "_100_1", document],
+                "_100_1",
+                "_200_1",
+            ),
+            (
+                ["learn", "attachments", "_100_1", document.removeprefix("https://")],
+                "_100_1",
+                "_200_1",
+            ),
+            (
+                ["learn", "files", "read", document, "_300_1"],
+                "_100_1",
+                "_200_1",
+            ),
+            (
+                ["learn", "files", "download", document, "_300_1", "-o", "file.pdf"],
+                "_100_1",
+                "_200_1",
+            ),
+            (
+                ["learn", "videos", "download", launch, "-o", "video.mp4"],
+                "_100_1",
+                "_202_1",
+            ),
+            (
+                [
+                    "learn",
+                    "videos",
+                    "download",
+                    launch.removeprefix("https://"),
+                    "-o",
+                    "video.mp4",
+                ],
+                "_100_1",
+                "_202_1",
+            ),
+            (
+                ["learn", "videos", "download", video, "-o", "video.mp4"],
+                "_101_1",
+                "_201_1",
+            ),
+        )
+        for arguments, course, content in cases:
+            with (
+                self.subTest(arguments=arguments),
+                patch("cli.commands.learn.invoke") as call,
+            ):
+                result = self.runner.invoke(self.app, arguments)
+                self.assertEqual(result.exit_code, 0, result.output)
+                self.assertEqual(call.call_args.args[1]["course_id"], course)
+                self.assertEqual(call.call_args.args[1]["content_id"], content)
+                if "files" in arguments:
+                    self.assertEqual(call.call_args.args[1]["attachment_id"], "_300_1")
+
+        for url in (
+            document.replace("ntulearn.ntu.edu.sg", "example.com"),
+            document.replace("ntulearn.ntu.edu.sg", "ntulearn.ntu.edu.sg.example.com"),
+            launch.replace("%26course_id%3D_100_1", "%26course_id%3D_other"),
+        ):
+            with self.subTest(url=url), patch("cli.commands.learn.invoke") as call:
+                result = self.runner.invoke(self.app, ["learn", "attachments", url])
+                self.assertNotEqual(result.exit_code, 0)
+                call.assert_not_called()
+        result = self.runner.invoke(
+            self.app, ["learn", "attachments", "wrong", document]
+        )
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("does not match", result.output)
+
+        with patch("cli.commands.learn.invoke") as call:
+            result = self.runner.invoke(
+                self.app,
+                [
+                    "learn",
+                    "content",
+                    "_100_1",
+                    "--parent",
+                    document.removeprefix("https://"),
+                ],
+            )
+            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertEqual(call.call_args.args[1]["parent_id"], "_200_1")
+
+        result = self.runner.invoke(
+            self.app, ["learn", "videos", "download", video, "-o", "video.mp4"]
+        )
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("Action was not confirmed", result.stderr)
+
     def test_completion_for_group_commands_and_fixed_choices(self):
         executable = str(Path(sys.executable).parent / "ntu")
         for words, index, expected in (

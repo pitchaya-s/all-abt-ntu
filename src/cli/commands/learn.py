@@ -3,6 +3,8 @@
 from typing import Literal, Optional
 
 from functools import partial
+import re
+from urllib.parse import parse_qs, unquote, urlsplit
 
 import typer
 
@@ -27,6 +29,77 @@ g_search = group(default=True)
 app.add_typer(g_search, name="search")
 g_videos = group(default=False)
 app.add_typer(g_videos, name="videos")
+
+
+def is_content_url(value: str) -> bool:
+    return "://" in value or value.lower().startswith("ntulearn.ntu.edu.sg/")
+
+
+def content_reference(course_or_url: str, content_id: Optional[str]) -> tuple[str, str]:
+    """Resolve an NTULearn content URL or an explicit course and content ID."""
+    candidate = (
+        content_id if content_id and is_content_url(content_id) else course_or_url
+    )
+    if not is_content_url(candidate):
+        if content_id is None:
+            raise typer.BadParameter("Provide a content ID or an NTULearn content URL.")
+        return course_or_url, content_id
+    if candidate == course_or_url and content_id is not None:
+        raise typer.BadParameter(
+            "Provide either a content URL or a course and content ID."
+        )
+    try:
+        url = urlsplit(candidate if "://" in candidate else "https://" + candidate)
+        if (
+            url.scheme != "https"
+            or url.hostname != "ntulearn.ntu.edu.sg"
+            or url.port not in (None, 443)
+            or url.username is not None
+            or url.password is not None
+        ):
+            raise ValueError
+        match = re.fullmatch(
+            r"/ultra/courses/([A-Za-z0-9_-]{1,80})/(document|lti/launchFrame)(?:/([A-Za-z0-9_-]{1,80}))?/?",
+            url.path,
+        )
+        if not match:
+            raise ValueError
+        course, kind, item = match.groups()
+        if kind == "document":
+            if not item:
+                raise ValueError
+        else:
+            if item:
+                raise ValueError
+            links = parse_qs(url.query).get("toolHref", [])
+            if len(links) != 1:
+                raise ValueError
+            nested = urlsplit(unquote(re.sub(r"~([0-9a-fA-F]{2})", r"%\1", links[0])))
+            if (
+                nested.scheme != "https"
+                or nested.hostname != "ntulearn.ntu.edu.sg"
+                or nested.port not in (None, 443)
+                or nested.username is not None
+                or nested.password is not None
+                or nested.path != "/webapps/blackboard/execute/blti/launchPlacement"
+            ):
+                raise ValueError
+            params = parse_qs(nested.query)
+            courses, items = params.get("course_id", []), params.get("content_id", [])
+            if len(courses) != 1 or courses[0] != course or len(items) != 1:
+                raise ValueError
+            item = items[0]
+            if not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", item):
+                raise ValueError
+        if candidate == content_id and course_or_url != course:
+            raise typer.BadParameter(
+                "The URL's course ID does not match the supplied course ID."
+            )
+        return course, item
+    except ValueError:
+        raise typer.BadParameter(
+            "Provide a valid NTULearn document or lecture launch URL."
+        ) from None
 
 
 @g_auth.command("status")
@@ -62,6 +135,8 @@ def cmd_content_default(
     json_output: bool = typer.Option(False, "--json", "-j"),
 ):
     """Read one level of course content."""
+    if parent_id and is_content_url(parent_id):
+        _, parent_id = content_reference(course_id, parent_id)
     with application_scope() as application:
         return invoke(
             application.learn.get_course_contents,
@@ -104,14 +179,15 @@ def cmd_content_tree(
 
 @app.command("attachments")
 def cmd_attachments(
-    course_id: str,
-    content_id: str,
+    course_id: str = typer.Argument(..., metavar="COURSE_ID_OR_URL"),
+    content_id: Optional[str] = typer.Argument(None),
     limit: int = typer.Option(50, "--limit", "-l"),
     offset: int = 0,
     refresh: bool = typer.Option(False, "--refresh", "-r"),
     json_output: bool = typer.Option(False, "--json", "-j"),
 ):
-    """List files attached to a course content item."""
+    """List attachments using a course and content ID, or an NTULearn content URL."""
+    course_id, content_id = content_reference(course_id, content_id)
     with application_scope() as application:
         return invoke(
             application.learn.get_content_attachments,
@@ -128,14 +204,19 @@ def cmd_attachments(
 
 @g_files.command("read")
 def cmd_files_read(
-    course_id: str,
-    content_id: str,
-    attachment_id: str,
+    course_id: str = typer.Argument(..., metavar="COURSE_ID_OR_URL"),
+    content_id: str = typer.Argument(..., metavar="CONTENT_OR_ATTACHMENT_ID"),
+    attachment_id: Optional[str] = typer.Argument(None),
     max_chars: int = 20000,
     max_pages: int = 20,
     json_output: bool = typer.Option(False, "--json", "-j"),
 ):
-    """Read an attachment inline as text: PDF, DOCX, PPTX, XLSX and UTF text/code."""
+    """Read an attachment as text. Supply course and content IDs, or a content URL, plus the attachment ID."""
+    if attachment_id is None:
+        attachment_id = content_id
+        course_id, content_id = content_reference(course_id, None)
+    else:
+        course_id, content_id = content_reference(course_id, content_id)
     with application_scope() as application:
         from ntulearn.services import files
 
@@ -154,16 +235,21 @@ def cmd_files_read(
 
 @g_files.command("download")
 def cmd_files_download(
-    course_id: str,
-    content_id: str,
-    attachment_id: str,
+    course_id: str = typer.Argument(..., metavar="COURSE_ID_OR_URL"),
+    content_id: str = typer.Argument(..., metavar="CONTENT_OR_ATTACHMENT_ID"),
+    attachment_id: Optional[str] = typer.Argument(None),
     destination: str = typer.Option(..., "--output", "-o"),
     max_bytes: int = typer.Option(
         20_000_000, help="Maximum file size in bytes (up to 20 MB)."
     ),
     json_output: bool = typer.Option(False, "--json", "-j"),
 ):
-    """Download a Blackboard attachment to an explicit local file path, up to 20 MB."""
+    """Download an attachment using course and content IDs, or a content URL, plus the attachment ID."""
+    if attachment_id is None:
+        attachment_id = content_id
+        course_id, content_id = content_reference(course_id, None)
+    else:
+        course_id, content_id = content_reference(course_id, content_id)
     with application_scope() as application:
         return invoke(
             application.learn.download_file,
@@ -181,13 +267,14 @@ def cmd_files_download(
 
 @g_videos.command("download")
 def cmd_videos_download(
-    course_id: str,
-    content_id: str,
+    course_id: str = typer.Argument(..., metavar="COURSE_ID_OR_URL"),
+    content_id: Optional[str] = typer.Argument(None),
     destination: str = typer.Option(..., "--output", "-o"),
     max_mb: int = 1000,
     json_output: bool = typer.Option(False, "--json", "-j"),
 ):
-    """Download a Kaltura video embedded in an NTULearn content item to a new local file."""
+    """Download a Kaltura video using course and content IDs, or an NTULearn content URL."""
+    course_id, content_id = content_reference(course_id, content_id)
     with application_scope() as application:
         from ntulearn.services import videos
 
