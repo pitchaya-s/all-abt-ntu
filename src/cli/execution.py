@@ -9,7 +9,7 @@ import click
 import typer
 from pydantic import ValidationError, validate_call
 
-from shared.operation import OperationError, unexpected_error
+from shared.errors import OperationError, unexpected_error
 
 from .common import fail
 

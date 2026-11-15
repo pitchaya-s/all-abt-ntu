@@ -5,7 +5,7 @@ from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 
 from mcp.server.mcpserver.exceptions import ToolError
-from shared.mcp_adapter import translate_errors
+from shared.mcp import translate_errors
 
 from news import parser
 from news.client import NewsClient

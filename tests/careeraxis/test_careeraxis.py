@@ -255,7 +255,7 @@ class BrowserTests(unittest.TestCase):
 class ProtocolTests(unittest.IsolatedAsyncioTestCase):
     async def test_nine_read_tools_schemas_calls_and_sanitized_errors(self):
         server = MCPServer("careeraxis-offline")
-        from shared.mcp_adapter import MCPAdapter
+        from shared.mcp import MCPAdapter
         from application import Application
         from unittest.mock import PropertyMock
 

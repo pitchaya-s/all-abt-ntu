@@ -1,5 +1,5 @@
-from shared.operation import ToolRegistrar
-from shared.operation import ToolPolicy
+from shared.mcp import ToolRegistrar
+from shared.mcp import ToolPolicy
 
 
 INSTRUCTIONS = (

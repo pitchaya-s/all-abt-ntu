@@ -70,7 +70,7 @@ def create_server(
     public_server.register_tools(server, application)
     if profile != "public":
         from shared.catalog import register_personal
-        from shared.mcp_adapter import MCPAdapter
+        from shared.mcp import MCPAdapter
 
         register_personal(MCPAdapter(server, getattr(server, "ntu_application")))
     return server

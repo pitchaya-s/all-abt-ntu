@@ -270,7 +270,7 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
     async def test_tool_schemas_read_calls_and_sanitized_errors(self):
         fixture = FixtureSession()
         server = MCPServer("onestop-offline")
-        from shared.mcp_adapter import MCPAdapter
+        from shared.mcp import MCPAdapter
         from application import Application
         from unittest.mock import PropertyMock
 

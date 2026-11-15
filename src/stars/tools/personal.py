@@ -2,7 +2,7 @@
 
 from typing import Annotated, Literal, cast
 
-from shared.operation import OperationError
+from shared.errors import OperationError
 from pydantic import BaseModel, Field
 
 from ..compact import personal_fields, saved_plan_fields

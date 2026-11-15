@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 
-from shared.operation import OperationError
+from shared.errors import OperationError
 
 Query = Annotated[str, Field(min_length=1, max_length=500)]
 RecordID = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,299}$")]

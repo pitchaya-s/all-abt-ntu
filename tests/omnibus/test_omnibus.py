@@ -350,7 +350,7 @@ class ClientTests(unittest.TestCase):
 class ProtocolTests(unittest.IsolatedAsyncioTestCase):
     async def test_five_public_tools_schemas_calls_and_validation(self):
         server = MCPServer("omnibus-offline")
-        from shared.mcp_adapter import MCPAdapter
+        from shared.mcp import MCPAdapter
         from application import Application
         from unittest.mock import PropertyMock
 

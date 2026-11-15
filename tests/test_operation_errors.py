@@ -5,8 +5,8 @@ from pydantic import BaseModel
 
 from cli.execution import execute
 from mazemap.models import MapError
-from shared.mcp_adapter import translate_errors
-from shared.operation import OperationError
+from shared.mcp import translate_errors
+from shared.errors import OperationError
 
 
 class OperationErrorTests(unittest.IsolatedAsyncioTestCase):

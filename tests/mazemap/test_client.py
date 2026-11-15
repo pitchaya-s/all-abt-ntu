@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from unittest.mock import patch
 
 from mcp.server.mcpserver.exceptions import ToolError
-from shared.mcp_adapter import translate_errors
+from shared.mcp import translate_errors
 
 from mazemap import parser
 from mazemap.client import MapClient

@@ -1,6 +1,6 @@
 """Register One Stop workflow operations and their action policies."""
 
-from shared.operation import ToolPolicy
+from shared.mcp import ToolPolicy
 
 
 def register(

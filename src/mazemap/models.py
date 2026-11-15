@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 
-from shared.operation import OperationError
+from shared.errors import OperationError
 
 ID = Annotated[
     int, Field(gt=0, strict=True, description="Numeric ID returned by a MazeMap tool")

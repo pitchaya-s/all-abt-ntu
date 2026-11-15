@@ -3,7 +3,7 @@ import asyncio
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 
-from shared.operation import OperationError as ToolError
+from shared.errors import OperationError as ToolError
 from application import Application
 
 from drntu import oai

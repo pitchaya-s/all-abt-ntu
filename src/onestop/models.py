@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 
-from shared.operation import OperationError
+from shared.errors import OperationError
 
 ID = Annotated[str, Field(pattern=r"^[0-9a-f]{32}$")]
 Query = Annotated[str, Field(min_length=1, max_length=200)]

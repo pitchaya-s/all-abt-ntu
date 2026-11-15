@@ -1,8 +1,8 @@
 """Register DR-NTU repository and OAI operations."""
 
-from shared.operation import bind_argument
+from shared.mcp import bind_argument
 
-from shared.operation import ToolPolicy, ToolRegistrar
+from shared.mcp import ToolPolicy, ToolRegistrar
 from .rest import datasets, repository
 from . import oai
 

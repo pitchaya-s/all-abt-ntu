@@ -1,6 +1,6 @@
 """Register CareerAxis operations."""
 
-from shared.operation import ToolPolicy, ToolRegistrar
+from shared.mcp import ToolPolicy, ToolRegistrar
 
 INSTRUCTIONS = (
     "careeraxis_ tools are local, authenticated, and read-only. They search opportunities, internships, events, "

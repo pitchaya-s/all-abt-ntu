@@ -1,6 +1,6 @@
 """STARS MCP tool registration and agent guidance."""
 
-from shared.operation import ToolPolicy, bind_argument
+from shared.mcp import ToolPolicy, bind_argument
 from .tools import academic, rooms
 
 INSTRUCTIONS = (

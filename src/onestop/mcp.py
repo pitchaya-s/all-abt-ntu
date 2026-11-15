@@ -1,6 +1,6 @@
 """Register One Stop operations."""
 
-from shared.operation import ToolPolicy, ToolRegistrar
+from shared.mcp import ToolPolicy, ToolRegistrar
 
 INSTRUCTIONS = (
     "onestop_ tools access the NTU student One Stop ServiceNow portal using the shared local keyring and Chromium. "

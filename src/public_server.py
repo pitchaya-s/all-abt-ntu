@@ -3,7 +3,7 @@
 from mcp.server import MCPServer
 
 from shared.catalog import PUBLIC_INSTRUCTIONS, register_public
-from shared.mcp_adapter import MCPAdapter
+from shared.mcp import MCPAdapter
 
 
 INSTRUCTIONS = PUBLIC_INSTRUCTIONS

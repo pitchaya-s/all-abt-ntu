@@ -4,7 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict
 
 
-from shared.operation import OperationError
+from shared.errors import OperationError
 
 
 class LearnError(OperationError):

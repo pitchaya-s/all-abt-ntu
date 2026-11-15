@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from shared.sitefinity import FilterOption
 
 
-from shared.operation import OperationError
+from shared.errors import OperationError
 
 
 class NewsError(OperationError):

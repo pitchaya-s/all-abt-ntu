@@ -1,6 +1,6 @@
 """Register NTU shuttle and bus operations."""
 
-from shared.operation import ToolPolicy, ToolRegistrar
+from shared.mcp import ToolPolicy, ToolRegistrar
 
 INSTRUCTIONS = (
     "omnibus_ tools experimentally read public NTU Omnibus shuttle and bus data without credentials, using undocumented app endpoints that may change. "

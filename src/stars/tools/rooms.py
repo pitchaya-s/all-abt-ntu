@@ -1,6 +1,6 @@
 """Read-only MCP tools over the shared term-wide teaching snapshot."""
 
-from shared.operation import OperationError
+from shared.errors import OperationError
 
 from ..domain.rooms import build_catalogue, available_rooms, room_schedule
 from ..client.http import NTURequestError

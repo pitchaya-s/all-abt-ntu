@@ -1,8 +1,8 @@
-from shared.operation import bind_argument
+from shared.mcp import bind_argument
 from typing import Any
 
-from shared.operation import ToolRegistrar
-from shared.operation import ToolPolicy
+from shared.mcp import ToolRegistrar
+from shared.mcp import ToolPolicy
 
 from .services import content, files, messages, overview, people, videos
 

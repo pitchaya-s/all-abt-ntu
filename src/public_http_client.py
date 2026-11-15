@@ -15,7 +15,7 @@ from urllib.parse import urljoin, urlsplit
 
 import httpx
 
-from shared.operation import OperationError
+from shared.errors import OperationError
 
 MAX_RESPONSE_BYTES = 8_000_000
 MAX_RETRY_DELAY_SECONDS = 10.0

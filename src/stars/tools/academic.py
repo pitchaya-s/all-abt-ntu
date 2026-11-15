@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Annotated, Any, Literal, cast
 
-from shared.operation import OperationError
+from shared.errors import OperationError
 from pydantic import BaseModel, Field, model_validator
 
 from ..compact import exam_fields, graduate_fields, session_fields, timetable_fields
