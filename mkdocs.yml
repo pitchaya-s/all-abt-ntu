@@ -9,8 +9,6 @@ markdown_extensions:
   - tables
   - fenced_code
   - attr_list
-extra_css:
-  - stylesheets/reference.css
 nav:
   - Home: index.md
   - Getting started: getting-started.md
