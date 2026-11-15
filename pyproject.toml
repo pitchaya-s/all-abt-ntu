@@ -33,10 +33,10 @@ personal = ["playwright>=1.50,<2"]
 browser-cookies = ["browser-cookie3>=0.20,<1"]
 
 [project.urls]
-Homepage = "https://github.com/pitchaya-s/all-abt-ntu-mcp"
-Repository = "https://github.com/pitchaya-s/all-abt-ntu-mcp"
-Documentation = "https://github.com/pitchaya-s/all-abt-ntu-mcp/blob/main/README.md"
-Issues = "https://github.com/pitchaya-s/all-abt-ntu-mcp/issues"
+Homepage = "https://github.com/pitchaya-s/all-abt-ntu"
+Repository = "https://github.com/pitchaya-s/all-abt-ntu"
+Documentation = "https://github.com/pitchaya-s/all-abt-ntu/blob/main/README.md"
+Issues = "https://github.com/pitchaya-s/all-abt-ntu/issues"
 
 [project.scripts]
 ntu = "cli.cli:main"

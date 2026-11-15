@@ -6,7 +6,7 @@ A CLI and MCP server for NTU Singapore schedules, learning materials, campus nav
 
 **Available services**
 
-[STARS](https://github.com/pitchaya-s/all-abt-ntu-mcp/blob/main/src/stars/README.md) · [NTULearn](https://github.com/pitchaya-s/all-abt-ntu-mcp/blob/main/src/ntulearn/README.md) · [CareerAxis](src/careeraxis/README.md) · [MazeMap](https://github.com/pitchaya-s/all-abt-ntu-mcp/blob/main/src/mazemap/README.md) · [DR-NTU](https://github.com/pitchaya-s/all-abt-ntu-mcp/blob/main/src/drntu/README.md) · [Library](https://github.com/pitchaya-s/all-abt-ntu-mcp/blob/main/src/library/README.md) · [Faculty](https://github.com/pitchaya-s/all-abt-ntu-mcp/blob/main/src/faculty/README.md) · [News](https://github.com/pitchaya-s/all-abt-ntu-mcp/blob/main/src/news/README.md) · [Campus services](https://github.com/pitchaya-s/all-abt-ntu-mcp/blob/main/src/service/README.md) · [NTU Omnibus](https://github.com/pitchaya-s/all-abt-ntu-mcp/blob/main/src/omnibus/README.md) · [One Stop @ SAC](src/onestop/README.md).
+[STARS](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/stars/README.md) · [NTULearn](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/ntulearn/README.md) · [CareerAxis](src/careeraxis/README.md) · [MazeMap](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/mazemap/README.md) · [DR-NTU](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/drntu/README.md) · [Library](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/library/README.md) · [Faculty](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/faculty/README.md) · [News](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/news/README.md) · [Campus services](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/service/README.md) · [NTU Omnibus](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/omnibus/README.md) · [One Stop @ SAC](src/onestop/README.md).
 
 ## Installation
 
@@ -32,7 +32,7 @@ Your password is hidden while typing and stored encrypted locally in your OS key
 
 The prompts save one account for STARS, NTULearn, LibFacilities, One Stop and CareerAxis and enable automatic login/session recovery. Run `ntu auth save` again to update it, `ntu auth status` to check storage without revealing credentials, or `ntu auth delete` to remove it. MCP setup can also offer to save credentials when you enable personal tools.
 
-The keyring must be available and unlocked: Secret Service or KWallet on Linux, Keychain on macOS, Credential Manager on Windows. There is no plaintext fallback. Passwords are not accepted through MCP, command arguments, environment variables, `.env`, or client configuration. Remove any credentials left in your old configuration; the server no longer reads them. More details: [shared credential storage](https://github.com/pitchaya-s/all-abt-ntu-mcp/blob/main/src/shared/README.md#credential-storage).
+The keyring must be available and unlocked: Secret Service or KWallet on Linux, Keychain on macOS, Credential Manager on Windows. There is no plaintext fallback. Passwords are not accepted through MCP, command arguments, environment variables, `.env`, or client configuration. Remove any credentials left in your old configuration; the server no longer reads them. More details: [shared credential storage](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/shared/README.md#credential-storage).
 
 Some Linux installations do not include a keyring service. Install a provider such as GNOME Keyring or KWallet using your distribution's package manager, then follow your desktop's setup instructions to start and unlock it before running `ntu auth save`.
 
@@ -54,8 +54,8 @@ Use `-h` for help. Common options also have short forms, including `-r` for refr
 To run the CLI from a local checkout:
 
 ```sh
-git clone https://github.com/pitchaya-s/all-abt-ntu-mcp.git
-cd all-abt-ntu-mcp
+git clone https://github.com/pitchaya-s/all-abt-ntu.git
+cd all-abt-ntu
 uv sync
 uv run ntu --help
 ```
@@ -179,8 +179,8 @@ Personal tools use your locally saved keyring account. Check `opencode mcp list`
 Clone the repository and run the server from a local checkout:
 
 ```sh
-git clone --branch main https://github.com/pitchaya-s/all-abt-ntu-mcp.git all-abt-ntu-mcp
-cd all-abt-ntu-mcp
+git clone --branch main https://github.com/pitchaya-s/all-abt-ntu.git
+cd all-abt-ntu
 uv sync
 uv run ntu mcp
 ```
@@ -360,9 +360,9 @@ uv run node tests/typescript_smoke.mjs "$NTU_MCP_TEST_SDK"
 
 These interoperability checks use offline fixtures and never edit saved plans.
 
-Hosted HTTP checks cover public-only registration, rejected personal calls, output schemas, both modern and legacy Python SDK clients, Host/Origin validation, request-size limits, and independent serverless event loops. See the [HTTP test instructions](https://github.com/pitchaya-s/all-abt-ntu-mcp/blob/main/src/shared/README.md#http-tests) for the TypeScript client and opt-in live smoke.
+Hosted HTTP checks cover public-only registration, rejected personal calls, output schemas, both modern and legacy Python SDK clients, Host/Origin validation, request-size limits, and independent serverless event loops. See the [HTTP test instructions](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/shared/README.md#http-tests) for the TypeScript client and opt-in live smoke.
 
-Live checks and service-specific testing instructions: [STARS](https://github.com/pitchaya-s/all-abt-ntu-mcp/blob/main/src/stars/README.md#tests) · [NTULearn](https://github.com/pitchaya-s/all-abt-ntu-mcp/blob/main/src/ntulearn/README.md#tests) · [CareerAxis](https://github.com/pitchaya-s/all-abt-ntu-mcp/blob/main/src/careeraxis/README.md#validation) · [MazeMap](https://github.com/pitchaya-s/all-abt-ntu-mcp/blob/main/src/mazemap/README.md#tests) · [DR-NTU](https://github.com/pitchaya-s/all-abt-ntu-mcp/blob/main/src/drntu/README.md#tests) · [Library](https://github.com/pitchaya-s/all-abt-ntu-mcp/blob/main/src/library/README.md#tests) · [Faculty](https://github.com/pitchaya-s/all-abt-ntu-mcp/blob/main/src/faculty/README.md#tests) · [News](https://github.com/pitchaya-s/all-abt-ntu-mcp/blob/main/src/news/README.md#tests) · [Campus services](https://github.com/pitchaya-s/all-abt-ntu-mcp/blob/main/src/service/README.md#tests) · [NTU Omnibus](https://github.com/pitchaya-s/all-abt-ntu-mcp/blob/main/src/omnibus/README.md#checks) · [One Stop @ SAC](https://github.com/pitchaya-s/all-abt-ntu-mcp/blob/main/src/onestop/README.md#coverage-runtime-and-checks).
+Live checks and service-specific testing instructions: [STARS](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/stars/README.md#tests) · [NTULearn](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/ntulearn/README.md#tests) · [CareerAxis](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/careeraxis/README.md#validation) · [MazeMap](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/mazemap/README.md#tests) · [DR-NTU](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/drntu/README.md#tests) · [Library](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/library/README.md#tests) · [Faculty](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/faculty/README.md#tests) · [News](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/news/README.md#tests) · [Campus services](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/service/README.md#tests) · [NTU Omnibus](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/omnibus/README.md#checks) · [One Stop @ SAC](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/onestop/README.md#coverage-runtime-and-checks).
 
 ## Limitation
 
