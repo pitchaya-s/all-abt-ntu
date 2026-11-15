@@ -10,6 +10,12 @@ Common short options are `-h` for help, `-j` for JSON, `-r` for refresh, `-l` fo
 
 One Stop request applications, appointment bookings and cart checkout run as standalone interactive workflows. Their temporary state remains in the process. Attachments must be selected from the configured upload directory.
 
+## cli
+
+| Command | Purpose |
+| --- | --- |
+| `ntu cli setup` | Interactively choose whether to save credentials and install Chromium for personal services. |
+
 ## mcp
 
 | Command | What it does |

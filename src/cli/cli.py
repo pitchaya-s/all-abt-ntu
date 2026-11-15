@@ -2,7 +2,7 @@
 
 import typer
 
-from .manage import auth, config_app, mcp
+from .manage import auth, cli_setup, config_app, mcp
 from .commands import register
 from shared.version import VERSION
 
@@ -16,6 +16,7 @@ def create_app():
     )
     app.add_typer(mcp, name="mcp")
     app.add_typer(auth, name="auth")
+    app.add_typer(cli_setup, name="cli")
     app.add_typer(config_app, name="config")
     register(app)
 

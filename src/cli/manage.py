@@ -1,8 +1,10 @@
 """MCP, authentication, and configuration commands."""
 
 import sys
+import subprocess
 import warnings
 from getpass import GetPassWarning, getpass
+from importlib.util import find_spec
 import typer
 
 from shared.credentials import (
@@ -29,7 +31,51 @@ auth = typer.Typer(
 )
 config_app = typer.Typer(no_args_is_help=True, help="Manage MCP settings.")
 tools_app = typer.Typer(no_args_is_help=True, help="Manage MCP tools.")
+cli_setup = typer.Typer(no_args_is_help=True, help="Set up the CLI.")
 mcp.add_typer(tools_app, name="tools")
+
+
+@cli_setup.command("setup")
+def setup_cli():
+    """Optionally save credentials and install Chromium for personal services."""
+    if not all(stream.isatty() for stream in (sys.stdin, sys.stdout, sys.stderr)):
+        fail(ConfigError("CLI setup requires an interactive terminal."))
+
+    import questionary
+
+    try:
+        save = questionary.confirm(
+            "Save or replace NTU account credentials in your OS keyring?",
+            default=False,
+        ).unsafe_ask()
+        if save is None:
+            raise ConfigError("CLI setup cancelled.")
+        if save:
+            save_auth()
+        install = questionary.confirm(
+            "Install Playwright Chromium for browser-based personal services?",
+            default=False,
+        ).unsafe_ask()
+        if install is None:
+            raise ConfigError("CLI setup cancelled.")
+        if install:
+            if find_spec("playwright") is None:
+                raise ConfigError(
+                    "Chromium installation requires the personal extra. "
+                    "Install 'all-abt-ntu-mcp[cli,personal]' and rerun ntu cli setup."
+                )
+            result = subprocess.run(
+                [sys.executable, "-m", "playwright", "install", "chromium"],
+                check=False,
+            )
+            if result.returncode:
+                raise ConfigError(
+                    "Chromium installation failed; rerun ntu cli setup to retry."
+                )
+            print("Playwright Chromium is ready.")
+        print("CLI setup complete.")
+    except (ConfigError, OSError, KeyboardInterrupt) as error:
+        fail(error)
 
 
 @mcp.callback()

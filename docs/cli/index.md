@@ -6,9 +6,10 @@ To make `ntu` available as a command, run:
 
 ```sh
 uv tool install 'all-abt-ntu-mcp[cli,personal]@latest'
+ntu cli setup
 ```
 
-The `cli` extra installs the terminal interface; `personal` adds browser support for authenticated services. Follow the [Chromium instructions](../mcp/index.md#chromium) if you use them. For public CLI services only, install `all-abt-ntu-mcp[cli]@latest`. The MCP server is a separate extra and is not installed by those commands.
+The `cli` extra installs the terminal interface; `personal` adds browser support for authenticated services. Setup offers to save credentials and install Chromium; you can skip either step. For public CLI services only, install `all-abt-ntu-mcp[cli]@latest`. The MCP server is a separate extra and is not installed by those commands.
 
 To enable optional NTULearn browser-cookie discovery, install `all-abt-ntu-mcp[cli,personal,browser-cookies]@latest`.
 

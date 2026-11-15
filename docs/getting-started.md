@@ -6,6 +6,7 @@ Install [uv](https://docs.astral.sh/uv/) and Python 3.10 or newer. Install the C
 
 ```sh
 uv tool install 'all-abt-ntu-mcp[cli,personal]@latest'
+ntu cli setup
 ```
 
 Or configure the MCP server:
@@ -30,7 +31,7 @@ Downloads and other changes ask for local confirmation. In MCP, the client must 
 
 ## Credentials
 
-Public services need no credentials. For authenticated services, manage your account **yourself in a local terminal**:
+Public services need no credentials. `ntu cli setup` can save credentials and install Chromium. If you already saved your credentials during setup, you do not need to save them again. Otherwise, manage your account **yourself in a local terminal**:
 
 ```sh
 ntu auth save
