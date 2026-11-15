@@ -2,7 +2,7 @@
 
 Explore NTU services from your terminal or connect them to an AI assistant. Search courses and library resources, navigate campus, check shuttle arrivals, and access your own learning materials and student services through a single application.
 
-[Documentation](https://pitchaya-s.github.io/all-abt-ntu/) · [CLI guide](docs/cli/index.md) · [MCP setup](docs/mcp/index.md) · [Service reference](docs/services/index.md) · [Report an issue](https://github.com/pitchaya-s/all-abt-ntu/issues)
+[Documentation](https://pitchaya-s.github.io/all-abt-ntu/) · [CLI guide](https://pitchaya-s.github.io/all-abt-ntu/cli/) · [MCP setup](https://pitchaya-s.github.io/all-abt-ntu/mcp/) · [Service reference](https://pitchaya-s.github.io/all-abt-ntu/services/) · [Report an issue](https://github.com/pitchaya-s/all-abt-ntu/issues)
 
 All About NTU provides two interfaces to the same services:
 
@@ -37,17 +37,17 @@ For personal services such as NTULearn and One Stop, use CLI setup to save your 
 
 | Service | What you can do | CLI | Reference |
 | --- | --- | --- | --- |
-| **STARS** | Search courses, explore prerequisites and indexes, view schedules and manage plans | `ntu stars` | [STARS](docs/services/stars/index.md) |
-| **NTULearn** | Browse enrolled courses, learning materials, announcements, grades and calendars | `ntu learn` | [NTULearn](docs/services/ntulearn/index.md) |
-| **CareerAxis** | Find opportunities, employers, career events and resources | `ntu career` | [CareerAxis](docs/services/careeraxis/index.md) |
-| **MazeMap** | Search campus places and get walking directions | `ntu map` | [MazeMap](docs/services/mazemap/index.md) |
-| **DR-NTU** | Discover research publications, repository collections and datasets | `ntu research` | [DR-NTU](docs/services/drntu/index.md) |
-| **Library** | Search the catalogue, inspect records and explore facilities | `ntu library` | [Library](docs/services/library/index.md) |
-| **Faculty** | Find faculty members and research interests | `ntu faculty` | [Faculty](docs/services/faculty/index.md) |
-| **News** | Browse and search NTU news | `ntu news` | [News](docs/services/news/index.md) |
-| **Campus Services** | Find food, shops, clinics and other campus services | `ntu services` | [Campus Services](docs/services/campus-services/index.md) |
-| **Omnibus** | Check shuttle routes, stops, arrivals and service status | `ntu bus` | [Omnibus](docs/services/omnibus/index.md) |
-| **One Stop @ SAC** | Explore the catalog and manage requests, appointments and other student services | `ntu onestop` | [One Stop](docs/services/one-stop/index.md) |
+| **STARS** | Search courses, explore prerequisites and indexes, view schedules and manage plans | `ntu stars` | [STARS](https://pitchaya-s.github.io/all-abt-ntu/services/stars/) |
+| **NTULearn** | Browse enrolled courses, learning materials, announcements, grades and calendars | `ntu learn` | [NTULearn](https://pitchaya-s.github.io/all-abt-ntu/services/ntulearn/) |
+| **CareerAxis** | Find opportunities, employers, career events and resources | `ntu career` | [CareerAxis](https://pitchaya-s.github.io/all-abt-ntu/services/careeraxis/) |
+| **MazeMap** | Search campus places and get walking directions | `ntu map` | [MazeMap](https://pitchaya-s.github.io/all-abt-ntu/services/mazemap/) |
+| **DR-NTU** | Discover research publications, repository collections and datasets | `ntu research` | [DR-NTU](https://pitchaya-s.github.io/all-abt-ntu/services/drntu/) |
+| **Library** | Search the catalogue, inspect records and explore facilities | `ntu library` | [Library](https://pitchaya-s.github.io/all-abt-ntu/services/library/) |
+| **Faculty** | Find faculty members and research interests | `ntu faculty` | [Faculty](https://pitchaya-s.github.io/all-abt-ntu/services/faculty/) |
+| **News** | Browse and search NTU news | `ntu news` | [News](https://pitchaya-s.github.io/all-abt-ntu/services/news/) |
+| **Campus Services** | Find food, shops, clinics and other campus services | `ntu services` | [Campus Services](https://pitchaya-s.github.io/all-abt-ntu/services/campus-services/) |
+| **Omnibus** | Check shuttle routes, stops, arrivals and service status | `ntu bus` | [Omnibus](https://pitchaya-s.github.io/all-abt-ntu/services/omnibus/) |
+| **One Stop @ SAC** | Explore the catalog and manage requests, appointments and other student services | `ntu onestop` | [One Stop](https://pitchaya-s.github.io/all-abt-ntu/services/one-stop/) |
 
 The service references include CLI commands, MCP tools, arguments, outputs and service-specific limits.
 
@@ -69,7 +69,7 @@ If you use MCP through `uvx` without installing the CLI, save credentials with:
 uvx --from 'all-abt-ntu-mcp[cli,personal]@latest' ntu auth save
 ```
 
-See [credentials and platform setup](docs/getting-started.md#credentials) for more details.
+See [credentials and platform setup](https://pitchaya-s.github.io/all-abt-ntu/getting-started/#credentials) for more details.
 
 ## CLI
 
@@ -87,7 +87,7 @@ For public services only, install the smaller CLI extra:
 uv tool install 'all-abt-ntu-mcp[cli]@latest'
 ```
 
-See the [CLI installation guide](docs/cli/index.md#installation) for browser-cookie support.
+See the [CLI installation guide](https://pitchaya-s.github.io/all-abt-ntu/cli/#installation) for browser-cookie support.
 
 ### Manual CLI installation
 
@@ -101,7 +101,7 @@ uv run --no-sync playwright install chromium
 uv run --no-sync ntu --help
 ```
 
-For public services only, omit `--extra personal` and the Chromium installation. Use `uv run --no-sync ntu auth save` to save credentials for personal services. See the [manual CLI guide](docs/cli/index.md#manual-install) for environment activation and platform-specific details.
+For public services only, omit `--extra personal` and the Chromium installation. Use `uv run --no-sync ntu auth save` to save credentials for personal services. See the [manual CLI guide](https://pitchaya-s.github.io/all-abt-ntu/cli/#manual-install) for environment activation and platform-specific details.
 
 ### Examples
 
@@ -124,7 +124,7 @@ ntu learn files download ZZ0001 "_67890_1" "_24680_1" --output "./lecture.pdf" -
 ntu learn videos download ZZ0001 "_67890_1" --output "./lecture.mp4" --max-mb 500
 ```
 
-`ZZ0001` and the IDs above are fictional. Replace them with your course and content IDs from the preceding commands. Supported NTULearn content URLs can also be used in place of course and content IDs; see the [NTULearn CLI guide](docs/services/ntulearn/cli/files.md). Downloads require confirmation.
+`ZZ0001` and the IDs above are fictional. Replace them with your course and content IDs from the preceding commands. Supported NTULearn content URLs can also be used in place of course and content IDs; see the [NTULearn CLI guide](https://pitchaya-s.github.io/all-abt-ntu/services/ntulearn/cli/files/). Downloads require confirmation.
 
 Explore the rest of campus:
 
@@ -142,7 +142,7 @@ Run `ntu --help`, `ntu stars --help`, or add `--help` to a command to see its av
 ntu map search "LT1" --limit 10 --offset 0 --json
 ```
 
-See the [CLI guide](docs/cli/index.md) and [complete command reference](docs/cli/commands.md) for more examples and options.
+See the [CLI guide](https://pitchaya-s.github.io/all-abt-ntu/cli/) and [complete command reference](https://pitchaya-s.github.io/all-abt-ntu/cli/commands/) for more examples and options.
 
 ## MCP
 
@@ -169,7 +169,7 @@ To run a public stdio server directly:
 uvx --from 'all-abt-ntu-mcp[mcp]@latest' ntu mcp --profile public
 ```
 
-The [MCP setup guide](docs/mcp/index.md) covers client configuration, profiles, Chromium and manual installation. See the [tool reference](docs/mcp/tools.md) for available tools.
+The [MCP setup guide](https://pitchaya-s.github.io/all-abt-ntu/mcp/) covers client configuration, profiles, Chromium and manual installation. See the [tool reference](https://pitchaya-s.github.io/all-abt-ntu/mcp/tools/) for available tools.
 
 ### Manual MCP installation
 
@@ -189,7 +189,7 @@ uv sync --no-default-groups --extra mcp
 uv run --no-sync ntu mcp --profile public
 ```
 
-If you didn't save credentials during setup, use `uv run --no-sync ntu auth save`. The [manual MCP guide](docs/mcp/index.md#manual-install) has more details.
+If you didn't save credentials during setup, use `uv run --no-sync ntu auth save`. The [manual MCP guide](https://pitchaya-s.github.io/all-abt-ntu/mcp/#manual-install) has more details.
 
 ### Hosted public server
 
@@ -199,13 +199,13 @@ Add the following URL to a client that supports remote MCP servers, using Stream
 https://all-abt-ntu-mcp.vercel.app/mcp
 ```
 
-The hosted server provides public, read-only information. Personal services require the local server. See the [hosted MCP guide](docs/mcp/hosting.md) for details.
+The hosted server provides public, read-only information. Personal services require the local server. See the [hosted MCP guide](https://pitchaya-s.github.io/all-abt-ntu/mcp/hosting/) for details.
 
 ## Documentation and contributing
 
-Browse the [documentation site](https://pitchaya-s.github.io/all-abt-ntu/) for [getting started](docs/getting-started.md), [service guides](docs/services/index.md), [architecture and security](docs/architecture/index.md), [known issues](docs/known-issues.md), and [limitations](docs/limitations.md).
+Browse the [documentation site](https://pitchaya-s.github.io/all-abt-ntu/) for [getting started](https://pitchaya-s.github.io/all-abt-ntu/getting-started/), [service guides](https://pitchaya-s.github.io/all-abt-ntu/services/), [architecture and security](https://pitchaya-s.github.io/all-abt-ntu/architecture/), [known issues](https://pitchaya-s.github.io/all-abt-ntu/known-issues/), and [limitations](https://pitchaya-s.github.io/all-abt-ntu/limitations/).
 
-To work on the project, see the [development guide](docs/development.md), [testing guide](docs/testing.md), and [contributing guide](docs/contributing.md). Preview the documentation locally with:
+To work on the project, see the [development guide](https://pitchaya-s.github.io/all-abt-ntu/development/), [testing guide](https://pitchaya-s.github.io/all-abt-ntu/testing/), and [contributing guide](https://pitchaya-s.github.io/all-abt-ntu/contributing/). Preview the documentation locally with:
 
 ```sh
 uvx --from mkdocs-material mkdocs serve
