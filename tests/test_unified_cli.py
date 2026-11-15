@@ -11,6 +11,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
+import click
 from typer.testing import CliRunner
 
 from cli.cli import create_app
@@ -261,8 +262,9 @@ class UnifiedCLITests(unittest.TestCase):
             self.assertIn("Default action", result.output)
             self.assertIn("--limit", result.output)
         result = self.runner.invoke(self.app, ["map", "search", "-h"])
-        self.assertIn("--refresh", result.output)
-        self.assertNotIn("--no-refresh", result.output)
+        help_text = click.unstyle(result.output)
+        self.assertIn("--refresh", help_text)
+        self.assertNotIn("--no-refresh", help_text)
 
     def test_representative_hierarchical_routes(self):
         cases = (
