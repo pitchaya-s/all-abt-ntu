@@ -63,7 +63,7 @@ class CLISetupTests(unittest.TestCase):
         ):
             result = self.invoke()
         self.assertNotEqual(result.exit_code, 0)
-        self.assertIn("all-abt-ntu-mcp[cli,personal]", result.output)
+        self.assertIn("all-abt-ntu[cli,personal]", result.output)
         run.assert_not_called()
 
     def test_install_failure_is_reported(self):

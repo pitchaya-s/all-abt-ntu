@@ -35,7 +35,7 @@ uv run ntu config list
 uv run ntu config unset ntulearn.headless
 ```
 
-For a PyPI install, use the same `uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest'` prefix as in [local setup](index.md#local-setup) instead of `uv run`. The supported settings under `env` are:
+For a PyPI install, use the same `uvx --from 'all-abt-ntu[cli,mcp,personal]@latest'` prefix as in [local setup](index.md#local-setup) instead of `uv run`. The supported settings under `env` are:
 
 
 | Group         | Settings                                                                                                                 |

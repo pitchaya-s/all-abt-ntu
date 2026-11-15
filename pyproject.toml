@@ -1,5 +1,5 @@
 [project]
-name = "all-abt-ntu-mcp"
+name = "all-abt-ntu"
 version = "0.1.0-beta.6"
 description = "CLI and MCP interfaces for NTU schedules, learning, career opportunities, maps, research, faculty, library, news, campus services, shuttle arrivals, and student administration"
 readme = "README.md"
@@ -31,8 +31,8 @@ personal = ["playwright>=1.50,<2"]
 browser-cookies = ["browser-cookie3>=0.20,<1"]
 
 [dependency-groups]
-dev = ["all-abt-ntu-mcp[cli]"]
-hosted = ["all-abt-ntu-mcp[mcp]"]
+dev = ["all-abt-ntu[cli]"]
+hosted = ["all-abt-ntu[mcp]"]
 
 [tool.uv]
 default-groups = ["dev", "hosted"]

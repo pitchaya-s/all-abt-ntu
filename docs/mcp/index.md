@@ -5,7 +5,7 @@
 Run setup in your terminal:
 
 ```sh
-uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp setup
+uvx --from 'all-abt-ntu[cli,mcp,personal]@latest' ntu mcp setup
 ```
 
 Choose a profile, select tool families, and choose the MCP clients to configure. Setup can register the server with Codex, Claude Code and OpenCode, or you can skip client configuration. Codex and Claude Code must be installed to use their registration commands. On Linux, setup configures Codex to forward the current D-Bus session variables for OS keyring access. OpenCode setup supports JSON and JSONC configurations; if both files exist, configure the server manually to avoid conflicting settings. Setup and tool-management commands require both the `cli` and `mcp` extras; the server itself needs only `mcp`, plus `personal` for authenticated tools.
@@ -13,7 +13,7 @@ Choose a profile, select tool families, and choose the MCP clients to configure.
 To start the public stdio server directly without installing the CLI dependencies:
 
 ```sh
-uvx --from 'all-abt-ntu-mcp[mcp]@latest' ntu mcp --profile public
+uvx --from 'all-abt-ntu[mcp]@latest' ntu mcp --profile public
 ```
 
 ## Choose tools
@@ -21,12 +21,12 @@ uvx --from 'all-abt-ntu-mcp[mcp]@latest' ntu mcp --profile public
 To list or change families and individual tools later, run:
 
 ```sh
-uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp tools list
-uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp tools list --all
-uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp tools disable ntulearn
-uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp tools enable ntulearn
-uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp tools disable mazemap_get_directions
-uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp tools enable mazemap_get_directions
+uvx --from 'all-abt-ntu[cli,mcp,personal]@latest' ntu mcp tools list
+uvx --from 'all-abt-ntu[cli,mcp,personal]@latest' ntu mcp tools list --all
+uvx --from 'all-abt-ntu[cli,mcp,personal]@latest' ntu mcp tools disable ntulearn
+uvx --from 'all-abt-ntu[cli,mcp,personal]@latest' ntu mcp tools enable ntulearn
+uvx --from 'all-abt-ntu[cli,mcp,personal]@latest' ntu mcp tools disable mazemap_get_directions
+uvx --from 'all-abt-ntu[cli,mcp,personal]@latest' ntu mcp tools enable mazemap_get_directions
 ```
 
 Run `setup` again to change your profile or family selection. `tools list` shows families; `--all` shows individual tools. `[~]` means a family is partially enabled. Commands manage tools available in the active profile. Disabling a family also disables tools added to it later. Explicitly enabling a family enables all its tools in the active profile, including actions and downloads; individual tools can then be disabled. Restart the MCP server after changes. Settings do not affect the hosted server.
@@ -69,7 +69,7 @@ Add to `~/.codex/config.toml`:
 ```toml
 [mcp_servers.all-abt-ntu-mcp]
 command = "uvx"
-args = ["--from", "all-abt-ntu-mcp[mcp,personal]@latest", "ntu", "mcp"]
+args = ["--from", "all-abt-ntu[mcp,personal]@latest", "ntu", "mcp"]
 startup_timeout_sec = 120
 tool_timeout_sec = 240
 ```
@@ -90,7 +90,7 @@ Register for your user:
 
 ```sh
 claude mcp add --scope user all-abt-ntu-mcp \
-  -- uvx --from 'all-abt-ntu-mcp[mcp,personal]@latest' ntu mcp
+  -- uvx --from 'all-abt-ntu[mcp,personal]@latest' ntu mcp
 claude mcp list
 ```
 
@@ -106,7 +106,7 @@ Add to `~/.config/opencode/opencode.json`:
   "mcp": {
     "all-abt-ntu-mcp": {
       "type": "local",
-      "command": ["uvx", "--from", "all-abt-ntu-mcp[mcp,personal]@latest", "ntu", "mcp"],
+      "command": ["uvx", "--from", "all-abt-ntu[mcp,personal]@latest", "ntu", "mcp"],
       "enabled": true,
       "timeout": 240000
     }
@@ -136,7 +136,7 @@ The process uses MCP stdio, so it stays open while its MCP client is connected. 
 Authenticated CLI services that use a browser and the MCP personal profile need Playwright and its matching Chromium build. If you use the PyPI package, install Chromium from the same package environment:
 
 ```sh
-uvx --from 'all-abt-ntu-mcp[personal]@latest' playwright install chromium
+uvx --from 'all-abt-ntu[personal]@latest' playwright install chromium
 ```
 
 For a repository checkout, include `--extra personal` in the appropriate `uv sync` command above, then run `uv run --no-sync playwright install chromium`. Playwright versions can require different Chromium builds, so repeat the matching command after upgrading. NTULearn can optionally reuse an existing browser session without launching Chromium, although the shared personal profiles still require Chromium for their other tools.

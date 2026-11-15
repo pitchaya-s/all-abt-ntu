@@ -10,7 +10,7 @@ import tempfile
 from ..config import ConfigError
 
 NAME = "all-abt-ntu-mcp"
-COMMAND = ["uvx", "--from", "all-abt-ntu-mcp[mcp,personal]@latest", "ntu", "mcp"]
+COMMAND = ["uvx", "--from", "all-abt-ntu[mcp,personal]@latest", "ntu", "mcp"]
 
 
 def configure_codex_forwarding() -> None:

@@ -33,7 +33,7 @@ class EntrypointTests(unittest.TestCase):
         ):
             entrypoint.main()
         self.assertEqual(exit_error.exception.code, 1)
-        self.assertIn("all-abt-ntu-mcp[mcp]", stderr.getvalue())
+        self.assertIn("all-abt-ntu[mcp]", stderr.getvalue())
 
     def test_management_requires_cli_and_mcp(self):
         with (
@@ -43,7 +43,7 @@ class EntrypointTests(unittest.TestCase):
             self.assertRaises(SystemExit),
         ):
             entrypoint.main()
-        self.assertIn("all-abt-ntu-mcp[cli,mcp]", stderr.getvalue())
+        self.assertIn("all-abt-ntu[cli,mcp]", stderr.getvalue())
 
     def test_management_delegates_to_cli(self):
         with (

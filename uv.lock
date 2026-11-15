@@ -10,7 +10,7 @@ resolution-markers = [
 ]
 
 [[package]]
-name = "all-abt-ntu-mcp"
+name = "all-abt-ntu"
 version = "0.1.0b6"
 source = { editable = "." }
 dependencies = [
@@ -46,10 +46,10 @@ personal = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "all-abt-ntu-mcp", extra = ["cli"] },
+    { name = "all-abt-ntu", extra = ["cli"] },
 ]
 hosted = [
-    { name = "all-abt-ntu-mcp", extra = ["mcp"] },
+    { name = "all-abt-ntu", extra = ["mcp"] },
 ]
 
 [package.metadata]
@@ -75,8 +75,8 @@ requires-dist = [
 provides-extras = ["cli", "mcp", "personal", "browser-cookies"]
 
 [package.metadata.requires-dev]
-dev = [{ name = "all-abt-ntu-mcp", extras = ["cli"] }]
-hosted = [{ name = "all-abt-ntu-mcp", extras = ["mcp"] }]
+dev = [{ name = "all-abt-ntu", extras = ["cli"] }]
+hosted = [{ name = "all-abt-ntu", extras = ["mcp"] }]
 
 [[package]]
 name = "annotated-doc"

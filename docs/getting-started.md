@@ -5,14 +5,14 @@
 Install [uv](https://docs.astral.sh/uv/) and Python 3.10 or newer. Install the CLI:
 
 ```sh
-uv tool install 'all-abt-ntu-mcp[cli,personal]@latest'
+uv tool install 'all-abt-ntu[cli,personal]@latest'
 ntu cli setup
 ```
 
 Or configure the MCP server:
 
 ```sh
-uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp setup
+uvx --from 'all-abt-ntu[cli,mcp,personal]@latest' ntu mcp setup
 ```
 
 See [CLI](cli/index.md) and [MCP](mcp/index.md) for installation details and usage.
@@ -37,7 +37,7 @@ Public services need no credentials. `ntu cli setup` can save credentials and in
 ntu auth save
 ```
 
-If you only use MCP through `uvx`, run `uvx --from 'all-abt-ntu-mcp[cli,personal]@latest' ntu auth save` instead. Browser-based services also need Playwright's [matching Chromium build](mcp/index.md#chromium).
+If you only use MCP through `uvx`, run `uvx --from 'all-abt-ntu[cli,personal]@latest' ntu auth save` instead. Browser-based services also need Playwright's [matching Chromium build](mcp/index.md#chromium).
 
 Your password is hidden while typing and stored encrypted locally in your OS keyring. The server never includes it in MCP responses sent to the LLM.
 

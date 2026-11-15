@@ -11,8 +11,8 @@ from shared.version import VERSION
 def _missing(extra, purpose):
     print(
         f"{purpose} requires the {extra} extra. Install "
-        f"'all-abt-ntu-mcp[{extra}]' or run with uvx --from "
-        f"'all-abt-ntu-mcp[{extra}]' ntu ...",
+        f"'all-abt-ntu[{extra}]' or run with uvx --from "
+        f"'all-abt-ntu[{extra}]' ntu ...",
         file=sys.stderr,
     )
     raise SystemExit(1)
@@ -69,8 +69,8 @@ def main():
         else:
             print(
                 "Usage: ntu [OPTIONS] COMMAND [ARGS]...\n\nNTU services and MCP server.\n\n"
-                "Install all-abt-ntu-mcp[cli] for service commands, or "
-                "all-abt-ntu-mcp[mcp] for ntu mcp."
+                "Install all-abt-ntu[cli] for service commands, or "
+                "all-abt-ntu[mcp] for ntu mcp."
             )
     else:
         _run_cli()

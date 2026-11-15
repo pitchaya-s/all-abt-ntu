@@ -16,7 +16,7 @@ Install [uv](https://docs.astral.sh/uv/) and Python 3.10 or newer. Then choose h
 **Use the CLI**
 
 ```sh
-uv tool install 'all-abt-ntu-mcp[cli,personal]@latest'
+uv tool install 'all-abt-ntu[cli,personal]@latest'
 ntu cli setup
 ntu --help
 ```
@@ -24,7 +24,7 @@ ntu --help
 **Connect an MCP client**
 
 ```sh
-uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp setup
+uvx --from 'all-abt-ntu[cli,mcp,personal]@latest' ntu mcp setup
 ```
 
 Setup lets you choose a profile, enable tools, and configure Codex, Claude Code, or OpenCode. You can also [connect to the hosted public server](#hosted-public-server) without installing anything locally.
@@ -66,7 +66,7 @@ Your password is entered through a hidden prompt and stored locally in your OS k
 If you use MCP through `uvx` without installing the CLI, save credentials with:
 
 ```sh
-uvx --from 'all-abt-ntu-mcp[cli,personal]@latest' ntu auth save
+uvx --from 'all-abt-ntu[cli,personal]@latest' ntu auth save
 ```
 
 See [credentials and platform setup](https://pitchaya-s.github.io/all-abt-ntu/getting-started/#credentials) for more details.
@@ -78,13 +78,13 @@ See [credentials and platform setup](https://pitchaya-s.github.io/all-abt-ntu/ge
 For public and authenticated services:
 
 ```sh
-uv tool install 'all-abt-ntu-mcp[cli,personal]@latest'
+uv tool install 'all-abt-ntu[cli,personal]@latest'
 ```
 
 For public services only, install the smaller CLI extra:
 
 ```sh
-uv tool install 'all-abt-ntu-mcp[cli]@latest'
+uv tool install 'all-abt-ntu[cli]@latest'
 ```
 
 See the [CLI installation guide](https://pitchaya-s.github.io/all-abt-ntu/cli/#installation) for browser-cookie support.
@@ -151,22 +151,22 @@ MCP connects NTU tools to compatible AI clients. The local server offers a **pub
 ### Local setup
 
 ```sh
-uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp setup
+uvx --from 'all-abt-ntu[cli,mcp,personal]@latest' ntu mcp setup
 ```
 
 To review or change tools later:
 
 ```sh
-uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp tools list
-uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp tools list --all
-uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp tools disable news
-uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp tools enable stars
+uvx --from 'all-abt-ntu[cli,mcp,personal]@latest' ntu mcp tools list
+uvx --from 'all-abt-ntu[cli,mcp,personal]@latest' ntu mcp tools list --all
+uvx --from 'all-abt-ntu[cli,mcp,personal]@latest' ntu mcp tools disable news
+uvx --from 'all-abt-ntu[cli,mcp,personal]@latest' ntu mcp tools enable stars
 ```
 
 To run a public stdio server directly:
 
 ```sh
-uvx --from 'all-abt-ntu-mcp[mcp]@latest' ntu mcp --profile public
+uvx --from 'all-abt-ntu[mcp]@latest' ntu mcp --profile public
 ```
 
 The [MCP setup guide](https://pitchaya-s.github.io/all-abt-ntu/mcp/) covers client configuration, profiles, Chromium and manual installation. See the [tool reference](https://pitchaya-s.github.io/all-abt-ntu/mcp/tools/) for available tools.

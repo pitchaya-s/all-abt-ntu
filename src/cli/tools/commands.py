@@ -37,7 +37,7 @@ def registered_tools(profile: str):
     except ModuleNotFoundError as error:
         if profile != "public" and error.name and error.name.startswith("playwright"):
             raise ConfigError(
-                "Personal tools require Playwright. Install all-abt-ntu-mcp[cli,mcp,personal] and run setup again."
+                "Personal tools require Playwright. Install all-abt-ntu[cli,mcp,personal] and run setup again."
             ) from error
         raise
 

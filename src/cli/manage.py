@@ -62,7 +62,7 @@ def setup_cli():
             if find_spec("playwright") is None:
                 raise ConfigError(
                     "Chromium installation requires the personal extra. "
-                    "Install 'all-abt-ntu-mcp[cli,personal]' and rerun ntu cli setup."
+                    "Install 'all-abt-ntu[cli,personal]' and rerun ntu cli setup."
                 )
             result = subprocess.run(
                 [sys.executable, "-m", "playwright", "install", "chromium"],
