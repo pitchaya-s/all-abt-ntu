@@ -56,11 +56,13 @@ def mcp_main(
 @mcp.command()
 def setup(ctx: typer.Context):
     from .tools.commands import setup as setup_tools
+    from .tools.clients import configure_clients
 
     try:
         assert ctx.parent is not None
         if setup_tools(ctx.parent.obj):
             save_auth()
+        configure_clients()
     except (ConfigError, RuntimeError) as error:
         fail(error)
 

@@ -22,6 +22,9 @@ class ToolConfigTests(unittest.TestCase):
         )
         environment.start()
         self.addCleanup(environment.stop)
+        client_setup = patch("cli.tools.clients.configure_clients")
+        client_setup.start()
+        self.addCleanup(client_setup.stop)
 
     def seed(self, profile, disabled, *, enabled=()):
         config = load_config()

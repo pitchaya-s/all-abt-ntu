@@ -2,23 +2,25 @@
 
 A CLI and MCP server for NTU Singapore schedules, learning materials, campus navigation, research, faculty, library discovery, career opportunities, news, campus services, shuttle arrivals, and student administration.
 
-[CLI](#cli) · [MCP](#mcp)
-
 **Available services**
 
 [STARS](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/stars/README.md) · [NTULearn](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/ntulearn/README.md) · [CareerAxis](src/careeraxis/README.md) · [MazeMap](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/mazemap/README.md) · [DR-NTU](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/drntu/README.md) · [Library](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/library/README.md) · [Faculty](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/faculty/README.md) · [News](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/news/README.md) · [Campus services](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/service/README.md) · [NTU Omnibus](https://github.com/pitchaya-s/all-abt-ntu/blob/main/src/omnibus/README.md) · [One Stop @ SAC](src/onestop/README.md).
 
-## Installation
+## Quickstart
 
-Install [uv](https://docs.astral.sh/uv/) and Python 3.10 or newer. To make `ntu` available as a command, run:
+Install [uv](https://docs.astral.sh/uv/) and Python 3.10 or newer. Install the CLI:
 
 ```sh
 uv tool install 'all-abt-ntu-mcp[cli,personal]@latest'
 ```
 
-The `cli` extra installs the terminal interface; `personal` adds browser support for authenticated services. Follow the [Chromium instructions](#chromium) if you use them. For public CLI services only, install `all-abt-ntu-mcp[cli]@latest`. The MCP server is a separate extra and is not installed by those commands.
+Or configure the MCP server:
 
-To enable optional NTULearn browser-cookie discovery, install `all-abt-ntu-mcp[cli,personal,browser-cookies]@latest`.
+```sh
+uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp setup
+```
+
+See [CLI](#cli) and [MCP](#mcp) for installation details and usage.
 
 ## Credentials
 
@@ -37,6 +39,20 @@ The keyring must be available and unlocked: Secret Service or KWallet on Linux, 
 Some Linux installations do not include a keyring service. Install a provider such as GNOME Keyring or KWallet using your distribution's package manager, then follow your desktop's setup instructions to start and unlock it before running `ntu auth save`.
 
 ## CLI
+
+### Installation
+
+To make `ntu` available as a command, run:
+
+```sh
+uv tool install 'all-abt-ntu-mcp[cli,personal]@latest'
+```
+
+The `cli` extra installs the terminal interface; `personal` adds browser support for authenticated services. Follow the [Chromium instructions](#chromium) if you use them. For public CLI services only, install `all-abt-ntu-mcp[cli]@latest`. The MCP server is a separate extra and is not installed by those commands.
+
+To enable optional NTULearn browser-cookie discovery, install `all-abt-ntu-mcp[cli,personal,browser-cookies]@latest`.
+
+### Examples
 
 Use `ntu --help` to explore all eleven service families. For example:
 
@@ -80,7 +96,7 @@ ntu learn videos download 'https://ntulearn.ntu.edu.sg/ultra/courses/_100_1/docu
 
 For `learn files read` and `learn files download`, the attachment ID is still required: the page URL identifies the content item, not an individual attachment. List attachments first to find it.
 
-Use `-h` for help. Common options also have short forms, including `-r` for refresh, `-l` for limit, `-p` for page, `-j` for JSON, and `-o` for a download destination. The CLI shares OS keyring credentials with MCP. MCP profiles and tool settings apply only to the MCP server; direct commands use service defaults and environment variables. Use `ntu onestop requests apply ITEM_ID`, `ntu onestop appointments book ITEM_ID`, and `ntu onestop cart checkout` for interactive workflows. See the [complete command reference](src/COMMANDS.md) for all commands and options.
+Use `-h` for help. Common options also have short forms, including `-r` for refresh, `-l` for limit, `-p` for page, `-j` for JSON, and `-o` for a download destination. See the [complete command reference](src/COMMANDS.md) for all commands and options.
 
 ### Manual install
 
@@ -90,10 +106,19 @@ To run the CLI from a local checkout:
 git clone https://github.com/pitchaya-s/all-abt-ntu.git
 cd all-abt-ntu
 uv sync --no-default-groups --extra cli
-uv run --no-sync ntu --help
+source .venv/bin/activate
+ntu --help
 ```
 
-For authenticated services, run `uv sync --no-default-groups --extra cli --extra personal`, follow the [Chromium instructions](#chromium), and save credentials with `uv run --no-sync ntu auth save`. Run commands from the checkout with `uv run --no-sync ntu`, for example `uv run --no-sync ntu map search LT1`.
+On Windows, use `.venv\Scripts\activate.bat` in Command Prompt or `.venv\Scripts\Activate.ps1` in PowerShell instead. For authenticated services, install the personal dependencies and Chromium, then save your credentials:
+
+```sh
+uv sync --no-default-groups --extra cli --extra personal
+playwright install chromium
+ntu auth save
+```
+
+Playwright versions can require different Chromium builds, so repeat the install command after upgrading. NTULearn can optionally reuse an existing browser session without launching Chromium. While the environment is active, run commands directly, for example `ntu map search LT1`.
 
 ## MCP
 
@@ -105,7 +130,7 @@ Run setup in your terminal:
 uvx --from 'all-abt-ntu-mcp[cli,mcp,personal]@latest' ntu mcp setup
 ```
 
-Choose a profile and select the tool families you want, such as STARS or NTULearn. Setup saves your choices on this machine. Follow the prompts for any additional setup, then connect your client using one of the examples below. Setup and tool-management commands require both the `cli` and `mcp` extras; the server itself needs only `mcp`, plus `personal` for authenticated tools.
+Choose a profile, select tool families, and choose the MCP clients to configure. Setup can register the server with Codex, Claude Code and OpenCode, or you can skip client configuration. Codex and Claude Code must be installed to use their registration commands. On Linux, Codex is configured with the current D-Bus session address for OS keyring access. OpenCode JSONC configurations need manual setup to preserve comments; see the example below. Setup and tool-management commands require both the `cli` and `mcp` extras; the server itself needs only `mcp`, plus `personal` for authenticated tools.
 
 To start the public stdio server directly without installing the CLI dependencies:
 
@@ -377,7 +402,23 @@ tests/
 
 ## Service reference
 
-See the [CLI command reference](src/COMMANDS.md) and [MCP tool reference](src/TOOLS.md) for the complete interfaces. Each service guide includes its command details, examples, and limitations.
+- **Interfaces**
+  - [CLI commands](src/COMMANDS.md)
+  - [MCP tools](src/TOOLS.md)
+- **Services**
+  - [STARS](src/stars/README.md)
+  - [NTULearn](src/ntulearn/README.md)
+  - [CareerAxis](src/careeraxis/README.md)
+  - [MazeMap](src/mazemap/README.md)
+  - [DR-NTU](src/drntu/README.md)
+  - [Library](src/library/README.md)
+  - [Faculty](src/faculty/README.md)
+  - [News](src/news/README.md)
+  - [Campus Services](src/service/README.md)
+  - [NTU Omnibus](src/omnibus/README.md)
+  - [One Stop @ SAC](src/onestop/README.md)
+
+Each service guide includes command details, examples, and limitations.
 
 ## Tests
 
