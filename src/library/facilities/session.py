@@ -97,7 +97,9 @@ class FacilitySession:
         except Exception:
             self._dispose()
             raise LibraryError(
-                "LibFacilities login needs Playwright and Chromium. Install the personal extra and run `uvx --from 'playwright>=1.50,<2' playwright install chromium`."
+                "LibFacilities could not start Playwright Chromium. Install the personal extra "
+                "and its matching Chromium build with `ntu cli setup` or run "
+                "`python -m playwright install chromium` in the same environment."
             ) from None
 
     def _navigate(self, path, credentials):
@@ -112,8 +114,11 @@ class FacilitySession:
         deadline = time.monotonic() + 45
         password_sent = False
         while time.monotonic() < deadline:
-            parsed = urlsplit(page.url)
+            current_url = page.url
+            parsed = urlsplit(current_url)
             body = page.locator("body").inner_text(timeout=5000)
+            if page.url != current_url:
+                continue
             if _CHALLENGE.search(body):
                 raise LibraryError(
                     "LibFacilities requires MFA or CAPTCHA; this tool cannot complete interactive verification."
@@ -140,14 +145,16 @@ class FacilitySession:
                 )
             ):
                 return
-            if password_sent and re.search(
-                r"incorrect|invalid password|account.*locked|too many.*attempts",
-                body,
-                re.I,
-            ):
-                raise LibraryError(
-                    "NTU rejected the library login. Check the saved credentials; no password retry was made."
-                )
+            if parsed.hostname == "loginfs.ntu.edu.sg" and password_sent:
+                error = page.locator("#errorText:visible")
+                if error.count() and re.search(
+                    r"incorrect|invalid password|account.*locked|too many.*attempts",
+                    error.inner_text(timeout=5000),
+                    re.I,
+                ):
+                    raise LibraryError(
+                        "NTU rejected the library login. Check the saved credentials; no password retry was made."
+                    )
             if (
                 parsed.hostname == "loginfs.ntu.edu.sg"
                 and parsed.path == "/adfs/ls/"

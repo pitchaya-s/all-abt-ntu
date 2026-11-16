@@ -1,6 +1,6 @@
 """Library service commands."""
 
-from typing import Literal, Optional
+from typing import Annotated, Literal, Optional
 
 import typer
 
@@ -8,23 +8,43 @@ from ..helpers import group
 from ..execution import application_scope
 from ..services import invoke
 
-app = typer.Typer(no_args_is_help=True)
+app = typer.Typer(
+    no_args_is_help=True, help="Search library resources and explore facilities."
+)
 g_facilities = group(default=True)
-app.add_typer(g_facilities, name="facilities")
+app.add_typer(
+    g_facilities, name="facilities", help="Explore library facilities and schedules."
+)
 g_map = group(default=False)
-app.add_typer(g_map, name="map")
+app.add_typer(g_map, name="map", help="Check public facility map availability.")
 
 
 @app.command("search")
 def cmd_search(
-    query: str,
-    field: Literal["any", "title", "creator", "isbn", "issn", "sub"] = "any",
-    match: Literal["contains", "exact"] = "contains",
-    resource_type: Optional[str] = None,
-    limit: int = typer.Option(10, "--limit", "-l"),
-    offset: int = 0,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    query: str = typer.Argument(..., help="Search text or keywords."),
+    field: Annotated[
+        Literal["any", "title", "creator", "isbn", "issn", "sub"],
+        typer.Option(
+            help="The field to search or update, depending on the command. Choices: any, title, creator, isbn, issn, sub. Default: any."
+        ),
+    ] = "any",
+    match: Annotated[
+        Literal["contains", "exact"],
+        typer.Option(
+            help="How the search should match the selected field. Choices: contains, exact. Default: contains."
+        ),
+    ] = "contains",
+    resource_type: Annotated[
+        Optional[str], typer.Option(help="The published resource-type facet token.")
+    ] = None,
+    limit: int = typer.Option(10, "--limit", "-l", help="Maximum number of results."),
+    offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Search NTU OneSearch for books, articles, journals and other catalogue resources."""
     with application_scope() as application:
@@ -45,10 +65,24 @@ def cmd_search(
 
 @app.command("record")
 def cmd_record(
-    record_id: str,
-    context: Literal["L", "PC"] = "L",
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    record_id: Annotated[
+        str,
+        typer.Argument(
+            help="A record ID for a request target when the request contains multiple records."
+        ),
+    ],
+    context: Annotated[
+        Literal["L", "PC"],
+        typer.Option(
+            help="The library search context: local catalogue (L) or broader discovery (PC). Choices: L, PC. Default: L."
+        ),
+    ] = "L",
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Read a OneSearch record's bibliographic metadata, descriptions, subjects, identifiers and published access links."""
     with application_scope() as application:
@@ -61,10 +95,24 @@ def cmd_record(
 
 @app.command("availability")
 def cmd_availability(
-    record_id: str,
-    context: Literal["L", "PC"] = "L",
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    record_id: Annotated[
+        str,
+        typer.Argument(
+            help="A record ID for a request target when the request contains multiple records."
+        ),
+    ],
+    context: Annotated[
+        Literal["L", "PC"],
+        typer.Option(
+            help="The library search context: local catalogue (L) or broader discovery (PC). Choices: L, PC. Default: L."
+        ),
+    ] = "L",
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Read published physical holdings with library, location, call number and status, plus institutional full-text service links and access notes."""
     with application_scope() as application:
@@ -77,8 +125,12 @@ def cmd_availability(
 
 @g_facilities.command("__default__", hidden=True)
 def cmd_facilities_default(
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """List NTU Library facility categories, library/floor maps and closure notices."""
     with application_scope() as application:
@@ -91,11 +143,17 @@ def cmd_facilities_default(
 
 @g_map.command("availability")
 def cmd_map_availability(
-    map_slug: str,
-    date: str = typer.Option(..., "--date"),
-    time: str = typer.Option(..., "--time"),
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    map_slug: Annotated[
+        str, typer.Argument(help="The library map slug returned by facility discovery.")
+    ],
+    date: str = typer.Option(..., "--date", help="Date in YYYY-MM-DD format."),
+    time: str = typer.Option(..., "--time", help="Time in 24-hour HH:MM format."),
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Read seat/room booking statuses for a library map at date YYYY-MM-DD and time HH:MM in Singapore."""
     with application_scope() as application:
@@ -108,12 +166,28 @@ def cmd_map_availability(
 
 @g_facilities.command("schedule")
 def cmd_facilities_schedule(
-    date: str = typer.Option(..., "--date"),
-    space_id: Optional[int] = typer.Option(None, "--space"),
-    location_id: Optional[int] = typer.Option(None, "--location"),
-    group_id: Optional[int] = typer.Option(None, "--group"),
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    date: str = typer.Option(..., "--date", help="Date in YYYY-MM-DD format."),
+    space_id: Optional[int] = typer.Option(
+        None,
+        "--space",
+        help="The space ID returned by the relevant listing or details command.",
+    ),
+    location_id: Optional[int] = typer.Option(
+        None,
+        "--location",
+        help="The location ID returned by the relevant listing or details command.",
+    ),
+    group_id: Optional[int] = typer.Option(
+        None,
+        "--group",
+        help="The group ID returned by the relevant listing or details command.",
+    ),
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Read a day's LibFacilities room/seat time grid, room description and source status classes."""
     with application_scope() as application:

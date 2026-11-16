@@ -54,7 +54,7 @@ One Stop request applications, appointment bookings and cart checkout run as sta
 | [`ntu stars exams`](../services/stars/cli/courses.md#cmd-stars-exams) | Get public General Access exam dates and times for a course in the latest or specified published term. |
 | [`ntu stars graduate`](../services/stars/cli/courses.md#cmd-stars-graduate) | Get a graduate course's class groups for NTU's currently published academic term. |
 | [`ntu stars audit`](../services/stars/cli/personal.md#cmd-stars-audit) | Get your degree requirements, examination results, and registered courses from Degree Audit. |
-| [`ntu stars auth status`](../services/stars/cli/personal.md#cmd-stars-auth-status) | Report whether WISH credentials are configured and whether this process has verified a session. |
+| [`ntu stars auth status`](../services/stars/cli/personal.md#cmd-stars-auth-status) | Sign in to STARS and report whether access is verified. |
 | [`ntu stars courses search`](../services/stars/cli/courses.md#cmd-stars-courses-search) | Search NTU's public undergraduate Class Schedule by partial code or title keywords. |
 | [`ntu stars indexes compare`](../services/stars/cli/indexes.md#cmd-stars-indexes-compare) | Compare shared and index-specific sessions; optionally check clashes with supplied time slots. |
 | [`ntu stars indexes match`](../services/stars/cli/indexes.md#cmd-stars-indexes-match) | Find indexes matching day/time/lesson/week rules and avoiding supplied timetable clashes. |
@@ -77,7 +77,7 @@ One Stop request applications, appointment bookings and cart checkout run as sta
 | [`ntu learn upcoming`](../services/ntulearn/cli/activity.md#cmd-learn-upcoming) | Collect all calendar pages across your enrolled courses. |
 | [`ntu learn digest`](../services/ntulearn/cli/activity.md#cmd-learn-digest) | Digest of recent announcements, upcoming calendar items and your gradebook across courses. |
 | [`ntu learn users`](../services/ntulearn/cli/people.md#cmd-learn-users) | List course users visible to your account, with their published names and roles. |
-| [`ntu learn auth status`](../services/ntulearn/cli/courses.md#cmd-learn-auth-status) | Report credential configuration and this process's last verified login, without logging in. |
+| [`ntu learn auth status`](../services/ntulearn/cli/courses.md#cmd-learn-auth-status) | Sign in to NTULearn and report whether access is verified. |
 | [`ntu learn content tree`](../services/ntulearn/cli/courses.md#cmd-learn-content-tree) | Read a course's nested content tree. |
 | [`ntu learn content show`](../services/ntulearn/cli/courses.md#cmd-learn-content-show) | Read one level of course content. |
 | [`ntu learn courses download`](../services/ntulearn/cli/files.md#cmd-learn-courses-download) | Recursively save readable Blackboard attachments under destination/course_id with content folder names and stable file IDs. |
@@ -100,7 +100,7 @@ One Stop request applications, appointment bookings and cart checkout run as sta
 | --- | --- |
 | [`ntu career record`](../services/careeraxis/cli/index.md#cmd-career-record) | Read the visible details for a CareerAxis event, resource document, employer, appointment topic, or internship posting URL returned by a CareerAxis search tool. |
 | [`ntu career appointments topics`](../services/careeraxis/cli/index.md#cmd-career-appointments-topics) | Search CareerAxis career-coaching appointment topics such as internship strategy, interview practice, and resume critique. |
-| [`ntu career auth status`](../services/careeraxis/cli/index.md#cmd-career-auth-status) | Report whether shared NTU keyring credentials can be read and whether this process has verified CareerAxis login; does not log in. |
+| [`ntu career auth status`](../services/careeraxis/cli/index.md#cmd-career-auth-status) | Sign in to CareerAxis and report whether access is verified. |
 | [`ntu career employers search`](../services/careeraxis/cli/index.md#cmd-career-employers-search) | Search CareerAxis employer profiles by name, optionally limiting results to employers with current opportunities. |
 | [`ntu career events search`](../services/careeraxis/cli/index.md#cmd-career-events-search) | Search authenticated CareerAxis events by keyword. |
 | [`ntu career internships search`](../services/careeraxis/cli/index.md#cmd-career-internships-search) | Search the authenticated CareerAxis Internship workgroup job board by keyword across its visible internship postings. |
@@ -297,7 +297,7 @@ For examples, output fields and workflow guidance, use the [One Stop CLI guide](
 | [`ntu onestop announcements`](../services/one-stop/cli/account.md#cmd-onestop-announcements) | Read One Stop announcements, summaries and links from the native announcements collection with local pagination. |
 | [`ntu onestop actions`](../services/one-stop/cli/account.md#cmd-onestop-actions) | Read your One Stop to-do/billing actions and their published due dates and payment links. |
 | [`ntu onestop links`](../services/one-stop/cli/account.md#cmd-onestop-links) | List links on One Stop's Popular Sites page, preserving native catalog, knowledge and external destinations. |
-| [`ntu onestop auth status`](../services/one-stop/cli/account.md#cmd-onestop-auth-status) | Report shared keyring availability and the last verified One Stop session without logging in or returning identity or credentials. |
+| [`ntu onestop auth status`](../services/one-stop/cli/account.md#cmd-onestop-auth-status) | Sign in to One Stop and report whether access is verified. |
 | [`ntu onestop profile set`](../services/one-stop/cli/account.md#cmd-onestop-profile-set) | Update one displayed editable own-profile field through its native inline editor. |
 | [`ntu onestop profile picture`](../services/one-stop/cli/account.md#cmd-onestop-profile-picture) | Upload the explicitly selected local image as your own ServiceNow profile picture using the native file input. |
 | [`ntu onestop profile notifications`](../services/one-stop/cli/account.md#cmd-onestop-profile-notifications) | Enable or disable your ServiceNow notification preference. |

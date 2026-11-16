@@ -53,6 +53,6 @@ These commands use your saved NTU account. `planner save` replaces the entire se
 | Command | What it does |
 | --- | --- |
 | [`ntu stars audit`](personal.md#cmd-stars-audit) | Get your degree requirements, examination results, and registered courses from Degree Audit. |
-| [`ntu stars auth status`](personal.md#cmd-stars-auth-status) | Report whether WISH credentials are configured and whether this process has verified a session. |
+| [`ntu stars auth status`](personal.md#cmd-stars-auth-status) | Sign in to STARS and report whether access is verified. |
 | [`ntu stars planner show`](personal.md#cmd-stars-planner-show) | Get registered courses, the published term, and saved Plans 1–3 with indexes and timetables. |
 | [`ntu stars planner save`](personal.md#cmd-stars-planner-save) | Replace saved Plan 1, 2, or 3 with the complete supplied course/index list for the current Planner term. |

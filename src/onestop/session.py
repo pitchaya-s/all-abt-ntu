@@ -249,6 +249,20 @@ class OneStopSession:
         "Report shared keyring availability and the last verified One Stop session without logging in or returning identity or credentials. An unavailable keyring reports credentials_configured=null."
         return self._run(self._status)
 
+    def verify(self) -> AuthStatus:
+        """Authenticate with One Stop and report the verified session."""
+        return self._run(self._verify)
+
+    def _verify(self):
+        credentials = self._credentials()
+        try:
+            credentials.require_login()
+        except CredentialError as error:
+            raise OneStopError(str(error)) from None
+        if not self._verified or not self._logged_in():
+            self._login(credentials)
+        return self._status()
+
     def _status(self):
         status = credential_status()
         if status["credentials_configured"] is True:
@@ -277,7 +291,9 @@ class OneStopSession:
         except Exception:
             self._dispose()
             raise OneStopError(
-                "One Stop needs the personal extra and Chromium. Run `uvx --from 'playwright>=1.50,<2' playwright install chromium`."
+                "One Stop could not start Playwright Chromium. Install the personal extra and "
+                "the Chromium build matching this environment with `ntu cli setup` or your "
+                "environment's `playwright install chromium` command."
             ) from None
 
     def _logged_in(self):
@@ -307,7 +323,8 @@ class OneStopSession:
         password_sent = False
         while time.monotonic() < deadline:
             try:
-                u = urlsplit(self._page.url)
+                current_url = self._page.url
+                u = urlsplit(current_url)
                 if (
                     u.scheme != "https"
                     or u.port not in (None, 443)
@@ -325,18 +342,24 @@ class OneStopSession:
                     return
                 if u.hostname == "loginfs.ntu.edu.sg":
                     body = self._page.locator("body").inner_text(timeout=5000)
+                    # A redirect may replace the page while inner_text waits.
+                    # Never interpret portal text as an identity-provider error.
+                    if self._page.url != current_url:
+                        continue
                     if _CHALLENGE.search(body):
                         raise OneStopError(
                             "One Stop requires interactive MFA or CAPTCHA; this tool cannot complete it."
                         )
-                    if password_sent and re.search(
-                        r"incorrect|invalid password|account.*locked|too many.*attempts",
-                        body,
-                        re.I,
-                    ):
-                        raise OneStopError(
-                            "NTU rejected the One Stop login. No automatic password retry was made."
-                        )
+                    if password_sent:
+                        error = self._page.locator("#errorText:visible")
+                        if error.count() and re.search(
+                            r"incorrect|invalid password|account.*locked|too many.*attempts",
+                            error.inner_text(timeout=5000),
+                            re.I,
+                        ):
+                            raise OneStopError(
+                                "NTU rejected the One Stop login. No automatic password retry was made."
+                            )
                     if (
                         not password_sent
                         and u.path == "/adfs/ls/"

@@ -131,6 +131,34 @@ class SessionTests(unittest.TestCase):
                 s._navigate("/students/jobs/search", Mock())
         s._page.locator.return_value.fill.assert_not_called()
 
+    def test_redirected_portal_text_is_not_a_password_rejection(self):
+        s = self.session
+        page = s._page = Mock(url="https://loginfs.ntu.edu.sg/adfs/ls/")
+        page.goto.return_value = None
+        body, field, logout = Mock(), Mock(), Mock()
+        field.count.return_value = logout.count.return_value = 1
+        responses = iter(("Sign in", None, "Incorrect filter on the table"))
+
+        def read_body(**kwargs):
+            value = next(responses)
+            if value is None:
+                page.url = "https://careeraxis.ntu.edu.sg/students/jobs/search"
+                return "Incorrect filter on the table"
+            return value
+
+        body.inner_text.side_effect = read_body
+        page.locator.side_effect = lambda selector: {
+            "body": body,
+            'a[href="/students/logout"]': logout,
+        }.get(selector, field)
+        credentials = Mock(
+            email="example@e.ntu.edu.sg", username="example", password="synthetic"
+        )
+        with patch.object(s, "_open"), patch.object(s, "_pace"):
+            s._navigate("/students/jobs/search", credentials)
+        self.assertTrue(s._verified)
+        field.click.assert_called_once()
+
 
 @unittest.skipUnless(
     find_spec("playwright"), "Optional personal extra is not installed"

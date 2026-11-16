@@ -23,7 +23,9 @@ def create_app():
     @app.callback()
     def root(
         ctx: typer.Context,
-        version: bool = typer.Option(False, "--version", is_eager=True),
+        version: bool = typer.Option(
+            False, "--version", is_eager=True, help="Show the installed version."
+        ),
     ):
         if version:
             typer.echo(VERSION)

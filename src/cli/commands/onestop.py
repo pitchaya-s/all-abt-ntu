@@ -1,6 +1,6 @@
 """Onestop service commands."""
 
-from typing import Literal, Optional
+from typing import Annotated, Literal, Optional
 
 import typer
 
@@ -9,44 +9,73 @@ from ..output import render
 from ..execution import application_scope
 from ..services import invoke
 
-app = typer.Typer(no_args_is_help=True)
+app = typer.Typer(
+    no_args_is_help=True,
+    help="Access One Stop requests, appointments, and account services.",
+)
 g_appointments = group(default=True)
-app.add_typer(g_appointments, name="appointments")
+app.add_typer(
+    g_appointments, name="appointments", help="List appointments or book from a form."
+)
 g_attachments = group(default=False)
-app.add_typer(g_attachments, name="attachments")
+app.add_typer(
+    g_attachments, name="attachments", help="List, download, or manage attachments."
+)
 g_auth = group(default=False)
-app.add_typer(g_auth, name="auth")
+app.add_typer(g_auth, name="auth", help="Check One Stop authentication.")
 g_cart = group(default=True)
-app.add_typer(g_cart, name="cart")
+app.add_typer(
+    g_cart, name="cart", help="View or manage the shopping cart and checkout."
+)
 g_catalog = group(default=False)
-app.add_typer(g_catalog, name="catalog")
+app.add_typer(g_catalog, name="catalog", help="Browse catalog categories and forms.")
 g_favourites = group(default=True)
-app.add_typer(g_favourites, name="favourites")
+app.add_typer(
+    g_favourites, name="favourites", help="View or manage catalog favourites."
+)
 g_knowledge = group(default=False)
-app.add_typer(g_knowledge, name="knowledge")
+app.add_typer(
+    g_knowledge, name="knowledge", help="Search and interact with knowledge articles."
+)
 g_payments = group(default=False)
-app.add_typer(g_payments, name="payments")
+app.add_typer(
+    g_payments,
+    name="payments",
+    help="Explore payment services and prepare checkout links.",
+)
 g_profile = group(default=True)
-app.add_typer(g_profile, name="profile")
+app.add_typer(g_profile, name="profile", help="View or update your profile.")
 g_requests = group(default=False)
-app.add_typer(g_requests, name="requests")
+app.add_typer(
+    g_requests, name="requests", help="Browse requests or apply for a service."
+)
 g_cart_saved = group(default=False)
-g_cart.add_typer(g_cart_saved, name="saved")
+g_cart.add_typer(g_cart_saved, name="saved", help="View or manage saved carts.")
 g_knowledge_comments = group(default=True)
-g_knowledge.add_typer(g_knowledge_comments, name="comments")
+g_knowledge.add_typer(
+    g_knowledge_comments, name="comments", help="Read or manage article comments."
+)
 
 
 @g_auth.command("status")
-def cmd_auth_status(json_output: bool = typer.Option(False, "--json", "-j")):
-    """Report shared keyring availability and the last verified One Stop session without logging in or returning identity or credentials."""
+def cmd_auth_status(
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
+):
+    """Sign in to One Stop and report whether access is verified."""
     with application_scope() as application:
-        return invoke(application.onestop_session.status, {}, json_output)
+        return invoke(application.onestop_session.verify, {}, json_output)
 
 
 @g_catalog.command("categories")
 def cmd_catalog_categories(
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """List the signed-in student's visible One Stop catalog categories and subcategories, parent IDs and published item counts."""
     with application_scope() as application:
@@ -57,12 +86,20 @@ def cmd_catalog_categories(
 
 @g_catalog.command("search")
 def cmd_catalog_search(
-    query: str = typer.Argument(""),
-    category_id: Optional[str] = typer.Option(None, "--category"),
-    limit: int = typer.Option(20, "--limit", "-l"),
-    offset: int = 0,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    query: str = typer.Argument("", help="Optional search text or keywords."),
+    category_id: Optional[str] = typer.Option(
+        None,
+        "--category",
+        help="The category ID returned by the relevant listing or details command.",
+    ),
+    limit: int = typer.Option(20, "--limit", "-l", help="Maximum number of results."),
+    offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Search the student's One Stop service catalog with query, or browse one category_id."""
     with application_scope() as application:
@@ -81,9 +118,18 @@ def cmd_catalog_search(
 
 @g_catalog.command("item")
 def cmd_catalog_item(
-    item_id: str,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    item_id: Annotated[
+        str,
+        typer.Argument(
+            help="The item ID returned by the relevant listing or details command."
+        ),
+    ],
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Read a native One Stop form's description, current visible field labels/types, mandatory flags and choices."""
     with application_scope() as application:
@@ -96,11 +142,15 @@ def cmd_catalog_item(
 
 @g_knowledge.command("search")
 def cmd_knowledge_search(
-    query: str,
-    limit: int = typer.Option(20, "--limit", "-l"),
-    offset: int = 0,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    query: str = typer.Argument(..., help="Search text or keywords."),
+    limit: int = typer.Option(20, "--limit", "-l", help="Maximum number of results."),
+    offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Search the signed-in student's One Stop knowledge base."""
     with application_scope() as application:
@@ -113,11 +163,27 @@ def cmd_knowledge_search(
 
 @g_knowledge.command("article")
 def cmd_knowledge_article(
-    article_id: str,
-    offset: int = 0,
-    max_chars: int = 12000,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    article_id: Annotated[
+        str,
+        typer.Argument(
+            help="The article ID returned by the relevant listing or details command."
+        ),
+    ],
+    offset: int = typer.Option(
+        0, "--offset", help="Number of article characters to skip."
+    ),
+    max_chars: Annotated[
+        int,
+        typer.Option(
+            help="Maximum number of text characters to return. Default: 12000."
+        ),
+    ] = 12000,
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Read a knowledge article's text, text-template sections or wiki body by article_id from search_knowledge, with text pagination and source links."""
     with application_scope() as application:
@@ -135,12 +201,26 @@ def cmd_knowledge_article(
 
 @g_requests.command("list")
 def cmd_requests_list(
-    status: Literal["all", "open", "closed"] = "all",
-    kind: Literal["all", "case", "request"] = "all",
-    limit: int = typer.Option(20, "--limit", "-l"),
-    offset: int = 0,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    status: Annotated[
+        Literal["all", "open", "closed"],
+        typer.Option(
+            help="Restrict the listing to the selected status. Choices: all, open, closed. Default: all."
+        ),
+    ] = "all",
+    kind: Annotated[
+        Literal["all", "case", "request"],
+        typer.Option(
+            help="Restrict the listing to the selected kind of request. Choices: all, case, request. Default: all."
+        ),
+    ] = "all",
+    limit: int = typer.Option(20, "--limit", "-l", help="Maximum number of results."),
+    offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Read your own open/closed One Stop cases and service requests, expanding native lists up to 500 records."""
     with application_scope() as application:
@@ -159,9 +239,18 @@ def cmd_requests_list(
 
 @g_requests.command("show")
 def cmd_requests_show(
-    request_id: str,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    request_id: Annotated[
+        str,
+        typer.Argument(
+            help="The request ID returned by the relevant listing or details command."
+        ),
+    ],
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Read one of your requests after checking request_id against your retrieved personal lists."""
     with application_scope() as application:
@@ -173,7 +262,11 @@ def cmd_requests_show(
 
 
 @app.command("dashboard")
-def cmd_dashboard(json_output: bool = typer.Option(False, "--json", "-j")):
+def cmd_dashboard(
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
+):
     """Read your One Stop homepage announcements, actions/payment links, upcoming appointments and popular links."""
     with application_scope() as application:
         return invoke(application.onestop_portal.dashboard, {}, json_output)
@@ -181,9 +274,11 @@ def cmd_dashboard(json_output: bool = typer.Option(False, "--json", "-j")):
 
 @app.command("announcements")
 def cmd_announcements(
-    limit: int = typer.Option(20, "--limit", "-l"),
-    offset: int = 0,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    limit: int = typer.Option(20, "--limit", "-l", help="Maximum number of results."),
+    offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Read One Stop announcements, summaries and links from the native announcements collection with local pagination."""
     with application_scope() as application:
@@ -196,9 +291,11 @@ def cmd_announcements(
 
 @app.command("actions")
 def cmd_actions(
-    limit: int = typer.Option(20, "--limit", "-l"),
-    offset: int = 0,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    limit: int = typer.Option(20, "--limit", "-l", help="Maximum number of results."),
+    offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Read your One Stop to-do/billing actions and their published due dates and payment links."""
     with application_scope() as application:
@@ -211,9 +308,11 @@ def cmd_actions(
 
 @app.command("links")
 def cmd_links(
-    limit: int = typer.Option(20, "--limit", "-l"),
-    offset: int = 0,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    limit: int = typer.Option(20, "--limit", "-l", help="Maximum number of results."),
+    offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """List links on One Stop's Popular Sites page, preserving native catalog, knowledge and external destinations."""
     with application_scope() as application:
@@ -225,7 +324,11 @@ def cmd_links(
 
 
 @g_profile.command("__default__", hidden=True)
-def cmd_profile_default(json_output: bool = typer.Option(False, "--json", "-j")):
+def cmd_profile_default(
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
+):
     """Read your own displayed profile fields, editable flags, preferences/choices, notification setting and picture-upload capability."""
     with application_scope() as application:
         return invoke(application.onestop_portal.get_profile, {}, json_output)
@@ -233,10 +336,12 @@ def cmd_profile_default(json_output: bool = typer.Option(False, "--json", "-j"))
 
 @g_payments.command("services")
 def cmd_payments_services(
-    query: str = typer.Argument(""),
-    limit: int = typer.Option(20, "--limit", "-l"),
-    offset: int = 0,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    query: str = typer.Argument("", help="Optional search text or keywords."),
+    limit: int = typer.Option(20, "--limit", "-l", help="Maximum number of results."),
+    offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Search/browse services in the student's native payment directory, preserving its active/category/access filter."""
     with application_scope() as application:
@@ -249,8 +354,15 @@ def cmd_payments_services(
 
 @g_payments.command("service")
 def cmd_payments_service(
-    service_id: str,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    service_id: Annotated[
+        str,
+        typer.Argument(
+            help="The service ID returned by the relevant listing or details command."
+        ),
+    ],
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Read a visible payment service's native fixed-amount information."""
     with application_scope() as application:
@@ -263,8 +375,15 @@ def cmd_payments_service(
 
 @g_knowledge.command("feedback")
 def cmd_knowledge_feedback(
-    article_id: str,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    article_id: Annotated[
+        str,
+        typer.Argument(
+            help="The article ID returned by the relevant listing or details command."
+        ),
+    ],
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Read native knowledge capabilities: ratings, helpfulness, comments, flags/reasons, subscription/inheritance, favourites and self-delivery channels."""
     with application_scope() as application:
@@ -277,10 +396,17 @@ def cmd_knowledge_feedback(
 
 @g_knowledge_comments.command("__default__", hidden=True)
 def cmd_knowledge_comments_default(
-    article_id: str,
-    limit: int = typer.Option(20, "--limit", "-l"),
-    offset: int = 0,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    article_id: Annotated[
+        str,
+        typer.Argument(
+            help="The article ID returned by the relevant listing or details command."
+        ),
+    ],
+    limit: int = typer.Option(20, "--limit", "-l", help="Maximum number of results."),
+    offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Read visible knowledge comments/replies, author display names, text, dates, reactions, attachment IDs and delete permissions."""
     with application_scope() as application:
@@ -293,9 +419,21 @@ def cmd_knowledge_comments_default(
 
 @g_requests.command("activity")
 def cmd_requests_activity(
-    request_id: str,
-    record_id: Optional[str] = None,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    request_id: Annotated[
+        str,
+        typer.Argument(
+            help="The request ID returned by the relevant listing or details command."
+        ),
+    ],
+    record_id: Annotated[
+        Optional[str],
+        typer.Option(
+            help="A record ID for a request target when the request contains multiple records."
+        ),
+    ] = None,
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Read visible comments and attachment events on a verified own request/item, plus current reply/upload/state-action permissions."""
     with application_scope() as application:
@@ -308,9 +446,21 @@ def cmd_requests_activity(
 
 @g_attachments.command("list")
 def cmd_attachments_list(
-    target: str,
-    record_id: Optional[str] = None,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    target: Annotated[
+        str,
+        typer.Argument(
+            help="Target: request:ID, article:ID, or comment:ARTICLE/COMMENT."
+        ),
+    ],
+    record_id: Annotated[
+        Optional[str],
+        typer.Option(
+            help="A record ID for a request target when the request contains multiple records."
+        ),
+    ] = None,
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """List attachments on a verified own request/item, a readable knowledge article/comment, or an active local draft."""
     with application_scope() as application:
@@ -319,7 +469,11 @@ def cmd_attachments_list(
 
 
 @g_cart.command("__default__", hidden=True)
-def cmd_cart_default(json_output: bool = typer.Option(False, "--json", "-j")):
+def cmd_cart_default(
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
+):
     """Read your native shopping cart, item quantities/prices, saved-cart IDs/names and checkout defaults."""
     with application_scope() as application:
         return invoke(application.onestop_cart.get, {}, json_output)
@@ -327,8 +481,15 @@ def cmd_cart_default(json_output: bool = typer.Option(False, "--json", "-j")):
 
 @g_cart_saved.command("show")
 def cmd_cart_saved_show(
-    saved_cart_id: str,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    saved_cart_id: Annotated[
+        str,
+        typer.Argument(
+            help="The saved cart ID returned by the relevant listing or details command."
+        ),
+    ],
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Inspect items in a verified own saved cart before loading it."""
     with application_scope() as application:
@@ -340,7 +501,11 @@ def cmd_cart_saved_show(
 
 
 @g_favourites.command("__default__", hidden=True)
-def cmd_favourites_default(json_output: bool = typer.Option(False, "--json", "-j")):
+def cmd_favourites_default(
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
+):
     """Read your saved catalog favourites and which are pinned to the homepage."""
     with application_scope() as application:
         return invoke(application.onestop_favourites.list, {}, json_output)
@@ -348,9 +513,11 @@ def cmd_favourites_default(json_output: bool = typer.Option(False, "--json", "-j
 
 @g_appointments.command("__default__", hidden=True)
 def cmd_appointments_default(
-    limit: int = typer.Option(20, "--limit", "-l"),
-    offset: int = 0,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    limit: int = typer.Option(20, "--limit", "-l", help="Maximum number of results."),
+    offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Read your native upcoming appointment list with appointment numbers, published dates/times and locations."""
     with application_scope() as application:
@@ -363,9 +530,13 @@ def cmd_appointments_default(
 
 @g_profile.command("set")
 def cmd_profile_set(
-    field_name: str,
-    value: str,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    field_name: Annotated[str, typer.Argument(help="The name of the field to update.")],
+    value: Annotated[
+        str, typer.Argument(help="The value to set for the named field or preference.")
+    ],
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Update one displayed editable own-profile field through its native inline editor."""
     with application_scope() as application:
@@ -379,8 +550,10 @@ def cmd_profile_set(
 
 @g_profile.command("picture")
 def cmd_profile_picture(
-    file_path: str,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    file_path: Annotated[str, typer.Argument(help="Path to the file to upload.")],
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Upload the explicitly selected local image as your own ServiceNow profile picture using the native file input."""
     with application_scope() as application:
@@ -394,8 +567,15 @@ def cmd_profile_picture(
 
 @g_profile.command("notifications")
 def cmd_profile_notifications(
-    enabled: Literal["on", "off"],
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    enabled: Annotated[
+        Literal["on", "off"],
+        typer.Argument(
+            help="Choose on to enable the setting or off to disable it. Choices: on, off."
+        ),
+    ],
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Enable or disable your ServiceNow notification preference."""
     with application_scope() as application:
@@ -409,16 +589,25 @@ def cmd_profile_notifications(
 
 @g_profile.command("preference")
 def cmd_profile_preference(
-    name: Literal[
-        "accessibility",
-        "voice_input",
-        "analytics",
-        "timezone",
-        "language",
-        "communication_channels",
+    name: Annotated[
+        Literal[
+            "accessibility",
+            "voice_input",
+            "analytics",
+            "timezone",
+            "language",
+            "communication_channels",
+        ],
+        typer.Argument(
+            help="The name of the item, setting or field to use. Choices: accessibility, voice_input, analytics, timezone, language, communication_channels."
+        ),
     ],
-    value: str,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    value: Annotated[
+        str, typer.Argument(help="The value to set for the named field or preference.")
+    ],
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Set an enabled own preference returned by get_profile."""
     with application_scope() as application:
@@ -432,8 +621,15 @@ def cmd_profile_preference(
 
 @g_payments.command("checkout-link")
 def cmd_payments_checkout_link(
-    service_id: str,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    service_id: Annotated[
+        str,
+        typer.Argument(
+            help="The service ID returned by the relevant listing or details command."
+        ),
+    ],
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Ask One Stop to prepare a checkout link for a visible payment service."""
     with application_scope() as application:
@@ -447,10 +643,23 @@ def cmd_payments_checkout_link(
 
 @g_knowledge_comments.command("add")
 def cmd_knowledge_comments_add(
-    article_id: str,
-    text: str = typer.Option(..., "--text"),
-    parent_id: Optional[str] = typer.Option(None, "--parent"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    article_id: Annotated[
+        str,
+        typer.Argument(
+            help="The article ID returned by the relevant listing or details command."
+        ),
+    ],
+    text: str = typer.Option(
+        ..., "--text", help="The text to send. Quote multiword text in the shell."
+    ),
+    parent_id: Optional[str] = typer.Option(
+        None,
+        "--parent",
+        help="The ID of a parent folder. Omit it to browse the top level.",
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Publish plain-text feedback to a knowledge article, or reply to a visible parent comment."""
     with application_scope() as application:
@@ -464,9 +673,21 @@ def cmd_knowledge_comments_add(
 
 @g_knowledge_comments.command("delete")
 def cmd_knowledge_comments_delete(
-    article_id: str,
-    comment_id: str,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    article_id: Annotated[
+        str,
+        typer.Argument(
+            help="The article ID returned by the relevant listing or details command."
+        ),
+    ],
+    comment_id: Annotated[
+        str,
+        typer.Argument(
+            help="The comment ID returned by the relevant listing or details command."
+        ),
+    ],
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Delete a visible article comment only when the native menu permits deletion by the current user."""
     with application_scope() as application:
@@ -480,10 +701,26 @@ def cmd_knowledge_comments_delete(
 
 @g_knowledge_comments.command("like")
 def cmd_knowledge_comments_like(
-    article_id: str,
-    comment_id: str,
-    liked: Literal["on", "off"] = typer.Option(..., "--state"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    article_id: Annotated[
+        str,
+        typer.Argument(
+            help="The article ID returned by the relevant listing or details command."
+        ),
+    ],
+    comment_id: Annotated[
+        str,
+        typer.Argument(
+            help="The comment ID returned by the relevant listing or details command."
+        ),
+    ],
+    liked: Literal["on", "off"] = typer.Option(
+        ...,
+        "--state",
+        help="Choose whether the comment should be liked. Choices: on, off.",
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Like or unlike a visible knowledge comment using a desired state."""
     with application_scope() as application:
@@ -501,11 +738,26 @@ def cmd_knowledge_comments_like(
 
 @g_knowledge.command("rate")
 def cmd_knowledge_rate(
-    article_id: str,
-    rating: int,
-    reason_id: Optional[str] = None,
-    details: str = "",
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    article_id: Annotated[
+        str,
+        typer.Argument(
+            help="The article ID returned by the relevant listing or details command."
+        ),
+    ],
+    rating: Annotated[int, typer.Argument(help="The article rating.")],
+    reason_id: Annotated[
+        Optional[str],
+        typer.Option(
+            help="The reason ID returned by the relevant listing or details command."
+        ),
+    ] = None,
+    details: Annotated[
+        str,
+        typer.Option(help="Additional details for the selected feedback or action."),
+    ] = "",
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Submit a 1–5 star knowledge rating when the native control is enabled."""
     with application_scope() as application:
@@ -524,11 +776,31 @@ def cmd_knowledge_rate(
 
 @g_knowledge.command("helpful")
 def cmd_knowledge_helpful(
-    article_id: str,
-    helpful: Literal["yes", "no"],
-    reason_id: Optional[str] = None,
-    details: str = "",
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    article_id: Annotated[
+        str,
+        typer.Argument(
+            help="The article ID returned by the relevant listing or details command."
+        ),
+    ],
+    helpful: Annotated[
+        Literal["yes", "no"],
+        typer.Argument(
+            help="Choose whether the article was helpful. Choices: yes, no."
+        ),
+    ],
+    reason_id: Annotated[
+        Optional[str],
+        typer.Option(
+            help="The reason ID returned by the relevant listing or details command."
+        ),
+    ] = None,
+    details: Annotated[
+        str,
+        typer.Option(help="Additional details for the selected feedback or action."),
+    ] = "",
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Submit helpful/not-helpful feedback only when the article offers that native control."""
     with application_scope() as application:
@@ -547,9 +819,18 @@ def cmd_knowledge_helpful(
 
 @g_knowledge.command("flag")
 def cmd_knowledge_flag(
-    article_id: str,
-    text: str = typer.Option(..., "--text"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    article_id: Annotated[
+        str,
+        typer.Argument(
+            help="The article ID returned by the relevant listing or details command."
+        ),
+    ],
+    text: str = typer.Option(
+        ..., "--text", help="The text to send. Quote multiword text in the shell."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Flag a knowledge article with the user's explanation when the native flag control is available."""
     with application_scope() as application:
@@ -563,10 +844,23 @@ def cmd_knowledge_flag(
 
 @g_knowledge.command("subscribe")
 def cmd_knowledge_subscribe(
-    article_id: str,
-    subscribed: Literal["on", "off"] = typer.Option(..., "--state"),
-    include_knowledge_base: bool = typer.Option(False, "--include-knowledge-base"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    article_id: Annotated[
+        str,
+        typer.Argument(
+            help="The article ID returned by the relevant listing or details command."
+        ),
+    ],
+    subscribed: Literal["on", "off"] = typer.Option(
+        ..., "--state", help="The requested subscription state. Choices: on, off."
+    ),
+    include_knowledge_base: bool = typer.Option(
+        False,
+        "--include-knowledge-base",
+        help="Include the knowledge-base subscription where the native action supports it.",
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Subscribe/unsubscribe to article updates."""
     with application_scope() as application:
@@ -584,9 +878,18 @@ def cmd_knowledge_subscribe(
 
 @g_knowledge.command("favourite")
 def cmd_knowledge_favourite(
-    article_id: str,
-    favourite: Literal["on", "off"] = typer.Option(..., "--state"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    article_id: Annotated[
+        str,
+        typer.Argument(
+            help="The article ID returned by the relevant listing or details command."
+        ),
+    ],
+    favourite: Literal["on", "off"] = typer.Option(
+        ..., "--state", help="The requested favourite state. Choices: on, off."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Set an article's native favourite state when its Favourite control is enabled."""
     with application_scope() as application:
@@ -600,9 +903,21 @@ def cmd_knowledge_favourite(
 
 @g_knowledge.command("send-to-self")
 def cmd_knowledge_send_to_self(
-    article_id: str,
-    channel: Literal["email", "sms"] = "email",
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    article_id: Annotated[
+        str,
+        typer.Argument(
+            help="The article ID returned by the relevant listing or details command."
+        ),
+    ],
+    channel: Annotated[
+        Literal["email", "sms"],
+        typer.Option(
+            help="The delivery channel offered by the service. Choices: email, sms. Default: email."
+        ),
+    ] = "email",
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Send this article to your registered email/SMS channel using the native Send to myself action."""
     with application_scope() as application:
@@ -616,10 +931,24 @@ def cmd_knowledge_send_to_self(
 
 @g_requests.command("reply")
 def cmd_requests_reply(
-    request_id: str,
-    text: str = typer.Option(..., "--text"),
-    record_id: Optional[str] = None,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    request_id: Annotated[
+        str,
+        typer.Argument(
+            help="The request ID returned by the relevant listing or details command."
+        ),
+    ],
+    text: str = typer.Option(
+        ..., "--text", help="The text to send. Quote multiword text in the shell."
+    ),
+    record_id: Annotated[
+        Optional[str],
+        typer.Option(
+            help="A record ID for a request target when the request contains multiple records."
+        ),
+    ] = None,
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Post a real additional comment to a verified own ticket/item when its current native state permits replying."""
     with application_scope() as application:
@@ -633,10 +962,27 @@ def cmd_requests_reply(
 
 @g_requests.command("action")
 def cmd_requests_action(
-    request_id: str,
-    action: Literal["close", "reopen", "accept-solution", "reject-solution"],
-    record_id: Optional[str] = None,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    request_id: Annotated[
+        str,
+        typer.Argument(
+            help="The request ID returned by the relevant listing or details command."
+        ),
+    ],
+    action: Annotated[
+        Literal["close", "reopen", "accept-solution", "reject-solution"],
+        typer.Argument(
+            help="The native action to perform; inspect the record for the actions currently available. Choices: close, reopen, accept-solution, reject-solution."
+        ),
+    ],
+    record_id: Annotated[
+        Optional[str],
+        typer.Option(
+            help="A record ID for a request target when the request contains multiple records."
+        ),
+    ] = None,
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Execute a state action currently offered by the native own-ticket page."""
     with application_scope() as application:
@@ -654,10 +1000,22 @@ def cmd_requests_action(
 
 @g_attachments.command("upload")
 def cmd_attachments_upload(
-    target: str,
-    file_path: str,
-    record_id: Optional[str] = None,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    target: Annotated[
+        str,
+        typer.Argument(
+            help="Target: request:ID, article:ID, or comment:ARTICLE/COMMENT."
+        ),
+    ],
+    file_path: Annotated[str, typer.Argument(help="Path to the file to upload.")],
+    record_id: Annotated[
+        Optional[str],
+        typer.Option(
+            help="A record ID for a request target when the request contains multiple records."
+        ),
+    ] = None,
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Upload an explicitly selected file from the configured One Stop upload directory to the verified target."""
     with application_scope() as application:
@@ -672,11 +1030,30 @@ def cmd_attachments_upload(
 
 @g_attachments.command("download")
 def cmd_attachments_download(
-    target: str,
-    attachment_id: str,
-    destination: str = typer.Option(..., "--output", "-o"),
-    record_id: Optional[str] = None,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    target: Annotated[
+        str,
+        typer.Argument(
+            help="Target: request:ID, article:ID, or comment:ARTICLE/COMMENT."
+        ),
+    ],
+    attachment_id: Annotated[
+        str, typer.Argument(help="Attachment ID returned by attachments list.")
+    ],
+    destination: str = typer.Option(
+        ...,
+        "--output",
+        "-o",
+        help="The local destination path. Follow the command description for file or directory requirements.",
+    ),
+    record_id: Annotated[
+        Optional[str],
+        typer.Option(
+            help="A record ID for a request target when the request contains multiple records."
+        ),
+    ] = None,
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Download a listed attachment of the verified target to a new explicit absolute file path, up to 20 MB."""
     with application_scope() as application:
@@ -695,10 +1072,24 @@ def cmd_attachments_download(
 
 @g_attachments.command("delete")
 def cmd_attachments_delete(
-    target: str,
-    attachment_id: str,
-    record_id: Optional[str] = None,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    target: Annotated[
+        str,
+        typer.Argument(
+            help="Target: request:ID, article:ID, or comment:ARTICLE/COMMENT."
+        ),
+    ],
+    attachment_id: Annotated[
+        str, typer.Argument(help="Attachment ID returned by attachments list.")
+    ],
+    record_id: Annotated[
+        Optional[str],
+        typer.Option(
+            help="A record ID for a request target when the request contains multiple records."
+        ),
+    ] = None,
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Delete an attachment only when it is listed on the verified target and native editing is allowed."""
     with application_scope() as application:
@@ -713,11 +1104,25 @@ def cmd_attachments_delete(
 
 @g_attachments.command("rename")
 def cmd_attachments_rename(
-    target: str,
-    attachment_id: str,
-    file_name: str,
-    record_id: Optional[str] = None,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    target: Annotated[
+        str,
+        typer.Argument(
+            help="Target: request:ID, article:ID, or comment:ARTICLE/COMMENT."
+        ),
+    ],
+    attachment_id: Annotated[
+        str, typer.Argument(help="Attachment ID returned by attachments list.")
+    ],
+    file_name: Annotated[str, typer.Argument(help="New attachment filename.")],
+    record_id: Annotated[
+        Optional[str],
+        typer.Option(
+            help="A record ID for a request target when the request contains multiple records."
+        ),
+    ] = None,
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Rename a listed editable attachment using the native attachment service."""
     with application_scope() as application:
@@ -732,9 +1137,16 @@ def cmd_attachments_rename(
 
 @g_cart.command("quantity")
 def cmd_cart_quantity(
-    item_id: str,
-    quantity: int,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    item_id: Annotated[
+        str,
+        typer.Argument(
+            help="The item ID returned by the relevant listing or details command."
+        ),
+    ],
+    quantity: Annotated[int, typer.Argument(help="The desired item quantity.")],
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Set the quantity of an item in your active cart."""
     with application_scope() as application:
@@ -748,8 +1160,15 @@ def cmd_cart_quantity(
 
 @g_cart.command("remove")
 def cmd_cart_remove(
-    item_id: str,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    item_id: Annotated[
+        str,
+        typer.Argument(
+            help="The item ID returned by the relevant listing or details command."
+        ),
+    ],
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Remove an item from your active cart."""
     with application_scope() as application:
@@ -762,7 +1181,11 @@ def cmd_cart_remove(
 
 
 @g_cart.command("clear")
-def cmd_cart_clear(json_output: bool = typer.Option(False, "--json", "-j")):
+def cmd_cart_clear(
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
+):
     """Remove all items from your active cart."""
     with application_scope() as application:
         return invoke(
@@ -775,8 +1198,15 @@ def cmd_cart_clear(json_output: bool = typer.Option(False, "--json", "-j")):
 
 @g_cart_saved.command("load")
 def cmd_cart_saved_load(
-    saved_cart_id: str,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    saved_cart_id: Annotated[
+        str,
+        typer.Argument(
+            help="The saved cart ID returned by the relevant listing or details command."
+        ),
+    ],
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Append items from a saved cart to your active cart."""
     with application_scope() as application:
@@ -790,8 +1220,15 @@ def cmd_cart_saved_load(
 
 @g_cart_saved.command("replace")
 def cmd_cart_saved_replace(
-    saved_cart_id: str,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    saved_cart_id: Annotated[
+        str,
+        typer.Argument(
+            help="The saved cart ID returned by the relevant listing or details command."
+        ),
+    ],
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Replace your active cart with items from a saved cart."""
     with application_scope() as application:
@@ -805,8 +1242,15 @@ def cmd_cart_saved_replace(
 
 @g_cart_saved.command("delete")
 def cmd_cart_saved_delete(
-    saved_cart_id: str,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    saved_cart_id: Annotated[
+        str,
+        typer.Argument(
+            help="The saved cart ID returned by the relevant listing or details command."
+        ),
+    ],
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Delete a saved cart."""
     with application_scope() as application:
@@ -820,9 +1264,13 @@ def cmd_cart_saved_delete(
 
 @g_cart_saved.command("create")
 def cmd_cart_saved_create(
-    name: str,
+    name: Annotated[
+        str, typer.Argument(help="The name of the item, setting or field to use.")
+    ],
     item_ids: Optional[str] = typer.Option(None, "--item-ids", help="JSON value."),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Save the current cart, or selected own cart item IDs, as a new named cart using native name/selection validation."""
     with application_scope() as application:
@@ -839,8 +1287,15 @@ def cmd_cart_saved_create(
 
 @g_favourites.command("pin")
 def cmd_favourites_pin(
-    favourite_id: str,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    favourite_id: Annotated[
+        str,
+        typer.Argument(
+            help="The favourite ID returned by the relevant listing or details command."
+        ),
+    ],
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Pin a saved favourite to the homepage."""
     with application_scope() as application:
@@ -854,8 +1309,15 @@ def cmd_favourites_pin(
 
 @g_favourites.command("unpin")
 def cmd_favourites_unpin(
-    favourite_id: str,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    favourite_id: Annotated[
+        str,
+        typer.Argument(
+            help="The favourite ID returned by the relevant listing or details command."
+        ),
+    ],
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Unpin a favourite from the homepage."""
     with application_scope() as application:
@@ -869,8 +1331,15 @@ def cmd_favourites_unpin(
 
 @g_favourites.command("remove")
 def cmd_favourites_remove(
-    favourite_id: str,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    favourite_id: Annotated[
+        str,
+        typer.Argument(
+            help="The favourite ID returned by the relevant listing or details command."
+        ),
+    ],
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Remove a saved favourite."""
     with application_scope() as application:
@@ -883,7 +1352,11 @@ def cmd_favourites_remove(
 
 
 @g_favourites.command("clear")
-def cmd_favourites_clear(json_output: bool = typer.Option(False, "--json", "-j")):
+def cmd_favourites_clear(
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
+):
     """Remove eligible saved favourites."""
     with application_scope() as application:
         return invoke(
@@ -896,10 +1369,23 @@ def cmd_favourites_clear(json_output: bool = typer.Option(False, "--json", "-j")
 
 @g_catalog.command("favourite")
 def cmd_catalog_favourite(
-    item_id: str,
-    category_id: str = typer.Option(..., "--category"),
-    favourite: Literal["on", "off"] = typer.Option(..., "--state"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    item_id: Annotated[
+        str,
+        typer.Argument(
+            help="The item ID returned by the relevant listing or details command."
+        ),
+    ],
+    category_id: str = typer.Option(
+        ...,
+        "--category",
+        help="The category ID returned by the relevant listing or details command.",
+    ),
+    favourite: Literal["on", "off"] = typer.Option(
+        ..., "--state", help="The requested favourite state. Choices: on, off."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Set a catalog item's favourite state through its category's native control."""
     with application_scope() as application:
@@ -1036,7 +1522,11 @@ def _add_draft_attachments(draft):
 
 
 @g_requests.command("apply")
-def cmd_requests_apply(item_id: str):
+def cmd_requests_apply(
+    item_id: Annotated[
+        str, typer.Argument(help="Catalog item ID returned by catalog search.")
+    ],
+):
     """Prepare, fill, review and submit a native request in one session."""
     with application_scope() as application:
         from ..session import session_scope
@@ -1086,7 +1576,11 @@ def cmd_cart_checkout():
 
 
 @g_appointments.command("book")
-def cmd_appointments_book(item_id: str):
+def cmd_appointments_book(
+    item_id: Annotated[
+        str, typer.Argument(help="Catalog item ID for an appointment form.")
+    ],
+):
     """Prepare an appointment form, choose a slot and book it in one session."""
     with application_scope() as application:
         from ..session import session_scope

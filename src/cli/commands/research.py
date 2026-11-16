@@ -1,6 +1,6 @@
 """Research service commands."""
 
-from typing import Literal, Optional
+from typing import Annotated, Literal, Optional
 
 from functools import partial
 
@@ -10,27 +10,46 @@ from ..helpers import group, parse_json
 from ..execution import application_scope
 from ..services import invoke
 
-app = typer.Typer(no_args_is_help=True)
+app = typer.Typer(
+    no_args_is_help=True, help="Search and browse the DR-NTU research repository."
+)
 g_browse = group(default=False)
-app.add_typer(g_browse, name="browse")
+app.add_typer(
+    g_browse, name="browse", help="Browse repository communities and collections."
+)
 g_bundle = group(default=False)
-app.add_typer(g_bundle, name="bundle")
+app.add_typer(g_bundle, name="bundle", help="Inspect research file bundles.")
 g_item = group(default=True)
-app.add_typer(g_item, name="item")
+app.add_typer(g_item, name="item", help="Read a repository item or its bundles.")
 g_oai = group(default=False)
-app.add_typer(g_oai, name="oai")
+app.add_typer(g_oai, name="oai", help="Use the repository OAI-PMH interface.")
 
 
 @app.command("search")
 def cmd_search(
-    query: str,
-    scope_id: Optional[str] = typer.Option(None, "--scope"),
-    entity_type: Literal["Publication", "Person", "all"] = "Publication",
+    query: str = typer.Argument(..., help="Search text or keywords."),
+    scope_id: Optional[str] = typer.Option(
+        None,
+        "--scope",
+        help="The scope ID returned by the relevant listing or details command.",
+    ),
+    entity_type: Annotated[
+        Literal["Publication", "Person", "all"],
+        typer.Option(
+            help="The kind of repository entity to search. Choices: Publication, Person, all. Default: Publication."
+        ),
+    ] = "Publication",
     filters: Optional[str] = typer.Option(None, "--filters", help="JSON value."),
-    page: int = typer.Option(0, "--page", "-p"),
-    page_size: int = 10,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    page: int = typer.Option(0, "--page", "-p", help="Result page number."),
+    page_size: Annotated[
+        int, typer.Option(help="Maximum number of results in a page. Default: 10.")
+    ] = 10,
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Search DR-NTU publications by keywords or Solr query."""
     with application_scope() as application:
@@ -53,9 +72,18 @@ def cmd_search(
 
 @g_item.command("__default__", hidden=True)
 def cmd_item_default(
-    item_id: str,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    item_id: Annotated[
+        str,
+        typer.Argument(
+            help="The item ID returned by the relevant listing or details command."
+        ),
+    ],
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Read a repository item's published metadata, including abstracts, citations, DOI, subjects and rights where supplied."""
     with application_scope() as application:
@@ -70,11 +98,21 @@ def cmd_item_default(
 
 @g_browse.command("communities")
 def cmd_browse_communities(
-    community_id: Optional[str] = typer.Option(None, "--community"),
-    page: int = typer.Option(0, "--page", "-p"),
-    page_size: int = 20,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    community_id: Optional[str] = typer.Option(
+        None,
+        "--community",
+        help="The community ID returned by the relevant listing or details command.",
+    ),
+    page: int = typer.Option(0, "--page", "-p", help="Result page number."),
+    page_size: Annotated[
+        int, typer.Option(help="Maximum number of results in a page. Default: 20.")
+    ] = 20,
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Browse repository communities or collections."""
     with application_scope() as application:
@@ -95,11 +133,21 @@ def cmd_browse_communities(
 
 @g_browse.command("collections")
 def cmd_browse_collections(
-    community_id: Optional[str] = typer.Option(None, "--community"),
-    page: int = typer.Option(0, "--page", "-p"),
-    page_size: int = 20,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    community_id: Optional[str] = typer.Option(
+        None,
+        "--community",
+        help="The community ID returned by the relevant listing or details command.",
+    ),
+    page: int = typer.Option(0, "--page", "-p", help="Result page number."),
+    page_size: Annotated[
+        int, typer.Option(help="Maximum number of results in a page. Default: 20.")
+    ] = 20,
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Browse repository communities or collections."""
     with application_scope() as application:
@@ -120,15 +168,40 @@ def cmd_browse_collections(
 
 @app.command("facets")
 def cmd_facets(
-    facet: Optional[str] = None,
-    query: str = "",
-    scope_id: Optional[str] = typer.Option(None, "--scope"),
-    entity_type: Literal["Publication", "Person", "all"] = "Publication",
+    facet: Annotated[
+        Optional[str],
+        typer.Option(
+            help="The facet name to inspect; omit it to discover available facets."
+        ),
+    ] = None,
+    query: Annotated[
+        str,
+        typer.Option(
+            help="The search terms. Quote multiword text so the shell passes it as one argument."
+        ),
+    ] = "",
+    scope_id: Optional[str] = typer.Option(
+        None,
+        "--scope",
+        help="The scope ID returned by the relevant listing or details command.",
+    ),
+    entity_type: Annotated[
+        Literal["Publication", "Person", "all"],
+        typer.Option(
+            help="The kind of repository entity to search. Choices: Publication, Person, all. Default: Publication."
+        ),
+    ] = "Publication",
     filters: Optional[str] = typer.Option(None, "--filters", help="JSON value."),
-    page: int = typer.Option(0, "--page", "-p"),
-    page_size: int = 10,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    page: int = typer.Option(0, "--page", "-p", help="Result page number."),
+    page_size: Annotated[
+        int, typer.Option(help="Maximum number of results in a page. Default: 10.")
+    ] = 10,
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Discover search facet names, or supply a facet name to list its values and counts for the query/scope/filters."""
     with application_scope() as application:
@@ -152,11 +225,22 @@ def cmd_facets(
 
 @g_item.command("bundles")
 def cmd_item_bundles(
-    item_id: str,
-    page: int = typer.Option(0, "--page", "-p"),
-    page_size: int = 20,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    item_id: Annotated[
+        str,
+        typer.Argument(
+            help="The item ID returned by the relevant listing or details command."
+        ),
+    ],
+    page: int = typer.Option(0, "--page", "-p", help="Result page number."),
+    page_size: Annotated[
+        int, typer.Option(help="Maximum number of results in a page. Default: 20.")
+    ] = 20,
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """List an item's file groups."""
     with application_scope() as application:
@@ -176,11 +260,22 @@ def cmd_item_bundles(
 
 @g_bundle.command("files")
 def cmd_bundle_files(
-    bundle_id: str,
-    page: int = typer.Option(0, "--page", "-p"),
-    page_size: int = 20,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    bundle_id: Annotated[
+        str,
+        typer.Argument(
+            help="The bundle ID returned by the relevant listing or details command."
+        ),
+    ],
+    page: int = typer.Option(0, "--page", "-p", help="Result page number."),
+    page_size: Annotated[
+        int, typer.Option(help="Maximum number of results in a page. Default: 20.")
+    ] = 20,
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """List a bundle's file metadata: names, byte sizes, checksums, published rights and content URLs."""
     with application_scope() as application:
@@ -200,12 +295,23 @@ def cmd_bundle_files(
 
 @app.command("dataset")
 def cmd_dataset(
-    persistent_id: str,
-    version: Optional[str] = None,
-    limit: int = typer.Option(50, "--limit", "-l"),
-    offset: int = 0,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    persistent_id: Annotated[
+        str, typer.Argument(help="The persistent identifier or DOI of the dataset.")
+    ],
+    version: Annotated[
+        Optional[str],
+        typer.Option(
+            help="The requested dataset version; omit it for the service default."
+        ),
+    ] = None,
+    limit: int = typer.Option(50, "--limit", "-l", help="Maximum number of results."),
+    offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Read a published DR-NTU Data dataset by doi: identifier: title, authors, descriptions, subjects, license and paginated file inventory."""
     with application_scope() as application:
@@ -226,8 +332,12 @@ def cmd_dataset(
 
 @g_oai.command("info")
 def cmd_oai_info(
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Describe DR-NTU's OAI-PMH repository, modification-date precision, deletion policy and earliest datestamp."""
     with application_scope() as application:
@@ -242,9 +352,15 @@ def cmd_oai_info(
 
 @g_oai.command("formats")
 def cmd_oai_formats(
-    identifier: Optional[str] = typer.Argument(None),
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    identifier: Optional[str] = typer.Argument(
+        None, help="The OAI identifier for the requested record."
+    ),
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """List OAI metadata prefixes, namespaces and schemas."""
     with application_scope() as application:
@@ -259,11 +375,17 @@ def cmd_oai_formats(
 
 @g_oai.command("sets")
 def cmd_oai_sets(
-    resumption_token: Optional[str] = typer.Option(None, "--token"),
-    limit: int = typer.Option(20, "--limit", "-l"),
-    offset: int = 0,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    resumption_token: Optional[str] = typer.Option(
+        None, "--token", help="The continuation token returned by the OAI server."
+    ),
+    limit: int = typer.Option(20, "--limit", "-l", help="Maximum number of results."),
+    offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """List OAI collection/community sets."""
     with application_scope() as application:
@@ -283,16 +405,34 @@ def cmd_oai_sets(
 
 @g_oai.command("records")
 def cmd_oai_records(
-    metadata_prefix: Optional[str] = typer.Option(None, "--prefix"),
-    set_spec: Optional[str] = typer.Option(None, "--set"),
-    from_date: Optional[str] = None,
-    until_date: Optional[str] = None,
-    resumption_token: Optional[str] = typer.Option(None, "--token"),
-    headers_only: bool = typer.Option(False, "--headers-only"),
-    limit: int = typer.Option(10, "--limit", "-l"),
-    offset: int = 0,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    metadata_prefix: Optional[str] = typer.Option(
+        None, "--prefix", help="The OAI metadata format prefix, such as oai_dc."
+    ),
+    set_spec: Optional[str] = typer.Option(
+        None, "--set", help="The OAI set identifier returned by the sets listing."
+    ),
+    from_date: Annotated[
+        Optional[str], typer.Option(help="Start of the date range in ISO format.")
+    ] = None,
+    until_date: Annotated[
+        Optional[str], typer.Option(help="End of the date range in ISO format.")
+    ] = None,
+    resumption_token: Optional[str] = typer.Option(
+        None, "--token", help="The continuation token returned by the OAI server."
+    ),
+    headers_only: bool = typer.Option(
+        False,
+        "--headers-only",
+        help="List record headers instead of full OAI metadata.",
+    ),
+    limit: int = typer.Option(10, "--limit", "-l", help="Maximum number of results."),
+    offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Read one bounded OAI records page, defaulting to oai_dc."""
     with application_scope() as application:
@@ -317,10 +457,20 @@ def cmd_oai_records(
 
 @g_oai.command("record")
 def cmd_oai_record(
-    identifier: str,
-    metadata_prefix: str = typer.Option("oai_dc", "--prefix"),
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    identifier: Annotated[
+        str, typer.Argument(help="The OAI identifier for the requested record.")
+    ],
+    metadata_prefix: str = typer.Option(
+        "oai_dc",
+        "--prefix",
+        help="The OAI metadata format prefix, such as oai_dc. Default: oai_dc.",
+    ),
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Get one record by its OAI identifier, not a REST UUID."""
     with application_scope() as application:

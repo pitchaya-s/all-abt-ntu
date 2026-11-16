@@ -18,7 +18,7 @@ Choose a command for its arguments, examples and result fields. Use `ntu career 
 | --- | --- |
 | [`ntu career record`](index.md#cmd-career-record) | Read the visible details for a CareerAxis event, resource document, employer, appointment topic, or internship posting URL returned by a CareerAxis search tool. |
 | [`ntu career appointments topics`](index.md#cmd-career-appointments-topics) | Search CareerAxis career-coaching appointment topics such as internship strategy, interview practice, and resume critique. |
-| [`ntu career auth status`](index.md#cmd-career-auth-status) | Report whether shared NTU keyring credentials can be read and whether this process has verified CareerAxis login; does not log in. |
+| [`ntu career auth status`](index.md#cmd-career-auth-status) | Sign in to CareerAxis and report whether access is verified. |
 | [`ntu career employers search`](index.md#cmd-career-employers-search) | Search CareerAxis employer profiles by name, optionally limiting results to employers with current opportunities. |
 | [`ntu career events search`](index.md#cmd-career-events-search) | Search authenticated CareerAxis events by keyword. |
 | [`ntu career internships search`](index.md#cmd-career-internships-search) | Search the authenticated CareerAxis Internship workgroup job board by keyword across its visible internship postings. |
@@ -83,7 +83,7 @@ For the corresponding MCP operation and its field types, see the [MCP schema](..
 <a id="cmd-career-auth-status"></a>
 ### `ntu career auth status`
 
-Report whether shared NTU keyring credentials can be read and whether this process has verified CareerAxis login; does not log in.
+Sign in to CareerAxis and report whether access is verified.
 
 #### Usage
 

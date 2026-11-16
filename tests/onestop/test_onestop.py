@@ -265,6 +265,58 @@ class SessionTests(unittest.TestCase):
             page.locator.assert_any_call("body")
             self.assertFalse(page.locator("#userNameInput").fill.called)
 
+    def test_redirected_portal_text_is_not_a_password_rejection(self):
+        with stored_credentials():
+            page = Mock(url="https://loginfs.ntu.edu.sg/adfs/ls/")
+            page.evaluate.return_value = True
+            body, password, submit = Mock(), Mock(), Mock()
+            password.count.return_value = 1
+
+            def portal_body():
+                page.url = "https://ntuadminonestop.service-now.com/ntussp"
+                return (
+                    '"Incorrect filter on the table": "Incorrect filter on the table"'
+                )
+
+            responses = iter(("Sign in", None))
+
+            def read_body(**kwargs):
+                return next(responses) or portal_body()
+
+            body.inner_text.side_effect = read_body
+            page.locator.side_effect = lambda selector: {
+                "body": body,
+                "#passwordInput:visible": password,
+                "#submitButton": submit,
+            }.get(selector, Mock())
+            self.session._page = page
+            with patch.object(self.session, "_open"):
+                self.session._login(read_credentials())
+            self.assertTrue(self.session._verified)
+            submit.click.assert_called_once()
+
+    def test_visible_identity_provider_error_is_a_login_rejection(self):
+        with stored_credentials():
+            page = Mock(url="https://loginfs.ntu.edu.sg/adfs/ls/")
+            body, password, error, submit = Mock(), Mock(), Mock(), Mock()
+            body.inner_text.return_value = "Sign in"
+            password.count.return_value = 1
+            error.count.return_value = 1
+            error.inner_text.return_value = "The user name or password is incorrect."
+            page.locator.side_effect = lambda selector: {
+                "body": body,
+                "#passwordInput:visible": password,
+                "#errorText:visible": error,
+                "#submitButton": submit,
+            }.get(selector, Mock())
+            self.session._page = page
+            with (
+                patch.object(self.session, "_open"),
+                self.assertRaisesRegex(OneStopError, "rejected"),
+            ):
+                self.session._login(read_credentials())
+            submit.click.assert_called_once()
+
 
 class ProtocolTests(unittest.IsolatedAsyncioTestCase):
     async def test_tool_schemas_read_calls_and_sanitized_errors(self):

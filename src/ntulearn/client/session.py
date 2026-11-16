@@ -75,6 +75,12 @@ class Session:
             cache_ttl_seconds=self.config.cache_ttl_seconds,
         )
 
+    async def verify(self) -> AuthStatus:
+        """Authenticate with NTULearn and report the verified session."""
+        async with self.operation():
+            await self._ensure_authenticated()
+            return await self.status()
+
     @asynccontextmanager
     async def operation(self):
         """Share a credential check and lifetime across a multi-request workflow."""

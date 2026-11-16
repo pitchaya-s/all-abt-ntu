@@ -17,7 +17,7 @@ Replace capitalized placeholders with values returned by the service. Use `--hel
 | [`ntu onestop announcements`](account.md#cmd-onestop-announcements) | Read One Stop announcements, summaries and links from the native announcements collection with local pagination. |
 | [`ntu onestop actions`](account.md#cmd-onestop-actions) | Read your One Stop to-do/billing actions and their published due dates and payment links. |
 | [`ntu onestop links`](account.md#cmd-onestop-links) | List links on One Stop's Popular Sites page, preserving native catalog, knowledge and external destinations. |
-| [`ntu onestop auth status`](account.md#cmd-onestop-auth-status) | Report shared keyring availability and the last verified One Stop session without logging in or returning identity or credentials. |
+| [`ntu onestop auth status`](account.md#cmd-onestop-auth-status) | Sign in to One Stop and report whether access is verified. |
 | [`ntu onestop profile set`](account.md#cmd-onestop-profile-set) | Update one displayed editable own-profile field through its native inline editor. |
 | [`ntu onestop profile picture`](account.md#cmd-onestop-profile-picture) | Upload the explicitly selected local image as your own ServiceNow profile picture using the native file input. |
 | [`ntu onestop profile notifications`](account.md#cmd-onestop-profile-notifications) | Enable or disable your ServiceNow notification preference. |
@@ -127,7 +127,7 @@ For the corresponding MCP operation and its field types, see the [MCP schema](..
 <a id="cmd-onestop-auth-status"></a>
 ### `ntu onestop auth status`
 
-Report shared keyring availability and the last verified One Stop session without logging in or returning identity or credentials.
+Sign in to One Stop and report whether access is verified.
 
 #### Usage
 

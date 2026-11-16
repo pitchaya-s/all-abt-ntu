@@ -14,7 +14,7 @@
 <a id="cmd-learn-auth-status"></a>
 ### `ntu learn auth status`
 
-Report credential configuration and this process's last verified login, without logging in.
+Sign in to NTULearn and report whether access is verified.
 
 #### Usage
 

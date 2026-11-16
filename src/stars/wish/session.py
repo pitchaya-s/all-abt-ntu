@@ -92,6 +92,11 @@ class WishSessionManager:
                 "personal_cache_ttl_seconds": PERSONAL_CACHE_TTL_SECONDS,
             }
 
+    def verify(self) -> AuthStatus:
+        """Verify access to the authenticated STARS planner without exposing its data."""
+        self.get_stars_planner(refresh=True)
+        return self.status()
+
     def _check_credentials(self):
         try:
             credentials = read_credentials()
@@ -164,7 +169,8 @@ class WishSessionManager:
         except Exception as error:
             self._close_browser()
             raise NTUAuthError(
-                "Could not start Chromium for NTU WISH. Run `uvx --from 'playwright>=1.50,<2' playwright install chromium` and retry."
+                "Could not start Playwright Chromium for NTU WISH. Use `ntu cli setup` "
+                "or run `python -m playwright install chromium` in the same environment."
             ) from error
 
     def _check_browser_status(self, description: str) -> None:

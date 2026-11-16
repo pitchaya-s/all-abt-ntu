@@ -5,6 +5,7 @@ import subprocess
 import warnings
 from getpass import GetPassWarning, getpass
 from importlib.util import find_spec
+from typing import Annotated
 import typer
 
 from shared.browser import chromium_installed
@@ -115,6 +116,7 @@ def mcp_main(
 
 @mcp.command()
 def setup(ctx: typer.Context):
+    """Choose an MCP profile, tools, and client applications interactively."""
     from .tools.commands import setup as setup_tools
     from .tools.clients import configure_clients
 
@@ -128,7 +130,13 @@ def setup(ctx: typer.Context):
 
 
 @tools_app.command("list")
-def list_tools(ctx: typer.Context, all_tools: bool = typer.Option(False, "--all")):
+def list_tools(
+    ctx: typer.Context,
+    all_tools: bool = typer.Option(
+        False, "--all", help="Show individual tools instead of families."
+    ),
+):
+    """List enabled and disabled tools for the active MCP profile."""
     from .tools.commands import tools_command
 
     try:
@@ -149,17 +157,30 @@ def change_tools(ctx, action, names):
 
 
 @tools_app.command("enable")
-def enable_tools(ctx: typer.Context, names: list[str] = typer.Argument(...)):
+def enable_tools(
+    ctx: typer.Context,
+    names: list[str] = typer.Argument(
+        ..., help="Tool family names or individual MCP tool names."
+    ),
+):
+    """Enable MCP tool families or individual tools."""
     change_tools(ctx, "enable", names)
 
 
 @tools_app.command("disable")
-def disable_tools(ctx: typer.Context, names: list[str] = typer.Argument(...)):
+def disable_tools(
+    ctx: typer.Context,
+    names: list[str] = typer.Argument(
+        ..., help="Tool family names or individual MCP tool names."
+    ),
+):
+    """Disable MCP tool families or individual tools."""
     change_tools(ctx, "disable", names)
 
 
 @auth.command("save")
 def save_auth():
+    """Save or replace your NTU account credentials in the native OS keyring."""
     try:
         if not sys.stdin.isatty() or not sys.stderr.isatty():
             raise CredentialError(
@@ -179,6 +200,7 @@ def save_auth():
 
 @auth.command("status")
 def auth_status():
+    """Check the local keyring without signing in to an NTU service."""
     try:
         status = credential_status()
         if status["credential_error"]:
@@ -193,6 +215,7 @@ def auth_status():
 
 @auth.command("delete")
 def auth_delete():
+    """Confirm and delete the saved NTU account credentials."""
     if not sys.stdin.isatty() or not typer.confirm("Delete stored NTU credentials?"):
         fail(CredentialError("Credential deletion was not confirmed."))
     try:
@@ -204,11 +227,18 @@ def auth_delete():
 
 @config_app.command("list")
 def config_list():
+    """Show the saved MCP environment settings as JSON."""
     render(load_config()["env"], json_output=True)
 
 
 @config_app.command("set")
-def config_set(name: str, value: str):
+def config_set(
+    name: Annotated[
+        str, typer.Argument(help="Setting name, such as ntulearn.headless.")
+    ],
+    value: Annotated[str, typer.Argument(help="Value to save for this MCP setting.")],
+):
+    """Set an MCP environment setting."""
     try:
         section, separator, key = name.partition(".")
         if not separator or not section or not key:
@@ -227,7 +257,12 @@ def config_set(name: str, value: str):
 
 
 @config_app.command("unset")
-def config_unset(name: str):
+def config_unset(
+    name: Annotated[
+        str, typer.Argument(help="Setting name, such as ntulearn.headless.")
+    ],
+):
+    """Remove a saved MCP setting and use its default."""
     try:
         section, separator, key = name.partition(".")
         if not separator or not section or not key:

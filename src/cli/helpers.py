@@ -22,8 +22,15 @@ class DefaultGroup(TyperGroup):
         return super().parse_args(ctx, args)
 
     def resolve_command(self, ctx, args):
+        default = self.commands["__default__"]
+        if args and args[0] == "__default__":
+            return None, default, args[1:]
         if args and args[0] not in self.commands:
-            return "__default__", self.commands["__default__"], args
+            has_arguments = any(
+                param.param_type_name == "argument" for param in default.params
+            )
+            if args[0].startswith("-") or has_arguments:
+                return None, default, args
         return super().resolve_command(ctx, args)
 
     def format_help(self, ctx, formatter):

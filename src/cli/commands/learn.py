@@ -1,6 +1,6 @@
 """Learn service commands."""
 
-from typing import Literal, Optional
+from typing import Annotated, Literal, Optional
 
 from functools import partial
 import re
@@ -12,23 +12,27 @@ from ..helpers import group, local_datetime, parse_json
 from ..execution import application_scope
 from ..services import invoke
 
-app = typer.Typer(no_args_is_help=True)
+app = typer.Typer(
+    no_args_is_help=True, help="Browse your NTULearn courses, materials, and activity."
+)
 g_auth = group(default=False)
-app.add_typer(g_auth, name="auth")
+app.add_typer(g_auth, name="auth", help="Check NTULearn authentication.")
 g_content = group(default=True)
-app.add_typer(g_content, name="content")
+app.add_typer(g_content, name="content", help="Browse course content and folders.")
 g_courses = group(default=True)
-app.add_typer(g_courses, name="courses")
+app.add_typer(
+    g_courses, name="courses", help="List enrolled courses or download materials."
+)
 g_files = group(default=False)
-app.add_typer(g_files, name="files")
+app.add_typer(g_files, name="files", help="Read or download course attachments.")
 g_groups = group(default=True)
-app.add_typer(g_groups, name="groups")
+app.add_typer(g_groups, name="groups", help="List course groups and members.")
 g_messages = group(default=False)
-app.add_typer(g_messages, name="messages")
+app.add_typer(g_messages, name="messages", help="List or read course messages.")
 g_search = group(default=True)
-app.add_typer(g_search, name="search")
+app.add_typer(g_search, name="search", help="Search course content.")
 g_videos = group(default=False)
-app.add_typer(g_videos, name="videos")
+app.add_typer(g_videos, name="videos", help="Download supported course videos.")
 
 
 def is_content_url(value: str) -> bool:
@@ -103,18 +107,26 @@ def content_reference(course_or_url: str, content_id: Optional[str]) -> tuple[st
 
 
 @g_auth.command("status")
-def cmd_auth_status(json_output: bool = typer.Option(False, "--json", "-j")):
-    """Report credential configuration and this process's last verified login, without logging in."""
+def cmd_auth_status(
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
+):
+    """Sign in to NTULearn and report whether access is verified."""
     with application_scope() as application:
-        return invoke(application.learn_session.status, {}, json_output)
+        return invoke(application.learn_session.verify, {}, json_output)
 
 
 @g_courses.command("__default__", hidden=True)
 def cmd_courses_default(
-    limit: int = typer.Option(50, "--limit", "-l"),
-    offset: int = 0,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    limit: int = typer.Option(50, "--limit", "-l", help="Maximum number of results."),
+    offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """List your enrolled NTULearn courses and organizations, including published availability and course IDs."""
     with application_scope() as application:
@@ -127,12 +139,23 @@ def cmd_courses_default(
 
 @g_content.command("__default__", hidden=True)
 def cmd_content_default(
-    course_id: str,
-    parent_id: Optional[str] = typer.Option(None, "--parent"),
-    limit: int = typer.Option(50, "--limit", "-l"),
-    offset: int = 0,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    course_id: Annotated[
+        str,
+        typer.Argument(help="The NTULearn course ID returned by ntu learn courses."),
+    ],
+    parent_id: Optional[str] = typer.Option(
+        None,
+        "--parent",
+        help="The ID of a parent folder. Omit it to browse the top level.",
+    ),
+    limit: int = typer.Option(50, "--limit", "-l", help="Maximum number of results."),
+    offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Read one level of course content."""
     if parent_id and is_content_url(parent_id):
@@ -153,12 +176,29 @@ def cmd_content_default(
 
 @g_content.command("tree")
 def cmd_content_tree(
-    course_id: str,
-    max_depth: int = 5,
-    max_nodes: int = 1000,
-    max_requests: int = 100,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    course_id: Annotated[
+        str,
+        typer.Argument(help="The NTULearn course ID returned by ntu learn courses."),
+    ],
+    max_depth: Annotated[
+        int, typer.Option(help="Maximum nesting depth to traverse. Default: 5.")
+    ] = 5,
+    max_nodes: Annotated[
+        int,
+        typer.Option(help="Maximum number of content nodes to examine. Default: 1000."),
+    ] = 1000,
+    max_requests: Annotated[
+        int,
+        typer.Option(
+            help="Maximum number of upstream requests the operation may make. Default: 100."
+        ),
+    ] = 100,
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Read a course's nested content tree."""
     with application_scope() as application:
@@ -179,12 +219,23 @@ def cmd_content_tree(
 
 @app.command("attachments")
 def cmd_attachments(
-    course_id: str = typer.Argument(..., metavar="COURSE_ID_OR_URL"),
-    content_id: Optional[str] = typer.Argument(None),
-    limit: int = typer.Option(50, "--limit", "-l"),
-    offset: int = 0,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    course_id: str = typer.Argument(
+        ...,
+        metavar="COURSE_ID_OR_URL",
+        help="The NTULearn course ID, or a supported document or lecture URL.",
+    ),
+    content_id: Optional[str] = typer.Argument(
+        None,
+        help="The content ID returned when you browse the course. Where supported, a content URL can supply the course and content IDs.",
+    ),
+    limit: int = typer.Option(50, "--limit", "-l", help="Maximum number of results."),
+    offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """List attachments using a course and content ID, or an NTULearn content URL."""
     course_id, content_id = content_reference(course_id, content_id)
@@ -204,12 +255,31 @@ def cmd_attachments(
 
 @g_files.command("read")
 def cmd_files_read(
-    course_id: str = typer.Argument(..., metavar="COURSE_ID_OR_URL"),
-    content_id: str = typer.Argument(..., metavar="CONTENT_OR_ATTACHMENT_ID"),
-    attachment_id: Optional[str] = typer.Argument(None),
-    max_chars: int = 20000,
-    max_pages: int = 20,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    course_id: str = typer.Argument(
+        ...,
+        metavar="COURSE_ID_OR_URL",
+        help="The NTULearn course ID, or a supported document or lecture URL.",
+    ),
+    content_id: str = typer.Argument(
+        ...,
+        metavar="CONTENT_OR_ATTACHMENT_ID",
+        help="Content ID when using a course ID, or attachment ID when using a URL.",
+    ),
+    attachment_id: Optional[str] = typer.Argument(
+        None, help="The attachment ID returned by the attachment listing."
+    ),
+    max_chars: Annotated[
+        int,
+        typer.Option(
+            help="Maximum number of text characters to return. Default: 20000."
+        ),
+    ] = 20000,
+    max_pages: Annotated[
+        int, typer.Option(help="Maximum number of document pages to read. Default: 20.")
+    ] = 20,
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Read an attachment as text. Supply course and content IDs, or a content URL, plus the attachment ID."""
     if attachment_id is None:
@@ -235,14 +305,31 @@ def cmd_files_read(
 
 @g_files.command("download")
 def cmd_files_download(
-    course_id: str = typer.Argument(..., metavar="COURSE_ID_OR_URL"),
-    content_id: str = typer.Argument(..., metavar="CONTENT_OR_ATTACHMENT_ID"),
-    attachment_id: Optional[str] = typer.Argument(None),
-    destination: str = typer.Option(..., "--output", "-o"),
+    course_id: str = typer.Argument(
+        ...,
+        metavar="COURSE_ID_OR_URL",
+        help="The NTULearn course ID, or a supported document or lecture URL.",
+    ),
+    content_id: str = typer.Argument(
+        ...,
+        metavar="CONTENT_OR_ATTACHMENT_ID",
+        help="Content ID when using a course ID, or attachment ID when using a URL.",
+    ),
+    attachment_id: Optional[str] = typer.Argument(
+        None, help="The attachment ID returned by the attachment listing."
+    ),
+    destination: str = typer.Option(
+        ...,
+        "--output",
+        "-o",
+        help="The local destination path. Follow the command description for file or directory requirements.",
+    ),
     max_bytes: int = typer.Option(
         20_000_000, help="Maximum file size in bytes (up to 20 MB)."
     ),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Download an attachment using course and content IDs, or a content URL, plus the attachment ID."""
     if attachment_id is None:
@@ -267,11 +354,27 @@ def cmd_files_download(
 
 @g_videos.command("download")
 def cmd_videos_download(
-    course_id: str = typer.Argument(..., metavar="COURSE_ID_OR_URL"),
-    content_id: Optional[str] = typer.Argument(None),
-    destination: str = typer.Option(..., "--output", "-o"),
-    max_mb: int = 1000,
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    course_id: str = typer.Argument(
+        ...,
+        metavar="COURSE_ID_OR_URL",
+        help="The NTULearn course ID, or a supported document or lecture URL.",
+    ),
+    content_id: Optional[str] = typer.Argument(
+        None,
+        help="The content ID returned when you browse the course. Where supported, a content URL can supply the course and content IDs.",
+    ),
+    destination: str = typer.Option(
+        ...,
+        "--output",
+        "-o",
+        help="The local destination path. Follow the command description for file or directory requirements.",
+    ),
+    max_mb: Annotated[
+        int, typer.Option(help="Maximum video size in megabytes. Default: 1000.")
+    ] = 1000,
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Download a Kaltura video using course and content IDs, or an NTULearn content URL."""
     course_id, content_id = content_reference(course_id, content_id)
@@ -293,15 +396,42 @@ def cmd_videos_download(
 
 @g_courses.command("download")
 def cmd_courses_download(
-    course_id: str,
-    destination: str = typer.Option(..., "--output", "-o"),
-    max_depth: int = 5,
-    max_nodes: int = 1000,
-    max_files: int = 100,
-    max_total_mb: int = 200,
-    max_requests: int = 200,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    course_id: Annotated[
+        str,
+        typer.Argument(help="The NTULearn course ID returned by ntu learn courses."),
+    ],
+    destination: str = typer.Option(
+        ...,
+        "--output",
+        "-o",
+        help="The local destination path. Follow the command description for file or directory requirements.",
+    ),
+    max_depth: Annotated[
+        int, typer.Option(help="Maximum nesting depth to traverse. Default: 5.")
+    ] = 5,
+    max_nodes: Annotated[
+        int,
+        typer.Option(help="Maximum number of content nodes to examine. Default: 1000."),
+    ] = 1000,
+    max_files: Annotated[
+        int, typer.Option(help="Maximum number of files to download. Default: 100.")
+    ] = 100,
+    max_total_mb: Annotated[
+        int,
+        typer.Option(help="Maximum total download size in megabytes. Default: 200."),
+    ] = 200,
+    max_requests: Annotated[
+        int,
+        typer.Option(
+            help="Maximum number of upstream requests the operation may make. Default: 200."
+        ),
+    ] = 200,
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Recursively save readable Blackboard attachments under destination/course_id with content folder names and stable file IDs."""
     with application_scope() as application:
@@ -326,11 +456,18 @@ def cmd_courses_download(
 
 @app.command("announcements")
 def cmd_announcements(
-    course_id: str,
-    limit: int = typer.Option(50, "--limit", "-l"),
-    offset: int = 0,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    course_id: Annotated[
+        str,
+        typer.Argument(help="The NTULearn course ID returned by ntu learn courses."),
+    ],
+    limit: int = typer.Option(50, "--limit", "-l", help="Maximum number of results."),
+    offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Read published announcements for one enrolled course."""
     with application_scope() as application:
@@ -348,12 +485,21 @@ def cmd_announcements(
 
 @app.command("grades")
 def cmd_grades(
-    course_id: str,
-    limit: int = typer.Option(50, "--limit", "-l"),
-    offset: int = 0,
-    grades_offset: int = 0,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    course_id: Annotated[
+        str,
+        typer.Argument(help="The NTULearn course ID returned by ntu learn courses."),
+    ],
+    limit: int = typer.Option(50, "--limit", "-l", help="Maximum number of results."),
+    offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
+    grades_offset: int = typer.Option(
+        0, "--grades-offset", help="Number of grades to skip."
+    ),
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Read visible gradebook columns and your own scores/status."""
     with application_scope() as application:
@@ -372,13 +518,24 @@ def cmd_grades(
 
 @app.command("calendar")
 def cmd_calendar(
-    since: Optional[str] = None,
-    until: Optional[str] = None,
-    course_id: Optional[str] = typer.Option(None, "--course"),
-    limit: int = typer.Option(50, "--limit", "-l"),
-    offset: int = 0,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    since: Annotated[
+        Optional[str],
+        typer.Option(help="Start of the date or time range in ISO format."),
+    ] = None,
+    until: Annotated[
+        Optional[str], typer.Option(help="End of the date or time range in ISO format.")
+    ] = None,
+    course_id: Optional[str] = typer.Option(
+        None, "--course", help="The NTULearn course ID returned by ntu learn courses."
+    ),
+    limit: int = typer.Option(50, "--limit", "-l", help="Maximum number of results."),
+    offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Read calendar entries and published deadlines, across your courses or for one course."""
     with application_scope() as application:
@@ -398,13 +555,30 @@ def cmd_calendar(
 
 @app.command("upcoming")
 def cmd_upcoming(
-    since: Optional[str] = None,
-    until: Optional[str] = None,
+    since: Annotated[
+        Optional[str],
+        typer.Option(help="Start of the date or time range in ISO format."),
+    ] = None,
+    until: Annotated[
+        Optional[str], typer.Option(help="End of the date or time range in ISO format.")
+    ] = None,
     course_ids: Optional[str] = typer.Option(None, "--course-ids", help="JSON value."),
-    item_type: Optional[str] = None,
-    max_requests: int = 100,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    item_type: Annotated[
+        Optional[str],
+        typer.Option(help="Restrict calendar results to the selected item type."),
+    ] = None,
+    max_requests: Annotated[
+        int,
+        typer.Option(
+            help="Maximum number of upstream requests the operation may make. Default: 100."
+        ),
+    ] = 100,
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Collect all calendar pages across your enrolled courses."""
     with application_scope() as application:
@@ -428,13 +602,29 @@ def cmd_upcoming(
 
 @app.command("digest")
 def cmd_digest(
-    since: Optional[str] = None,
-    until: Optional[str] = None,
+    since: Annotated[
+        Optional[str],
+        typer.Option(help="Start of the date or time range in ISO format."),
+    ] = None,
+    until: Annotated[
+        Optional[str], typer.Option(help="End of the date or time range in ISO format.")
+    ] = None,
     course_ids: Optional[str] = typer.Option(None, "--course-ids", help="JSON value."),
-    max_items: int = 200,
-    max_requests: int = 100,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    max_items: Annotated[
+        int, typer.Option(help="Maximum number of items to include. Default: 200.")
+    ] = 200,
+    max_requests: Annotated[
+        int,
+        typer.Option(
+            help="Maximum number of upstream requests the operation may make. Default: 100."
+        ),
+    ] = 100,
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Digest of recent announcements, upcoming calendar items and your gradebook across courses."""
     with application_scope() as application:
@@ -458,15 +648,36 @@ def cmd_digest(
 
 @g_messages.command("list")
 def cmd_messages_list(
-    folder: Literal["inbox", "sent"] = "inbox",
-    course_id: Optional[str] = typer.Option(None, "--course"),
-    since: Optional[str] = None,
-    unread_only: bool = typer.Option(False, "--unread-only"),
-    limit: int = typer.Option(50, "--limit", "-l"),
-    offset: int = 0,
-    max_requests: int = 100,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    folder: Annotated[
+        Literal["inbox", "sent"],
+        typer.Option(
+            help="Choose the inbox or sent message folder. Choices: inbox, sent. Default: inbox."
+        ),
+    ] = "inbox",
+    course_id: Optional[str] = typer.Option(
+        None, "--course", help="The NTULearn course ID returned by ntu learn courses."
+    ),
+    since: Annotated[
+        Optional[str],
+        typer.Option(help="Start of the date or time range in ISO format."),
+    ] = None,
+    unread_only: bool = typer.Option(
+        False, "--unread-only", help="Restrict messages to unread items."
+    ),
+    limit: int = typer.Option(50, "--limit", "-l", help="Maximum number of results."),
+    offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
+    max_requests: Annotated[
+        int,
+        typer.Option(
+            help="Maximum number of upstream requests the operation may make. Default: 100."
+        ),
+    ] = 100,
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """List Blackboard inbox/sent messages through readable course conversations, without marking them read."""
     with application_scope() as application:
@@ -490,12 +701,33 @@ def cmd_messages_list(
 
 @g_messages.command("read")
 def cmd_messages_read(
-    message_id: str,
-    course_id: Optional[str] = typer.Option(None, "--course"),
-    conversation_id: Optional[str] = None,
-    max_requests: int = 100,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    message_id: Annotated[
+        str,
+        typer.Argument(
+            help="The message ID returned by the relevant listing or details command."
+        ),
+    ],
+    course_id: Optional[str] = typer.Option(
+        None, "--course", help="The NTULearn course ID returned by ntu learn courses."
+    ),
+    conversation_id: Annotated[
+        Optional[str],
+        typer.Option(
+            help="The conversation ID returned by the relevant listing or details command."
+        ),
+    ] = None,
+    max_requests: Annotated[
+        int,
+        typer.Option(
+            help="Maximum number of upstream requests the operation may make. Default: 100."
+        ),
+    ] = 100,
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Read a message's full body and published conversation recipients."""
     with application_scope() as application:
@@ -516,11 +748,18 @@ def cmd_messages_read(
 
 @app.command("users")
 def cmd_users(
-    course_id: str,
-    limit: int = typer.Option(50, "--limit", "-l"),
-    offset: int = 0,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    course_id: Annotated[
+        str,
+        typer.Argument(help="The NTULearn course ID returned by ntu learn courses."),
+    ],
+    limit: int = typer.Option(50, "--limit", "-l", help="Maximum number of results."),
+    offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """List course users visible to your account, with their published names and roles."""
     with application_scope() as application:
@@ -540,11 +779,18 @@ def cmd_users(
 
 @g_groups.command("__default__", hidden=True)
 def cmd_groups_default(
-    course_id: str,
-    limit: int = typer.Option(50, "--limit", "-l"),
-    offset: int = 0,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    course_id: Annotated[
+        str,
+        typer.Argument(help="The NTULearn course ID returned by ntu learn courses."),
+    ],
+    limit: int = typer.Option(50, "--limit", "-l", help="Maximum number of results."),
+    offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """List groups and group sets defined in a course."""
     with application_scope() as application:
@@ -564,12 +810,24 @@ def cmd_groups_default(
 
 @g_groups.command("members")
 def cmd_groups_members(
-    course_id: str,
-    group_id: str,
-    limit: int = typer.Option(50, "--limit", "-l"),
-    offset: int = 0,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    course_id: Annotated[
+        str,
+        typer.Argument(help="The NTULearn course ID returned by ntu learn courses."),
+    ],
+    group_id: Annotated[
+        str,
+        typer.Argument(
+            help="The group ID returned by the relevant listing or details command."
+        ),
+    ],
+    limit: int = typer.Option(50, "--limit", "-l", help="Maximum number of results."),
+    offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """List visible members of a course group through Blackboard's browser membership API."""
     with application_scope() as application:
@@ -590,14 +848,36 @@ def cmd_groups_members(
 
 @g_search.command("__default__", hidden=True)
 def cmd_search_default(
-    course_id: str,
-    query: str,
-    max_depth: int = 5,
-    max_nodes: int = 1000,
-    max_results: int = 50,
-    max_requests: int = 100,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    course_id: Annotated[
+        str,
+        typer.Argument(help="The NTULearn course ID returned by ntu learn courses."),
+    ],
+    query: str = typer.Argument(..., help="Search text or keywords."),
+    max_depth: Annotated[
+        int, typer.Option(help="Maximum nesting depth to traverse. Default: 5.")
+    ] = 5,
+    max_nodes: Annotated[
+        int,
+        typer.Option(help="Maximum number of content nodes to examine. Default: 1000."),
+    ] = 1000,
+    max_results: Annotated[
+        int,
+        typer.Option(
+            help="Maximum number of matching results to collect. Default: 50."
+        ),
+    ] = 50,
+    max_requests: Annotated[
+        int,
+        typer.Option(
+            help="Maximum number of upstream requests the operation may make. Default: 100."
+        ),
+    ] = 100,
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Recursively search one course's content titles, body and description for a case-insensitive substring."""
     with application_scope() as application:
@@ -620,14 +900,33 @@ def cmd_search_default(
 
 @g_search.command("all")
 def cmd_search_all(
-    query: str,
+    query: str = typer.Argument(..., help="Search text or keywords."),
     course_ids: Optional[str] = typer.Option(None, "--course-ids", help="JSON value."),
-    max_depth: int = 5,
-    max_nodes: int = 1000,
-    max_results: int = 50,
-    max_requests: int = 100,
-    refresh: bool = typer.Option(False, "--refresh", "-r"),
-    json_output: bool = typer.Option(False, "--json", "-j"),
+    max_depth: Annotated[
+        int, typer.Option(help="Maximum nesting depth to traverse. Default: 5.")
+    ] = 5,
+    max_nodes: Annotated[
+        int,
+        typer.Option(help="Maximum number of content nodes to examine. Default: 1000."),
+    ] = 1000,
+    max_results: Annotated[
+        int,
+        typer.Option(
+            help="Maximum number of matching results to collect. Default: 50."
+        ),
+    ] = 50,
+    max_requests: Annotated[
+        int,
+        typer.Option(
+            help="Maximum number of upstream requests the operation may make. Default: 100."
+        ),
+    ] = 100,
+    refresh: bool = typer.Option(
+        False, "--refresh", "-r", help="Fetch fresh data instead of cached results."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", "-j", help="Write JSON to stdout."
+    ),
 ):
     """Recursively search content across available enrolled courses, or selected course_ids."""
     with application_scope() as application:

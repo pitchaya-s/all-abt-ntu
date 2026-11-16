@@ -215,15 +215,53 @@ class FacilityTests(unittest.TestCase):
                 page = session._page = MagicMock()
                 page.url = "https://loginfs.ntu.edu.sg/adfs/ls/"
                 page.goto.return_value = None
-                page.locator.return_value.inner_text.side_effect = body
-                page.locator.return_value.count.return_value = 1
+                body_locator = MagicMock()
+                body_locator.inner_text.side_effect = body
+                error_locator = MagicMock()
+                error_locator.count.return_value = 1
+                error_locator.inner_text.return_value = "Incorrect password"
+                field = MagicMock()
+                field.count.return_value = 1
+                page.locator.side_effect = lambda selector: {
+                    "body": body_locator,
+                    "#errorText:visible": error_locator,
+                }.get(selector, field)
                 with patch.object(session, "_open"), patch.object(session, "_pace"):
                     with self.assertRaises(LibraryError):
                         session._navigate("/space/100", credentials)
                 self.assertEqual(
-                    page.locator.return_value.fill.call_count,
+                    field.fill.call_count,
                     0 if len(body) == 1 else 2,
                 )
+
+    def test_redirected_library_page_text_is_not_a_password_error(self):
+        session = FacilitySession()
+        self.addCleanup(session.close)
+        page = session._page = MagicMock()
+        page.url = "https://loginfs.ntu.edu.sg/adfs/ls/"
+        page.goto.return_value = None
+        page.evaluate.return_value = True
+        body, field = MagicMock(), MagicMock()
+        field.count.return_value = 1
+        responses = iter(("Sign in", None, "Incorrect filter on the table"))
+
+        def read_body(**kwargs):
+            value = next(responses)
+            if value is None:
+                page.url = "https://libcalendar.ntu.edu.sg/space/100"
+                return "Incorrect filter on the table"
+            return value
+
+        body.inner_text.side_effect = read_body
+        page.locator.side_effect = lambda selector: (
+            body if selector == "body" else field
+        )
+        credentials = Credentials(
+            username="example", password="synthetic", revision="a" * 32
+        )
+        with patch.object(session, "_open"), patch.object(session, "_pace"):
+            session._navigate("/space/100", credentials)
+        field.click.assert_called_once()
 
     def test_category_session_recognizes_configuration_without_room_heading(self):
         session = FacilitySession()

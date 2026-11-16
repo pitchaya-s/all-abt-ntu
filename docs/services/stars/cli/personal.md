@@ -35,7 +35,7 @@ For the corresponding MCP operation and its field types, see the [MCP schema](..
 <a id="cmd-stars-auth-status"></a>
 ### `ntu stars auth status`
 
-Report whether WISH credentials are configured and whether this process has verified a session.
+Sign in to STARS and report whether access is verified.
 
 #### Usage
 

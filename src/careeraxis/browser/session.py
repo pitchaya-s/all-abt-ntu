@@ -73,6 +73,15 @@ class CareerAxisSession:
         "Report whether shared NTU keyring credentials can be read and whether this process has verified CareerAxis login; does not log in."
         return self._run(self._status)
 
+    def verify(self) -> AuthStatus:
+        """Authenticate against CareerAxis and report the verified session."""
+        return self._run(self._verify)
+
+    def _verify(self):
+        credentials = self._credentials()
+        self._navigate(SEARCH_PATH, credentials)
+        return self._status()
+
     def _status(self):
         credentials = credential_status()
         if credentials["credentials_configured"] is True:
@@ -169,7 +178,9 @@ class CareerAxisSession:
         except Exception:
             self._dispose()
             raise CareerAxisError(
-                "CareerAxis login needs Playwright and Chromium. Install the personal extra and run `uvx --from 'playwright>=1.50,<2' playwright install chromium`."
+                "CareerAxis could not start Playwright Chromium. Install the personal extra "
+                "and its matching Chromium build with `ntu cli setup` or run "
+                "`python -m playwright install chromium` in the same environment."
             ) from None
 
     def _pace(self):
@@ -190,8 +201,11 @@ class CareerAxisSession:
         deadline = time.monotonic() + (60 if self._headless else 180)
         password_sent = False
         while time.monotonic() < deadline:
-            parsed = urlsplit(page.url)
+            current_url = page.url
+            parsed = urlsplit(current_url)
             body = page.locator("body").inner_text(timeout=5000)
+            if page.url != current_url:
+                continue
             if (
                 parsed.scheme != "https"
                 or parsed.port not in (None, 443)
@@ -209,14 +223,12 @@ class CareerAxisSession:
                     )
                 page.wait_for_timeout(500)
                 continue
-            if (
-                parsed.hostname == "loginfs.ntu.edu.sg"
-                and password_sent
-                and _BAD_LOGIN.search(body)
-            ):
-                raise CareerAxisError(
-                    "NTU rejected the CareerAxis login; check the saved account. No password retry was made."
-                )
+            if parsed.hostname == "loginfs.ntu.edu.sg" and password_sent:
+                error = page.locator("#errorText:visible")
+                if error.count() and _BAD_LOGIN.search(error.inner_text(timeout=5000)):
+                    raise CareerAxisError(
+                        "NTU rejected the CareerAxis login; check the saved account. No password retry was made."
+                    )
             if parsed.hostname == "loginfs.ntu.edu.sg":
                 self._verified = False
                 self._last_verified = None

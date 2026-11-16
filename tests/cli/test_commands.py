@@ -12,6 +12,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import click
+from typer.main import get_command
 from typer.testing import CliRunner
 
 from cli.cli import create_app
@@ -61,6 +62,89 @@ class UnifiedCLITests(unittest.TestCase):
             [sys.executable, "-c", program], capture_output=True, text=True
         )
         self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_help_describes_services_groups_and_important_arguments(self):
+        root = self.runner.invoke(self.app, ["--help"])
+        self.assertIn("Search courses, schedules, indexes", root.output)
+        onestop = self.runner.invoke(self.app, ["onestop", "--help"])
+        self.assertIn("Browse requests or apply", onestop.output)
+        apply = self.runner.invoke(self.app, ["onestop", "requests", "apply", "--help"])
+        self.assertIn("Catalog item ID", apply.output)
+        stars = self.runner.invoke(self.app, ["stars", "courses", "search", "--help"])
+        self.assertIn("Starting year", stars.output)
+        self.assertIn("Semester 1, 2", stars.output)
+        auth = self.runner.invoke(self.app, ["auth", "--help"])
+        self.assertIn("Check the local keyring", auth.output)
+        config = self.runner.invoke(self.app, ["config", "set", "--help"])
+        self.assertIn("Setting name", config.output)
+
+    def test_default_group_reports_unknown_commands_without_internal_names(self):
+        result = self.runner.invoke(self.app, ["onestop", "cart", "apply"])
+        self.assertEqual(result.exit_code, 2)
+        self.assertIn("No such command 'apply'", result.output)
+        self.assertNotIn("__default__", result.output)
+        result = self.runner.invoke(self.app, ["onestop", "cart", "--unknown"])
+        self.assertEqual(result.exit_code, 2)
+        self.assertIn("No such option", result.output)
+        self.assertNotIn("__default__", result.output)
+
+    def test_default_group_accepts_resource_arguments(self):
+        with patch("cli.commands.learn.invoke") as call:
+            result = self.runner.invoke(self.app, ["learn", "content", "_100_1"])
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertEqual(call.call_args.args[1]["course_id"], "_100_1")
+
+    def test_every_service_command_has_working_help(self):
+        root = get_command(self.app)
+        paths = []
+
+        def collect(command, path):
+            for parameter in command.params:
+                with self.subTest(command=" ".join(path), parameter=parameter.name):
+                    self.assertTrue(parameter.help, "Missing argument or option help")
+            paths.append(path)
+            for name, child in getattr(command, "commands", {}).items():
+                if name == "__default__":
+                    for parameter in child.params:
+                        with self.subTest(
+                            command=" ".join(path), parameter=parameter.name
+                        ):
+                            self.assertTrue(
+                                parameter.help, "Missing default action help"
+                            )
+                elif not child.hidden:
+                    collect(child, [*path, name])
+
+        for service in (
+            "stars",
+            "learn",
+            "career",
+            "map",
+            "research",
+            "library",
+            "faculty",
+            "news",
+            "services",
+            "bus",
+            "onestop",
+        ):
+            collect(root.commands[service], [service])
+        self.assertGreater(len(paths), 140)
+        for path in paths:
+            with self.subTest(command=" ".join(path)):
+                result = self.runner.invoke(self.app, [*path, "--help"])
+                self.assertEqual(result.exit_code, 0, result.output)
+                self.assertIn("Usage:", result.output)
+
+    def test_service_auth_status_calls_live_verification(self):
+        for service in ("stars", "learn", "career", "onestop"):
+            with (
+                self.subTest(service=service),
+                patch(f"cli.commands.{service}.invoke") as invoke,
+            ):
+                result = self.runner.invoke(self.app, [service, "auth", "status"])
+                self.assertEqual(result.exit_code, 0, result.output)
+                self.assertEqual(invoke.call_args.args[0].__name__, "verify")
 
     def test_mcp_profile_launch(self):
         with (
@@ -304,6 +388,8 @@ class UnifiedCLITests(unittest.TestCase):
                 self.subTest(arguments=arguments),
                 patch(f"cli.commands.{module}.invoke") as dispatch,
             ):
+                if module == "bus":
+                    dispatch.return_value = SimpleNamespace(stops=[])
                 result = self.runner.invoke(self.app, arguments)
                 self.assertEqual(result.exit_code, 0, result.output)
                 target = dispatch.call_args.args[0]

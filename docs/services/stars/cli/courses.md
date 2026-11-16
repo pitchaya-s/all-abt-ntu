@@ -59,7 +59,7 @@ ntu stars prerequisites ZZ0001 --year 2026 --semester 1
 - `--completed`: Completed course codes used when evaluating prerequisite eligibility.
 - `--eligible-only`: Restrict results to courses eligible under the supplied completed courses.
 - `--include-corequisites`: Include corequisites when building the prerequisite tree.
-- `--max-nodes`: Maximum number of content nodes to examine. Default: `100`.
+- `--max-nodes`: Maximum number of prerequisite and dependent nodes to examine. Default: `100`.
 - `--json`, `-j`: Write the result as JSON to stdout; diagnostics go to stderr.
 
 #### Result

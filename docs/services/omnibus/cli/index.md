@@ -53,6 +53,8 @@ For the corresponding MCP operation and its field types, see the [MCP schema](..
 
 Search NTU shuttle and LTA bus stops by stop name or code, optionally limited to a route/service.
 
+Terminal output combines matching records for the same stop and shows its routes. Distinct stop codes remain separate. Pagination still applies to the underlying stop-and-route records, so a stop can also appear on a later page. JSON output retains the original records and pagination fields.
+
 #### Usage
 
 ```sh

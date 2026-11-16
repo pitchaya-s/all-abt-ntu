@@ -13,6 +13,8 @@ The `cli` extra installs the terminal interface; `personal` adds browser support
 
 When no credentials are saved, the credential prompt defaults to yes. If credentials are already saved, replacing them defaults to no. Setup skips the Chromium prompt when the matching Playwright browser is already installed.
 
+`ntu auth status` checks the local keyring only. Service commands such as `ntu onestop auth status` attempt a real sign-in to verify that service; they may require a network connection and can report an MFA or CAPTCHA challenge.
+
 To enable optional NTULearn browser-cookie discovery, install `all-abt-ntu[cli,personal,browser-cookies]@latest`.
 
 ## Find the right command
