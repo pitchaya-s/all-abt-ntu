@@ -1,3 +1,4 @@
+import time
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
@@ -16,6 +17,19 @@ class PublicHTTPTests(unittest.TestCase):
         schedulers = patch.dict("public_http_client._SCHEDULERS", clear=True)
         schedulers.start()
         self.addCleanup(schedulers.stop)
+        self.clock_offset = 0.0
+        clock = patch(
+            "public_http_client.monotonic",
+            side_effect=lambda: time.monotonic() + self.clock_offset,
+        )
+        clock.start()
+        self.addCleanup(clock.stop)
+
+    def advance_clock(self, delay):
+        self.clock_offset += delay
+
+    def skip_wait(self):
+        return patch("public_http_client.time.sleep", side_effect=self.advance_clock)
 
     def make_client(self, handler, *, content_types=("application/json",)):
         client = PublicHTTPClient(
@@ -43,7 +57,7 @@ class PublicHTTPTests(unittest.TestCase):
             )
 
         client = self.make_client(handle)
-        with patch("public_http_client.time.sleep"):
+        with self.skip_wait():
             first = client.get(URL)
             self.assertFalse(first[1]["cached"])
             self.assertTrue(client.get(URL)[1]["cached"])
@@ -71,7 +85,7 @@ class PublicHTTPTests(unittest.TestCase):
         )
         with (
             patch("public_http_client.MAX_CACHE_BYTES", 8),
-            patch("public_http_client.time.sleep"),
+            self.skip_wait(),
         ):
             client.get(URL + "?1")
             client.get(URL + "?2")
@@ -97,7 +111,7 @@ class PublicHTTPTests(unittest.TestCase):
                 request=request,
             )
         )
-        with patch("public_http_client.time.sleep"):
+        with self.skip_wait():
             with self.assertRaises(ValueError):
                 with client.parsed_response(URL):
                     raise ValueError("bad response")
@@ -138,7 +152,7 @@ class PublicHTTPTests(unittest.TestCase):
             )
 
         client = self.make_client(allowed)
-        with patch("public_http_client.time.sleep"):
+        with self.skip_wait():
             client.get(URL)
         self.assertEqual(
             [request.url.host for request in requests],
@@ -152,7 +166,7 @@ class PublicHTTPTests(unittest.TestCase):
 
         unsafe = self.make_client(denied)
         with (
-            patch("public_http_client.time.sleep"),
+            self.skip_wait(),
             self.assertRaises(PublicRequestError),
         ):
             unsafe.get(URL)
@@ -174,7 +188,7 @@ class PublicHTTPTests(unittest.TestCase):
         ]:
             client = self.make_client(response)
             with (
-                patch("public_http_client.time.sleep"),
+                self.skip_wait(),
                 self.assertRaises(PublicRequestError),
             ):
                 client.get(URL)
@@ -192,7 +206,7 @@ class PublicHTTPTests(unittest.TestCase):
 
             client = self.make_client(handle)
             with (
-                patch("public_http_client.time.sleep"),
+                self.skip_wait(),
                 self.assertRaises(PublicRequestError) as caught,
             ):
                 client.get(URL)
@@ -207,7 +221,7 @@ class PublicHTTPTests(unittest.TestCase):
 
         client = self.make_client(connection_error)
         with (
-            patch("public_http_client.time.sleep"),
+            self.skip_wait(),
             self.assertRaises(PublicRequestError) as caught,
         ):
             client.get(URL)
@@ -229,7 +243,7 @@ class PublicHTTPTests(unittest.TestCase):
 
             client = self.make_client(handle)
             with (
-                patch("public_http_client.time.sleep"),
+                self.skip_wait(),
                 self.assertRaises(PublicRequestError),
             ):
                 client.get(url)
@@ -252,12 +266,67 @@ class PublicHTTPTests(unittest.TestCase):
 
         client = self.make_client(handle)
         with (
-            patch("public_http_client.time.sleep"),
+            self.skip_wait(),
             patch("public_http_client.defer_host_requests") as defer,
         ):
             body, _ = client.get(URL)
         self.assertEqual(body, b"{}")
         defer.assert_called_once_with(redirect, 2)
+
+    def test_queued_request_observes_retry_after_before_response_cleanup(self):
+        first_started = Event()
+        pacing = Event()
+        closing = Event()
+        second_finished = Event()
+        requests = []
+
+        class BlockingClose(httpx.SyncByteStream):
+            def close(self):
+                closing.set()
+                if not second_finished.wait(3):
+                    raise AssertionError("The queued request did not finish")
+
+        def handle(request):
+            requests.append(request.url.path)
+            if request.url.path == "/busy":
+                first_started.set()
+                self.assertTrue(pacing.wait(3))
+                return httpx.Response(
+                    429, headers={"Retry-After": "30"}, stream=BlockingClose()
+                )
+            return httpx.Response(200, json={})
+
+        def wait_for_cooldown(delay):
+            pacing.set()
+            self.assertTrue(closing.wait(3))
+            self.advance_clock(delay)
+
+        def queued_get():
+            try:
+                return client.get("https://example.org/queued")
+            finally:
+                second_finished.set()
+
+        client = self.make_client(handle)
+        with (
+            patch.dict(
+                "os.environ",
+                {
+                    "NTU_PUBLIC_HTTP_INTERVAL_SECONDS": "2",
+                    "NTU_PUBLIC_HTTP_CONCURRENCY": "2",
+                },
+            ),
+            patch("public_http_client.time.sleep", side_effect=wait_for_cooldown),
+            ThreadPoolExecutor(max_workers=2) as pool,
+        ):
+            busy = pool.submit(client.get, "https://example.org/busy")
+            self.assertTrue(first_started.wait(3))
+            queued = pool.submit(queued_get)
+            with self.assertRaisesRegex(PublicRequestError, "cooldown"):
+                queued.result(timeout=4)
+            with self.assertRaisesRegex(PublicRequestError, "HTTP 429"):
+                busy.result(timeout=4)
+        self.assertEqual(requests, ["/busy"])
 
     def test_independent_requests_can_overlap(self):
         both_started = Barrier(2)

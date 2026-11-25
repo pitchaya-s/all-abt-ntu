@@ -15,16 +15,15 @@ from public_http_client import (
     host_request_slot,
     max_retry_delay,
     public_timeout,
+    schedule_host_retry,
 )
 from shared.http import (
     REDIRECT_STATUS,
-    TRANSIENT_STATUS,
     allowed_https_url,
     failed_request_url,
     remaining_time,
     request_budget,
     request_timeout,
-    retry_after_seconds,
     retryable_connection_error,
 )
 from shared.http import NoCookies as _NoCookies
@@ -106,7 +105,13 @@ def _validate_url(url: str) -> None:
         )
 
 
-def _request_html(client: httpx.Client, request: Request, page_description: str):
+def _request_html(
+    client: httpx.Client,
+    request: Request,
+    page_description: str,
+    attempt: int,
+    attempts: int,
+):
     current_url = request.full_url
     method = request.get_method()
     content = request.data
@@ -154,13 +159,14 @@ def _request_html(client: httpx.Client, request: Request, page_description: str)
                 status = response.status_code
                 response_headers = response.headers
                 if status >= 400:
-                    return (
-                        status,
-                        response.reason_phrase,
-                        response_headers,
-                        b"",
+                    retry = schedule_host_retry(
                         current_url,
+                        response,
+                        fallback=min(4.0, 2.0**attempt),
+                        may_retry=attempt + 1 < attempts,
+                        retry_limit=max_retry_delay(),
                     )
+                    return status, response_headers, b"", retry
 
                 content_type = (
                     response_headers.get("content-type", "")
@@ -185,13 +191,7 @@ def _request_html(client: httpx.Client, request: Request, page_description: str)
                             f"NTU's {page_description} page exceeded the 5 MB safety limit."
                         )
                     body.extend(chunk)
-                return (
-                    status,
-                    response.reason_phrase,
-                    response_headers,
-                    bytes(body),
-                    current_url,
-                )
+                return status, response_headers, bytes(body), False
 
     raise NTURequestError(
         f"NTU returned too many redirects for {page_description}; retrieval stopped."
@@ -272,8 +272,8 @@ def _fetch_html_request_once(
 
     for attempt in range(attempts):
         try:
-            status, reason, headers, body, response_url = _request_html(
-                request_client, request, page_description
+            status, headers, body, retry = _request_html(
+                request_client, request, page_description, attempt, attempts
             )
         except httpx.RequestError as error:
             if not retryable_connection_error(error) or attempt + 1 == attempts:
@@ -286,13 +286,6 @@ def _fetch_html_request_once(
         if status == 429:
             logging.getLogger(__name__).warning("STARS upstream returned HTTP 429")
         last_error = f"HTTP {status}"
-        if status not in TRANSIENT_STATUS:
-            break
-        advertised = headers.get("retry-after")
-        delay = retry_after_seconds(advertised, min(4.0, 2.0**attempt))
-        retry = attempt + 1 < attempts and delay <= max_retry_delay()
-        if retry or advertised or status == 429:
-            defer_host_requests(response_url, delay)
         if not retry:
             break
 

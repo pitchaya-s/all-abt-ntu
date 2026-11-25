@@ -10,16 +10,15 @@ from public_http_client import (
     host_request_slot,
     max_retry_delay,
     public_timeout,
+    schedule_host_retry,
 )
 from shared.http import (
     REDIRECT_STATUS,
-    TRANSIENT_STATUS,
     allowed_https_url,
     failed_request_url,
     remaining_time,
     request_budget,
     request_timeout,
-    retry_after_seconds,
     retryable_connection_error,
 )
 from ..models import OmnibusError
@@ -51,8 +50,8 @@ class HTTPMethods:
         attempts = _MAX_ATTEMPTS if retryable else 1
         for attempt in range(attempts):
             try:
-                status, payload, response_headers, response_url = self._request_chain(
-                    url, method, body, request_headers
+                status, payload, retry = self._request_chain(
+                    url, method, body, request_headers, attempt, attempts
                 )
             except httpx.RequestError as error:
                 if attempt + 1 < attempts and retryable_connection_error(error):
@@ -71,14 +70,8 @@ class HTTPMethods:
                 logging.getLogger(__name__).warning(
                     "NTU Omnibus upstream returned HTTP 429"
                 )
-            if status in TRANSIENT_STATUS:
-                advertised = response_headers.get("retry-after")
-                delay = retry_after_seconds(advertised, min(4.0, 2.0**attempt))
-                retry = attempt + 1 < attempts and delay <= max_retry_delay()
-                if retry or advertised or status == 429:
-                    defer_host_requests(response_url, delay)
-                if retry:
-                    continue
+            if retry:
+                continue
             if status >= 400:
                 return status, payload
             return payload
@@ -96,7 +89,7 @@ class HTTPMethods:
             )
             raise OmnibusError(message)
 
-    def _request_chain(self, url, method, body, headers):
+    def _request_chain(self, url, method, body, headers, attempt, attempts):
         current_url = url
         for _ in range(_MAX_REDIRECTS + 1):
             self._validate_url(current_url)
@@ -132,6 +125,15 @@ class HTTPMethods:
                         }
                     continue
 
+                retry = schedule_host_retry(
+                    response_url,
+                    response,
+                    fallback=min(4.0, 2.0**attempt),
+                    may_retry=attempt + 1 < attempts,
+                    retry_limit=max_retry_delay(),
+                )
+                if retry:
+                    return response.status_code, b"", True
                 payload = bytearray()
                 for chunk in response.iter_bytes():
                     remaining_time()
@@ -140,12 +142,7 @@ class HTTPMethods:
                             "NTU Omnibus response exceeded the 8 MB limit."
                         )
                     payload.extend(chunk)
-                return (
-                    response.status_code,
-                    bytes(payload),
-                    response.headers,
-                    response_url,
-                )
+                return response.status_code, bytes(payload), False
         raise OmnibusError(
             "NTU Omnibus returned too many redirects; retrieval stopped."
         )

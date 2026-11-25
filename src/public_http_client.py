@@ -8,6 +8,7 @@ from concurrent.futures import Future, wait
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from threading import BoundedSemaphore, Lock
+from time import monotonic
 from urllib.parse import urljoin, urlsplit
 
 import httpx
@@ -95,26 +96,28 @@ class _HostScheduler:
                 "The upstream lookup ran out of time waiting for a connection."
             )
         try:
-            with self._pace_lock:
-                now = time.monotonic()
-                if self._defer_until - now > max_retry_delay():
-                    raise PublicRequestError(
-                        "The upstream service requested a cooldown. Try again later.",
-                        status=429,
+            while True:
+                with self._pace_lock:
+                    now = monotonic()
+                    if self._defer_until - now > max_retry_delay():
+                        raise PublicRequestError(
+                            "The upstream service requested a cooldown. Try again later.",
+                            status=429,
+                        )
+                    ready_at = max(
+                        self._defer_until, self._last_request + self._interval
                     )
-                ready_at = max(
-                    self._defer_until,
-                    self._last_request + self._interval,
-                )
-                delay = max(0.0, ready_at - now)
-                remaining = remaining_time()
-                if remaining is not None and delay >= remaining:
-                    raise PublicRequestError(
-                        "The upstream lookup ran out of time waiting for a request slot."
-                    )
-                if delay:
-                    time.sleep(delay)
-                self._last_request = time.monotonic()
+                    delay = ready_at - now
+                    remaining = remaining_time()
+                    if delay <= 0:
+                        self._last_request = now
+                        break
+                    if remaining is not None and delay >= remaining:
+                        raise PublicRequestError(
+                            "The upstream lookup ran out of time waiting for a request slot."
+                        )
+                # An in-flight response can extend the cooldown while we wait.
+                time.sleep(delay)
             yield
         finally:
             self._slots.release()
@@ -123,7 +126,7 @@ class _HostScheduler:
         if seconds <= 0:
             return
         with self._pace_lock:
-            self._defer_until = max(self._defer_until, time.monotonic() + seconds)
+            self._defer_until = max(self._defer_until, monotonic() + seconds)
 
 
 _SCHEDULERS: dict[str, _HostScheduler] = {}
@@ -164,6 +167,19 @@ def host_request_slot(url):
 
 def defer_host_requests(url, seconds):
     _scheduler_for(url).defer(seconds)
+
+
+def schedule_host_retry(url, response, *, fallback, may_retry, retry_limit):
+    """Record a transient response's cooldown as soon as headers arrive."""
+    status = response.status_code
+    if status not in TRANSIENT_STATUS:
+        return False
+    advertised = response.headers.get("retry-after")
+    delay = retry_after_seconds(advertised, fallback)
+    retry = may_retry and delay <= retry_limit
+    if retry or advertised or status == 429:
+        defer_host_requests(url, delay)
+    return retry
 
 
 class _Redirects:
@@ -303,7 +319,7 @@ class PublicHTTPClient:
     def _fetch(self, url):
         for attempt in range(MAX_ATTEMPTS):
             try:
-                status, headers, body, response_url = self._request_chain(url)
+                status, body, retry = self._request_chain(url, attempt)
             except httpx.RequestError as error:
                 if attempt + 1 < MAX_ATTEMPTS and retryable_connection_error(error):
                     defer_host_requests(
@@ -320,14 +336,8 @@ class PublicHTTPClient:
 
             if status == 429:
                 logger.warning("%s upstream returned HTTP 429", self.service)
-            if status in TRANSIENT_STATUS:
-                advertised = headers.get("retry-after")
-                delay = retry_after_seconds(advertised, 1.0)
-                retry = attempt + 1 < MAX_ATTEMPTS and delay <= self._max_retry_delay
-                if retry or advertised or status == 429:
-                    defer_host_requests(response_url, delay)
-                if retry:
-                    continue
+            if retry:
+                continue
             if status >= 400:
                 raise PublicRequestError(
                     f"{self.service} returned HTTP {status}; check the request or try again later.",
@@ -339,7 +349,7 @@ class PublicHTTPClient:
             f"Could not reach {self.service} after two attempts; try again later."
         )
 
-    def _request_chain(self, url):
+    def _request_chain(self, url, attempt):
         current_url = url
         for _ in range(MAX_REDIRECTS + 1):
             self.redirects.validate(current_url)
@@ -362,7 +372,14 @@ class PublicHTTPClient:
                 headers = response.headers
                 status = response.status_code
                 if status >= 400:
-                    return status, headers, b"", current_url
+                    retry = schedule_host_retry(
+                        current_url,
+                        response,
+                        fallback=1.0,
+                        may_retry=attempt + 1 < MAX_ATTEMPTS,
+                        retry_limit=self._max_retry_delay,
+                    )
+                    return status, b"", retry
                 content_type = (
                     headers.get("content-type", "").split(";", 1)[0].strip().lower()
                 )
@@ -386,7 +403,7 @@ class PublicHTTPClient:
                             response_too_large=True,
                         )
                     body.extend(chunk)
-                return status, headers, bytes(body), current_url
+                return status, bytes(body), False
         raise PublicRequestError(
             f"{self.service} returned too many redirects; retrieval stopped."
         )

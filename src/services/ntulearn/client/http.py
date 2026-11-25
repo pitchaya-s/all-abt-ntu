@@ -4,12 +4,13 @@ import asyncio
 import json
 import logging
 import re
-import time
 from contextlib import asynccontextmanager
 from pathlib import Path
+from time import monotonic
 from typing import Any, AsyncIterator
 from urllib.parse import urljoin, urlsplit
 
+import anyio
 import httpx
 
 # HTTPX's INFO messages include complete URLs, including signed file-download
@@ -56,26 +57,40 @@ class RequestScheduler:
     """A shared concurrency cap and minimum start interval for all requests."""
 
     def __init__(self, concurrency: int, interval_seconds: float):
-        import asyncio
-
         self._slots = asyncio.Semaphore(concurrency)
-        self._pace = asyncio.Lock()
         self._interval = interval_seconds
         self._next_start = 0.0
+        self._defer_until: dict[str, float] = {}
 
-    async def _wait_turn(self) -> None:
-        async with self._pace:
-            now = time.monotonic()
-            delay = max(0.0, self._next_start - now)
-            if delay:
-                await asyncio.sleep(delay)
-            self._next_start = max(now, self._next_start) + self._interval
+    def defer(self, host: str, delay: float) -> None:
+        if delay > 0:
+            self._defer_until[host] = max(
+                self._defer_until.get(host, 0.0), monotonic() + delay
+            )
+
+    def _delay(self, host: str, now: float) -> float:
+        deferred = self._defer_until.get(host, 0.0) - now
+        if deferred > MAX_RETRY_DELAY_SECONDS:
+            raise LearnError(
+                "NTULearn requested a retry delay. Try this read again later."
+            )
+        return max(deferred, self._next_start - now)
 
     @asynccontextmanager
-    async def slot(self) -> AsyncIterator[None]:
-        async with self._slots:
-            await self._wait_turn()
-            yield
+    async def slot(self, host: str) -> AsyncIterator[None]:
+        while True:
+            delay = self._delay(host, monotonic())
+            if delay > 0:
+                await asyncio.sleep(delay)
+                continue
+            async with self._slots:
+                now = monotonic()
+                if self._delay(host, now) > 0:
+                    continue
+                self._defer_until.pop(host, None)
+                self._next_start = now + self._interval
+                yield
+                return
 
 
 class LearnHTTP:
@@ -118,7 +133,6 @@ class LearnHTTP:
         self._external_lock = asyncio.Lock()
         self._auth_generation: int | None = None
         self._auth_cookies: tuple[Any, ...] = ()
-        self._json_retry_not_before = 0.0
 
     def set_cookies(self, cookies: tuple[SessionCookie, ...], generation: int) -> None:
         install_cookies(self.client.cookies.jar, cookies)
@@ -150,11 +164,17 @@ class LearnHTTP:
             raise LearnError(
                 "This NTULearn endpoint is not in the read-only allowlist."
             )
-        url = BASE_URL + path
-        if time.monotonic() < self._json_retry_not_before:
+        try:
+            with anyio.fail_after(remaining_time()):
+                return await self._get_json(
+                    BASE_URL + path, params, expected_generation
+                )
+        except TimeoutError:
             raise LearnError(
-                "NTULearn requested a retry delay. Try this read again later."
-            )
+                "The NTULearn lookup timed out. Try a narrower request or retry later."
+            ) from None
+
+    async def _get_json(self, url, params, expected_generation):
         for attempt in range(MAX_ATTEMPTS):
             async with self.stream(
                 self.client, url, params=params, expected_generation=expected_generation
@@ -163,19 +183,11 @@ class LearnHTTP:
                     response.status_code not in _RETRYABLE
                     or attempt == MAX_ATTEMPTS - 1
                 ):
-                    if response.status_code in _RETRYABLE and response.headers.get(
-                        "retry-after"
-                    ):
-                        delay = retry_after_seconds(
-                            response.headers.get("retry-after"), 0
-                        )
-                        self._json_retry_not_before = time.monotonic() + delay
                     return await self._read_json_response(response, expected_generation)
-                delay = retry_after_seconds(response.headers.get("retry-after"), 0)
-                if delay > MAX_RETRY_DELAY_SECONDS:
-                    self._json_retry_not_before = time.monotonic() + delay
                 delay = retry_delay(response, attempt)
-            await asyncio.sleep(delay)
+                paced = server_cooldown(response) >= 0
+            if not paced:
+                await asyncio.sleep(delay)
         raise LearnError("NTULearn is temporarily unavailable.")
 
     async def _read_json_response(self, response, expected_generation):
@@ -185,7 +197,6 @@ class LearnHTTP:
             and "application/json" in response.headers.get("content-type", "").lower()
         ):
             async for chunk in response.aiter_bytes(chunk_size=64 * 1024):
-                remaining_time()
                 if len(body) + len(chunk) > MAX_JSON_BYTES:
                     raise LearnError(
                         "NTULearn JSON exceeded the response limit. Reduce the page size or narrow the request."
@@ -216,22 +227,24 @@ class LearnHTTP:
         headers: dict[str, str] | None = None,
         params: dict[str, Any] | None = None,
     ) -> AsyncIterator[httpx.Response]:
+        host = urlsplit(url).hostname or NTULEARN_HOST
         try:
             if client is self.external_client:
                 async with self._external_lock:
                     client.cookies.clear()
                     try:
-                        async with self.scheduler.slot():
+                        async with self.scheduler.slot(host):
                             async with client.stream(
                                 "GET", url, headers=headers
                             ) as response:
+                                self._observe_cooldown(host, response)
                                 yield response
                     finally:
                         # A vendor response cannot set cookies for another
                         # external request, even when its domain is shared.
                         client.cookies.clear()
             else:
-                async with self.scheduler.slot():
+                async with self.scheduler.slot(host):
                     if (
                         expected_generation is not None
                         and expected_generation != self._auth_generation
@@ -240,6 +253,7 @@ class LearnHTTP:
                     async with client.stream(
                         "GET", url, headers=headers, params=params
                     ) as response:
+                        self._observe_cooldown(host, response)
                         if (
                             expected_generation is not None
                             and expected_generation != self._auth_generation
@@ -252,6 +266,10 @@ class LearnHTTP:
             raise LearnError(
                 "NTULearn connection failed or timed out; retry later."
             ) from None
+
+    def _observe_cooldown(self, host: str, response: httpx.Response) -> None:
+        if response.status_code in _RETRYABLE:
+            self.scheduler.defer(host, server_cooldown(response))
 
     async def download_bytes(
         self,
@@ -375,6 +393,11 @@ class LearnHTTP:
     async def aclose(self) -> None:
         await self.client.aclose()
         await self.external_client.aclose()
+
+
+def server_cooldown(response: httpx.Response) -> float:
+    fallback = 1.0 if response.status_code == 429 else -1.0
+    return retry_after_seconds(response.headers.get("retry-after"), fallback)
 
 
 def retry_delay(response: httpx.Response, attempt: int) -> float:

@@ -23,6 +23,7 @@ from services.ntulearn.client.http import AuthGenerationChanged
 from services.ntulearn.client.session import Session
 from services.ntulearn.models import LearnError
 from shared.credentials import CredentialError, Credentials
+from shared.http import request_budget
 
 PREFIX = "/learn/api/public/v1"
 COURSES = PREFIX + "/users/me/courses"
@@ -880,13 +881,98 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
         session = self.make_session(
             handler, browser_reader=lambda: [cookies()], browser_cookies=True
         )
-        with patch(
-            "services.ntulearn.client.http.asyncio.sleep", new=AsyncMock()
-        ) as sleep:
+        now = 100.0
+
+        async def advance_clock(delay):
+            nonlocal now
+            now += delay
+
+        with (
+            patch("services.ntulearn.client.http.monotonic", side_effect=lambda: now),
+            patch(
+                "services.ntulearn.client.http.asyncio.sleep", side_effect=advance_clock
+            ) as sleep,
+        ):
             await session.get(COURSES, refresh=True)
         self.assertEqual(attempts, 3)
         sleep.assert_any_await(1.0)
         sleep.assert_any_await(2.0)
+
+    async def test_concurrent_ntulearn_reads_share_short_retry_after(self):
+        first_response = asyncio.Event()
+        calls = []
+
+        def handler(request):
+            calls.append(request.url.params.get("offset"))
+            if calls == ["0"]:
+                first_response.set()
+                return api_response(request, status=429, headers={"Retry-After": "5"})
+            return api_response(request, data={})
+
+        session = self.make_session(handler, NTULEARN_REQUEST_CONCURRENCY="2")
+        first = asyncio.create_task(session.http.get(COURSES, {"offset": 0}))
+        try:
+            await asyncio.wait_for(first_response.wait(), timeout=1)
+            with request_budget(0.05), self.assertRaisesRegex(LearnError, "timed out"):
+                await asyncio.wait_for(
+                    session.http.get(COURSES, {"offset": 1}), timeout=1
+                )
+            self.assertEqual(calls, ["0"])
+        finally:
+            first.cancel()
+            with self.assertRaises(asyncio.CancelledError):
+                await first
+
+    async def test_json_deadline_covers_connection_queue_headers_body_and_retry(self):
+        never = asyncio.Event()
+
+        class WaitingBody(httpx.AsyncByteStream):
+            def __init__(self):
+                self.closed = False
+
+            async def __aiter__(self):
+                await never.wait()
+                yield b"{}"
+
+            async def aclose(self):
+                self.closed = True
+
+        waiting_body = WaitingBody()
+
+        async def handler(request):
+            phase = request.url.params.get("phase")
+            if phase == "headers":
+                await never.wait()
+            if phase == "body":
+                return httpx.Response(
+                    200,
+                    headers={"content-type": "application/json"},
+                    stream=waiting_body,
+                )
+            if phase == "retry":
+                return api_response(request, status=503)
+            return api_response(request, data={})
+
+        session = self.make_session(
+            handler, transport_type="async", NTULEARN_REQUEST_CONCURRENCY="1"
+        )
+        for phase in ("headers", "body", "retry"):
+            with self.subTest(phase=phase):
+                with (
+                    request_budget(0.05),
+                    self.assertRaisesRegex(LearnError, "timed out"),
+                ):
+                    await asyncio.wait_for(
+                        session.http.get(COURSES, {"phase": phase}), timeout=1
+                    )
+        self.assertTrue(waiting_body.closed)
+
+        async with session.http.scheduler.slot("ntulearn.ntu.edu.sg"):
+            with request_budget(0.05), self.assertRaisesRegex(LearnError, "timed out"):
+                await asyncio.wait_for(session.http.get(COURSES), timeout=1)
+
+        response = await asyncio.wait_for(session.http.get(COURSES), timeout=1)
+        self.assertEqual(response.status_code, 200)
 
     async def test_excessive_retry_after_and_bad_json_fail_closed(self):
         def slow(request):

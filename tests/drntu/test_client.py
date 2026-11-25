@@ -13,10 +13,19 @@ class ClientTests(unittest.TestCase):
     def setUp(self):
         self.requests = []
         self.responses = []
-        self.sleep = patch("public_http_client.time.sleep").start()
-        self.addCleanup(patch.stopall)
+        self.now = 1000.0
+        for mocked in (
+            patch.dict("public_http_client._SCHEDULERS", clear=True),
+            patch("public_http_client.monotonic", side_effect=lambda: self.now),
+            patch("public_http_client.time.sleep", side_effect=self.advance_clock),
+        ):
+            mocked.start()
+            self.addCleanup(mocked.stop)
         self.client = RepositoryClient(transport=httpx.MockTransport(self.handle))
         self.addCleanup(self.client.http.close)
+
+    def advance_clock(self, delay):
+        self.now += delay
 
     def handle(self, request):
         self.requests.append(request)
