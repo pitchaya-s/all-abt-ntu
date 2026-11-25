@@ -85,6 +85,8 @@ uv run --extra personal python -m tests.ntulearn.live_session_smoke
 uv run --extra personal python -m tests.ntulearn.live_tools_smoke
 ```
 
+Use `--community-only` on `tests.ntulearn.live_tools_smoke` to check course groups, group members, and mailbox details without downloading files. The probe samples multiple courses because group and messaging availability varies by course.
+
 Live checks require an account saved locally with `auth save` and Chromium when SSO is needed. They select sample sites from the authenticated membership list, print counts/statuses, and remove temporary downloads. The session smoke test invalidates its in-memory session to exercise recovery. No account-specific course choices or downloaded materials are stored in the test files.
 
 ### Code layout

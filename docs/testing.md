@@ -37,3 +37,5 @@ uv run --no-sync python -m tests.stars.live_personal_smoke
 ```
 
 The probes check advertised MCP schemas and sample service data, keep private records in memory, and report statuses or counts. They are outside the deterministic unittest suite and public CI. If sign-in reports an interactive challenge or a rejection, resolve it through the normal NTU sign-in flow before trying again. The longer NTULearn download smoke tests use temporary directories.
+
+For a focused NTULearn check, run `uv run --no-sync python -m tests.ntulearn.live_tools_smoke --community-only`. This samples multiple available courses for populated groups and searches the inbox and sent folders with bounded requests. It verifies message details when present and prints no message text, participant names, or IDs.

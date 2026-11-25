@@ -1,9 +1,11 @@
 """Opt-in NTULearn capability checks; output is limited to counts and sanitized statuses."""
 
+import argparse
 import asyncio
 import tempfile
 from pathlib import Path
 
+from jsonschema import Draft202012Validator
 from mcp import Client
 from mcp.types import ElicitResult
 
@@ -12,16 +14,88 @@ from server import create_server
 from tests.live import failure_kind
 
 
-mcp = create_server("personal")
-
-
 def flatten(nodes):
     for node in nodes:
         yield node
         yield from flatten(node["children"])
 
 
-async def main():
+async def check_community(call, courses):
+    # Sample several available courses since many have no groups. Bound roster reads separately.
+    member_reads = 0
+    group_verified = False
+    for course in courses[:12]:
+        cid = course["id"]
+        groups = await call("ntulearn_list_course_groups", course_id=cid, limit=100)
+        assert groups["course_id"] == cid
+        for group in groups["groups"]:
+            if group["is_group_set"] is True or member_reads >= 6:
+                continue
+            member_reads += 1
+            members = await call(
+                "ntulearn_get_group_members",
+                course_id=cid,
+                group_id=group["id"],
+                limit=2,
+            )
+            assert members["course_id"] == cid and members["group_id"] == group["id"]
+            if members["users"]:
+                assert all(member["id"] for member in members["users"])
+                print(
+                    "Live course group and populated member list verified.", flush=True
+                )
+                group_verified = True
+                break
+        if group_verified or member_reads >= 6:
+            break
+    if not group_verified:
+        print(
+            "Live group members unverified within the bounded course sample.",
+            flush=True,
+        )
+
+    detail_verified = False
+    for folder in ("inbox", "sent"):
+        mailbox = await call(
+            "ntulearn_list_messages", folder=folder, limit=2, max_requests=35
+        )
+        assert mailbox["folder"] == folder
+        print(
+            f"Live {folder}: {len(mailbox['messages'])} sampled messages; "
+            f"complete: {mailbox['complete']}; issues: {len(mailbox['issues'])}.",
+            flush=True,
+        )
+        for message in mailbox["messages"]:
+            if detail_verified:
+                break
+            assert message["folder"] == folder
+            detail = await call(
+                "ntulearn_read_message",
+                message_id=message["id"],
+                course_id=message["course_id"],
+                conversation_id=message["conversation_id"],
+            )
+            assert all(
+                detail["message"][key] == message[key]
+                for key in ("id", "course_id", "conversation_id")
+            )
+            assert detail["recipients_scope"] == "conversation_participants"
+            if detail["body"] and detail["body"].strip():
+                print(
+                    "Live message body and conversation recipient scope verified.",
+                    flush=True,
+                )
+                detail_verified = True
+    if not detail_verified:
+        print(
+            "Live message detail unverified within the bounded mailbox sample.",
+            flush=True,
+        )
+
+
+async def main(community_only=False):
+    mcp = create_server("personal")
+
     async def approve_temp_download(context, params):
         if "ntulearn_download_course" not in params.message:
             return ElicitResult(action="decline")
@@ -29,23 +103,28 @@ async def main():
 
     try:
         async with Client(mcp, elicitation_callback=approve_temp_download) as client:
+            tools = {
+                tool.name: tool
+                for tool in (await client.list_tools()).tools
+                if tool.name.startswith("ntulearn_")
+            }
+            assert len(tools) == 21
 
             async def call(name, **arguments):
-                result = await client.call_tool(name, arguments)
+                tool = tools[name]
+                if community_only:
+                    assert tool.annotations.read_only_hint is True
+                result = await asyncio.wait_for(
+                    client.call_tool(name, arguments), timeout=90
+                )
                 if result.is_error:
                     raise RuntimeError(f"{name}: {failure_kind(result)}")
+                if not Draft202012Validator(tool.output_schema).is_valid(
+                    result.structured_content
+                ):
+                    raise RuntimeError(f"{name}: output schema mismatch")
                 return result.structured_content
 
-            assert (
-                len(
-                    [
-                        t
-                        for t in (await client.list_tools()).tools
-                        if t.name.startswith("ntulearn_")
-                    ]
-                )
-                == 21
-            )
             courses = (await call("ntulearn_list_courses", limit=100))["courses"]
             selected = [
                 course
@@ -54,6 +133,9 @@ async def main():
                 and course.get("organization") is not True
             ]
             assert selected, "No available enrolled course to sample."
+            if community_only:
+                await check_community(call, selected)
+                return
             course = selected[-1]
             cid = course["id"]
             tree = await call(
@@ -98,72 +180,7 @@ async def main():
                     len(result.get("issues", [])),
                     flush=True,
                 )
-            group_course = course
-            groups = await call(
-                "ntulearn_list_course_groups", course_id=group_course["id"], limit=100
-            )
-            print("Live groups:", len(groups["groups"]), flush=True)
-            group = next(
-                (
-                    group
-                    for group in groups["groups"]
-                    if group.get("is_group_set") is False
-                ),
-                None,
-            )
-            if group:
-                members = await call(
-                    "ntulearn_get_group_members",
-                    course_id=group_course["id"],
-                    group_id=group["id"],
-                    limit=2,
-                )
-                print("Live group members:", len(members["users"]), flush=True)
-            else:
-                print(
-                    "Live group members not verified: no child group in the sampled page.",
-                    flush=True,
-                )
-            mailbox = await call(
-                "ntulearn_list_messages", course_id=group_course["id"], max_requests=20
-            )
-            print(
-                "Live inbox messages:",
-                len(mailbox["messages"]),
-                "issues:",
-                len(mailbox["issues"]),
-                flush=True,
-            )
-            if mailbox["messages"]:
-                message = mailbox["messages"][0]
-                detail = await call(
-                    "ntulearn_read_message",
-                    message_id=message["id"],
-                    course_id=message["course_id"],
-                    conversation_id=message["conversation_id"],
-                )
-                assert (
-                    detail["body"] is not None
-                    and detail["recipients_scope"] == "conversation_participants"
-                )
-                print(
-                    "Live message body retrieved; published recipients:",
-                    len(detail["recipients"]),
-                    flush=True,
-                )
-            sent = await call(
-                "ntulearn_list_messages",
-                folder="sent",
-                course_id=group_course["id"],
-                max_requests=20,
-            )
-            print(
-                "Live sent messages:",
-                len(sent["messages"]),
-                "issues:",
-                len(sent["issues"]),
-                flush=True,
-            )
+            await check_community(call, selected)
             for node in nodes:
                 if (
                     node["has_children"]
@@ -238,4 +255,10 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--community-only",
+        action="store_true",
+        help="Sample course groups, group members and mailbox details without downloading files.",
+    )
+    asyncio.run(main(community_only=parser.parse_args().community_only))
