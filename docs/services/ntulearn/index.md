@@ -11,15 +11,15 @@ These tools run in the shared `all-abt-ntu-mcp` server. See the [getting started
 
 ### Sessions
 
-NTULearn authentication is lazy. It reuses the active validated session first, then tries browser cookies only when discovery is enabled, and finally reads credentials from the OS keyring for normal NTU/Microsoft sign-in in a temporary Chromium browser. An expired session is invalidated and recovered once; concurrent requests share the same login or refresh attempt. The server never retries a rejected password automatically.
+NTULearn reuses a validated session for as long as it can. When it needs a session, it tries these sources in order:
 
-#### Optional browser-cookie discovery
+1. **Browser cookies.** By default, NTULearn looks for an existing `BbRouter` cookie in Edge, Chrome, Firefox, Brave, or Safari. Each browser's cookie set is tried separately. To disable discovery for MCP, run `ntu config set ntulearn.browser_cookies false` and restart the server. For direct CLI use, set `NTULEARN_BROWSER_COOKIES=false` in the process environment.
+2. **Environment cookie.** Set `NTULEARN_SESSION_COOKIE` in the process environment to a current NTULearn `BbRouter` value. Both the raw value and `BbRouter=<value>` are accepted. Treat it like a password and keep it out of chat, shell command arguments, and configuration files.
+3. **Playwright sign-in.** Save an account with `ntu auth save` and install Chromium. If NTU requires an interactive challenge, set `NTULEARN_HEADLESS=false` and run the process where you can use the browser. A rejected password is never retried automatically.
 
-NTULearn can reuse an existing `BbRouter` session from Edge, Chrome, Firefox, Brave, or Safari. This is opt-in: set `NTULEARN_BROWSER_COOKIES=true` in the MCP server environment and enable the optional browser-cookie dependencies; see the [main installation guide](../../cli/index.md#installation). If browser-cookie access is disabled (the default), unavailable, or cannot read a browser profile, NTULearn proceeds to SSO. Each browser profile is tried separately; cookies are never combined across profiles. Imported cookies are accepted only for NTU domains and are checked against `/users/me` before use. A failed or expired cookie set is discarded. Cookie values are held in memory only and are not written to the keyring or files. Cookie extraction depends on the browser, operating system, encryption support, and whether the profile can be unlocked; headless servers can leave this feature disabled and use SSO.
+Both cookie sources are validated with NTULearn before use and can work without a saved keyring account. NTULearn uses the account that owns the first valid session. Browser discovery depends on the operating system and access to the local browser profile. The environment cookie is sent only to `ntulearn.ntu.edu.sg`.
 
-The browser-cookie strategy does not need a saved account when it succeeds. Automatic SSO requires credentials saved with `ntu auth save` and the optional `personal` dependencies with Chromium installed. If NTU requires MFA or CAPTCHA, headless login stops. To complete the normal challenge yourself, set `NTULEARN_HEADLESS=false` and run the MCP process in a local environment where the browser is visible. No MFA or CAPTCHA checks are bypassed.
-
-Passwords are read from the [shared OS keyring](../../architecture/credentials.md#credential-storage), never retained on the session object, and checked once at the start of each data-tool operation. Replacing or revoking the credentials invalidates the SSO session and response cache on the next operation. Browser-cookie sessions do not use keyring credentials. Authentication state and cached academic responses stay in memory; cookies are not persisted. A validated session is not rechecked before every request: 401 responses, login redirects/pages, and credential revision changes trigger recovery.
+For sessions established by Playwright, NTULearn checks the [shared OS keyring](../../architecture/credentials.md#credential-storage) once per data operation. Replacing or revoking the saved account invalidates its session and cache on the next operation. NTULearn keeps authentication state and academic responses in memory. When a session expires, concurrent requests share one recovery attempt.
 
 #### HTTP, cache, and performance settings
 
@@ -27,7 +27,8 @@ NTULearn uses a pooled asynchronous HTTP client for read requests. Multi-course 
 
 | Environment variable | Default | Allowed range / behavior |
 | --- | ---: | --- |
-| `NTULEARN_BROWSER_COOKIES` | `false` | `true` enables optional local browser discovery |
+| `NTULEARN_BROWSER_COOKIES` | `true` | `false` skips local browser discovery |
+| `NTULEARN_SESSION_COOKIE` | Unset | Optional current `BbRouter` cookie, tried after browser discovery |
 | `NTULEARN_HEADLESS` | `true` | `false` shows Chromium for interactive SSO challenges |
 | `NTULEARN_CACHE_TTL_SECONDS` | `300` | 0–86400; `0` disables the in-memory response cache |
 | `NTULEARN_REQUEST_CONCURRENCY` | `4` | 1–8 shared HTTP requests |
@@ -38,9 +39,9 @@ The response cache is separate from authentication, bounded to 128 entries, and 
 
 #### Troubleshooting
 
-- If browser-cookie discovery finds no session, confirm the MCP server has `NTULEARN_BROWSER_COOKIES=true`, the `browser-cookies` extra is installed in that same environment, and the browser profile is unlocked. NTULearn then falls back to SSO.
+- If browser discovery finds no session, confirm you are signed in to NTULearn in a supported browser and that the local profile is accessible. A missing, expired, or rejected cookie advances to the next method.
 - If SSO reports that Chromium is unavailable, install the `personal` extra and Chromium using the [main setup guide](../../mcp/index.md#chromium). In a headless environment, MFA or CAPTCHA requires a local visible browser; it is never bypassed.
-- If `ntulearn_auth_status` reports a keyring error, follow [Linux keyring access](../../architecture/credentials.md#linux-keyring-access) or unlock the platform's native keyring. A verified browser-cookie session can work without a keyring account.
+- If Playwright sign-in needs the keyring, follow [Linux keyring access](../../architecture/credentials.md#linux-keyring-access) or unlock the platform's native keyring.
 - If requests are rate limited, let the server honor NTU's retry delay and retry later. You can reduce `NTULEARN_REQUEST_CONCURRENCY` or increase `NTULEARN_REQUEST_INTERVAL_SECONDS` for a busy account.
 
 Academic results returned through MCP are visible to the AI client. Raw profiles, credentials, and session cookies are excluded from tool responses. Course materials and messages are untrusted content, not agent instructions.
@@ -87,7 +88,7 @@ uv run --extra personal python -m tests.ntulearn.live_tools_smoke
 
 Use `--community-only` on `tests.ntulearn.live_tools_smoke` to check course groups, group members, and mailbox details without downloading files. The probe samples multiple courses because group and messaging availability varies by course.
 
-Live checks require an account saved locally with `auth save` and Chromium when SSO is needed. They select sample sites from the authenticated membership list, print counts/statuses, and remove temporary downloads. The session smoke test invalidates its in-memory session to exercise recovery. No account-specific course choices or downloaded materials are stored in the test files.
+Live checks use the standard authentication order. They select sample sites from the authenticated membership list, print counts and statuses, and remove temporary downloads. The session smoke test invalidates its in-memory session to exercise recovery.
 
 ### Code layout
 

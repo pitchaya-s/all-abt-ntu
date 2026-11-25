@@ -15,7 +15,7 @@ When no credentials are saved, the credential prompt defaults to yes. If credent
 
 `ntu auth status` checks the local keyring only. Service commands such as `ntu onestop auth status` attempt a real sign-in to verify that service; they may require a network connection and can report an MFA or CAPTCHA challenge.
 
-To enable optional NTULearn browser-cookie discovery, install `all-abt-ntu[cli,personal,browser-cookies]@latest`.
+The `personal` extra includes NTULearn browser cookie discovery. See the [NTULearn session settings](../services/ntulearn/index.md#sessions) for the sign-in order and how to disable discovery.
 
 ## Find the right command
 

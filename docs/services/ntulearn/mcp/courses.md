@@ -84,7 +84,7 @@ Report credential configuration and this process's last verified login, without 
 
 **Inputs:** none. Does not log in or require configured credentials.
 
-**Returns:** `credentials_configured`, `credential_storage` of `os_keyring`, a sanitized `credential_error` when unavailable, `session_verified`, `authentication_method` (`browser_cookie` or `sso` when verified), `last_verified_at`, in-memory session storage mode, and cache TTL. A previously verified session is not a guarantee that NTU has not expired it since the last read. A browser-cookie session can be verified while `credentials_configured` is false.
+**Returns:** `credentials_configured`, `credential_storage` of `os_keyring`, a sanitized `credential_error` when unavailable, `session_verified`, `authentication_method`, `last_verified_at`, in-memory session storage mode, and cache TTL. A cookie-based session can be verified while `credentials_configured` is false. A verified session can still expire between reads.
 
 `credentials_configured` is `true` when the stored account is readable, `false` when the keyring is readable but has no account, and `null` when storage cannot be read. See [Linux keyring troubleshooting](../../../architecture/credentials.md#linux-keyring-access) if terminal `auth status` works but the MCP does not.
 
@@ -100,7 +100,7 @@ None.
 | `credential_storage` | `"os_keyring"` | No | default: `"os_keyring"` |
 | `credential_error` | `string` or `null` | No | default: `null` |
 | `session_verified` | `boolean` | Yes | — |
-| `authentication_method` | `"browser_cookie"`, `"sso"` or `null` | No | default: `null` |
+| `authentication_method` | `"browser_cookie"`, `"environment_cookie"`, `"sso"` or `null` | No | default: `null` |
 | `last_verified_at` | `string` or `null` | Yes | format: `date-time` |
 | `session_storage` | `"in_memory_only"` | No | default: `"in_memory_only"` |
 | `cache_ttl_seconds` | `integer` | Yes | — |

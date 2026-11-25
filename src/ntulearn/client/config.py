@@ -12,7 +12,9 @@ def _integer(name: str, default: int, minimum: int, maximum: int) -> int:
     try:
         parsed = int(value)
     except ValueError:
-        raise LearnError(f"{name} must be an integer from {minimum} to {maximum}.") from None
+        raise LearnError(
+            f"{name} must be an integer from {minimum} to {maximum}."
+        ) from None
     if not minimum <= parsed <= maximum:
         raise LearnError(f"{name} must be an integer from {minimum} to {maximum}.")
     return parsed
@@ -23,7 +25,9 @@ def _seconds(name: str, default: float, minimum: float, maximum: float) -> float
     try:
         parsed = float(value)
     except ValueError:
-        raise LearnError(f"{name} must be a number from {minimum:g} to {maximum:g}.") from None
+        raise LearnError(
+            f"{name} must be a number from {minimum:g} to {maximum:g}."
+        ) from None
     if not math.isfinite(parsed) or not minimum <= parsed <= maximum:
         raise LearnError(f"{name} must be a number from {minimum:g} to {maximum:g}.")
     return parsed
@@ -50,8 +54,10 @@ class SessionConfig:
         return cls(
             cache_ttl_seconds=_integer("NTULEARN_CACHE_TTL_SECONDS", 300, 0, 86400),
             headless=_boolean("NTULEARN_HEADLESS", True),
-            browser_cookies=_boolean("NTULEARN_BROWSER_COOKIES", False),
+            browser_cookies=_boolean("NTULEARN_BROWSER_COOKIES", True),
             request_concurrency=_integer("NTULEARN_REQUEST_CONCURRENCY", 4, 1, 8),
-            request_interval_seconds=_seconds("NTULEARN_REQUEST_INTERVAL_SECONDS", 0.1, 0, 5),
+            request_interval_seconds=_seconds(
+                "NTULEARN_REQUEST_INTERVAL_SECONDS", 0.1, 0, 5
+            ),
             timeout_seconds=_seconds("NTULEARN_TIMEOUT_SECONDS", 30, 1, 120),
         )

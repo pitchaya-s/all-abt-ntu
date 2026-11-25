@@ -49,3 +49,5 @@ For a PyPI install, use the same `uvx --from 'all-abt-ntu[cli,mcp,personal]@late
 
 
 Use JSON booleans for switches, numbers for durations and limits, and strings for paths. Other environment variables can be stored under `env.other`, for example with `config set other.CUSTOM_SETTING value`. Configuration-location variables such as `XDG_CONFIG_HOME` must be set outside the file. Process environment variables take precedence over saved settings. Restart the server after changing settings. This file is plain text; use the keyring for credentials.
+
+To disable NTULearn's default browser discovery, run `ntu config set ntulearn.browser_cookies false`. Set an optional `NTULEARN_SESSION_COOKIE` in the process environment only. See the [NTULearn sign-in order](../services/ntulearn/index.md#sessions).

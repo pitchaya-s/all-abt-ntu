@@ -1,7 +1,8 @@
-"""Optional, transient discovery of authenticated NTULearn browser cookies."""
+"""Transient NTULearn cookies from local browsers, the environment, and SSO."""
 
 import http.cookiejar
 from importlib import import_module
+import os
 import re
 import time
 from dataclasses import dataclass, field
@@ -71,7 +72,11 @@ def _from_browser_cookie(cookie: Any) -> SessionCookie | None:
 def _from_playwright_cookie(cookie: Mapping[str, Any]) -> SessionCookie | None:
     try:
         raw_expiry = cookie.get("expires")
-        expires = int(raw_expiry) if isinstance(raw_expiry, (int, float)) and raw_expiry > 0 else None
+        expires = (
+            int(raw_expiry)
+            if isinstance(raw_expiry, (int, float)) and raw_expiry > 0
+            else None
+        )
         value = SessionCookie(
             name=cookie["name"],
             value=cookie["value"],
@@ -87,7 +92,9 @@ def _from_playwright_cookie(cookie: Mapping[str, Any]) -> SessionCookie | None:
     return value if _is_safe(value) else None
 
 
-def _read_from_module(module: Any, browsers: tuple[str, ...]) -> list[tuple[SessionCookie, ...]]:
+def _read_from_module(
+    module: Any, browsers: tuple[str, ...]
+) -> list[tuple[SessionCookie, ...]]:
     candidates = []
     for browser in browsers:
         getter = getattr(module, browser, None)
@@ -104,7 +111,10 @@ def _read_from_module(module: Any, browsers: tuple[str, ...]) -> list[tuple[Sess
             # Browser locks, encryption, permissions, and platform failures are
             # expected. Never put exception text or cookie data in logs.
             continue
-        if any(cookie.name == "BbRouter" and cookie.value.startswith("expires:") for cookie in cookies):
+        if any(
+            cookie.name == "BbRouter" and cookie.value.startswith("expires:")
+            for cookie in cookies
+        ):
             candidates.append(cookies)
     return candidates
 
@@ -121,7 +131,23 @@ def read_browser_cookie_sets(
     return _read_from_module(module, browsers)
 
 
-def playwright_cookies(cookies: Sequence[Mapping[str, Any]]) -> tuple[SessionCookie, ...]:
+def read_environment_cookie() -> SessionCookie | None:
+    """Accept one BbRouter value and keep it scoped to the NTULearn host."""
+    value = os.environ.get("NTULEARN_SESSION_COOKIE", "").removeprefix("BbRouter=")
+    if (
+        not 1 <= len(value) <= 4096
+        or re.fullmatch(r"[\x21-\x7e]+", value) is None
+        or any(char in value for char in ';"\\')
+    ):
+        return None
+    return SessionCookie(
+        name="BbRouter", value=value, domain=NTULEARN_HOST, http_only=True
+    )
+
+
+def playwright_cookies(
+    cookies: Sequence[Mapping[str, Any]],
+) -> tuple[SessionCookie, ...]:
     """Keep all valid cookies applicable to NTULearn, not only BbRouter."""
     result = tuple(
         value
@@ -133,7 +159,9 @@ def playwright_cookies(cookies: Sequence[Mapping[str, Any]]) -> tuple[SessionCoo
     return result
 
 
-def install_cookies(jar: http.cookiejar.CookieJar, cookies: tuple[SessionCookie, ...]) -> None:
+def install_cookies(
+    jar: http.cookiejar.CookieJar, cookies: tuple[SessionCookie, ...]
+) -> None:
     """Install cookies while retaining their original domain/path/expiry scope."""
     jar.clear()
     for cookie in cookies:

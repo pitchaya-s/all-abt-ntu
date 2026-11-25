@@ -424,6 +424,11 @@ class ToolConfigTests(unittest.TestCase):
         self.call("config", "unset", "ntulearn.headless")
         self.assertNotIn("ntulearn", load_config()["env"])
 
+    def test_ntulearn_session_cookie_cannot_be_saved_in_config(self):
+        with self.assertRaises(SystemExit):
+            self.call("config", "set", "other.NTULEARN_SESSION_COOKIE", "fake-cookie")
+        self.assertFalse(config_path().exists())
+
     def test_minimal_handwritten_settings_keep_public_defaults(self):
         path = config_path()
         path.parent.mkdir(parents=True)

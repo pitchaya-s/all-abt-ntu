@@ -59,6 +59,10 @@ def config_path() -> Path:
 
 def setting_entry(section: str, name: str, value, *, parse: bool = False):
     if section == "other":
+        if name == "NTULEARN_SESSION_COOKIE":
+            raise ConfigError(
+                "Set NTULEARN_SESSION_COOKIE in the process environment. The configuration file is plain text."
+            )
         if (
             not _ENV_NAME.fullmatch(name)
             or name in _CONFIG_LOCATION_VARS

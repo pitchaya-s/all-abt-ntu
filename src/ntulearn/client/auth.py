@@ -5,12 +5,16 @@ import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Literal
 
 from shared.credentials import CredentialError, read_credentials
 
 from ..models import LearnError
-from .browser_cookies import SessionCookie, read_browser_cookie_sets
+from ..models.common import AuthMethod
+from .browser_cookies import (
+    SessionCookie,
+    read_browser_cookie_sets,
+    read_environment_cookie,
+)
 from .config import SessionConfig
 from .http import LearnHTTP, json_body
 from .sso import login
@@ -18,7 +22,7 @@ from .sso import login
 
 @dataclass(frozen=True, slots=True)
 class AuthState:
-    method: Literal["browser_cookie", "sso"]
+    method: AuthMethod
     generation: int
     verified_at: datetime
     credential_revision: str | None = field(default=None, repr=False)
@@ -34,7 +38,9 @@ class Authenticator:
         transport: LearnHTTP,
         config: SessionConfig,
         *,
-        browser_cookie_reader: Callable[[], list[tuple[SessionCookie, ...]]] = read_browser_cookie_sets,
+        browser_cookie_reader: Callable[
+            [], list[tuple[SessionCookie, ...]]
+        ] = read_browser_cookie_sets,
         sso_login: Callable[..., Awaitable[tuple[SessionCookie, ...]]] = login,
     ):
         self.transport = transport
@@ -58,7 +64,7 @@ class Authenticator:
 
     async def ensure(self, *, check_credentials: bool = True) -> AuthState:
         state = self._state
-        if state is not None and state.method == "browser_cookie":
+        if state is not None and state.method != "sso":
             return state
         if state is not None and check_credentials:
             try:
@@ -66,7 +72,10 @@ class Authenticator:
             except CredentialError:
                 await self._invalidate_if(state.generation)
             else:
-                if self._state is state and credentials.revision == state.credential_revision:
+                if (
+                    self._state is state
+                    and credentials.revision == state.credential_revision
+                ):
                     return state
                 await self._invalidate_if(state.generation)
         return await self._resolve_once()
@@ -143,6 +152,13 @@ class Authenticator:
                         return self._activate("browser_cookie", generation, None)
                     self.transport.clear_cookies(generation)
 
+            environment_cookie = read_environment_cookie()
+            if environment_cookie is not None:
+                self.transport.set_cookies((environment_cookie,), generation)
+                if await self._validate():
+                    return self._activate("environment_cookie", generation, None)
+                self.transport.clear_cookies(generation)
+
             try:
                 credentials = await asyncio.to_thread(read_credentials)
                 credentials.require_login()
@@ -169,7 +185,9 @@ class Authenticator:
             raise
         except Exception:  # noqa: BLE001 - provider exceptions may contain credentials or page data.
             self.transport.clear_cookies(self._generation)
-            raise LearnError("NTULearn authentication failed; no credentials or session data were included.") from None
+            raise LearnError(
+                "NTULearn authentication failed; no credentials or session data were included."
+            ) from None
 
     async def _validate(self) -> bool:
         response = await self.transport.get("/learn/api/public/v1/users/me")
@@ -179,7 +197,11 @@ class Authenticator:
                     data = json_body(response)
                 except LearnError:
                     return False
-                return isinstance(data, dict) and isinstance(data.get("id"), str) and bool(data["id"])
+                return (
+                    isinstance(data, dict)
+                    and isinstance(data.get("id"), str)
+                    and bool(data["id"])
+                )
             if response.status_code in {401, 403, 404, 301, 302, 303, 307, 308}:
                 return False
             if response.status_code in {429, 500, 502, 503, 504}:
@@ -192,12 +214,14 @@ class Authenticator:
 
     def _activate(
         self,
-        method: Literal["browser_cookie", "sso"],
+        method: AuthMethod,
         generation: int,
         credential_revision: str | None,
     ) -> AuthState:
         if generation != self._generation:
-            raise LearnError("NTULearn authentication changed while the session was being established; retry the request.")
+            raise LearnError(
+                "NTULearn authentication changed while the session was being established; retry the request."
+            )
         state = AuthState(
             method=method,
             generation=generation,
