@@ -28,11 +28,16 @@ BASE_URL = "https://wish.wis.ntu.edu.sg/webexe/owa/AUS_SCHEDULE_NEW.main_display
 
 SCHEDULE_FORM_URL = "https://wish.wis.ntu.edu.sg/webexe/owa/AUS_schedule_NEW.class"
 
-COURSE_CONTENT_URL = "https://wish.wis.ntu.edu.sg/webexe/owa/AUS_SUBJ_CONT.main_display1"
+COURSE_CONTENT_URL = (
+    "https://wish.wis.ntu.edu.sg/webexe/owa/AUS_SUBJ_CONT.main_display1"
+)
 
 COURSE_CONTENT_FORM_URL = "https://wish.wis.ntu.edu.sg/webexe/owa/aus_subj_cont.main"
 
-def _fetch_html(acadsem: str, course_code: str, *, study_mode: str = "F") -> tuple[str, str]:
+
+def _fetch_html(
+    acadsem: str, course_code: str, *, study_mode: str = "F"
+) -> tuple[str, str]:
     form = urlencode(
         {
             "acadsem": acadsem,
@@ -56,7 +61,10 @@ def _fetch_html(acadsem: str, course_code: str, *, study_mode: str = "F") -> tup
     )
     return _fetch_html_request(request, f"class schedule for {course_code}"), BASE_URL
 
-def _fetch_course_content_html(year: int, semester: str, course_code: str) -> tuple[str, str]:
+
+def _fetch_course_content_html(
+    year: int, semester: str, course_code: str
+) -> tuple[str, str]:
     form = urlencode(
         {
             "acad": year,
@@ -77,7 +85,10 @@ def _fetch_course_content_html(year: int, semester: str, course_code: str) -> tu
             "Referer": COURSE_CONTENT_FORM_URL,
         },
     )
-    return _fetch_html_request(request, f"course content for {course_code}"), COURSE_CONTENT_URL
+    return _fetch_html_request(
+        request, f"course content for {course_code}"
+    ), COURSE_CONTENT_URL
+
 
 def get_course(course_code: str, academic_year: int, semester: int | str) -> Course:
     code = validate_course_code(course_code)
@@ -90,19 +101,30 @@ def get_course(course_code: str, academic_year: int, semester: int | str) -> Cou
             if cached and now - cached[0] < CACHE_TTL_SECONDS:
                 return cached[1]
 
-    html, source_url = _fetch_html(acadsem, code)
     try:
-        course = parse_course_page(html, code)
+        html, source_url = _fetch_html(acadsem, code)
+        try:
+            course = parse_course_page(html, code)
+        except CourseUnavailable:
+            # Part-time courses can appear in search without a full-time schedule.
+            html, source_url = _fetch_html(acadsem, code, study_mode="P")
+            course = parse_course_page(html, code)
     except CourseUnavailable as error:
         raise NTURequestError(str(error)) from error
     except NTUPageError as error:
-        raise NTURequestError(f"Could not safely parse NTU's response for {code}: {error}") from error
+        raise NTURequestError(
+            f"Could not safely parse NTU's response for {code}: {error}"
+        ) from error
 
     description: str | None = None
-    description_status: Literal["available", "not_listed", "unavailable"] = "unavailable"
+    description_status: Literal["available", "not_listed", "unavailable"] = (
+        "unavailable"
+    )
     description_source = COURSE_CONTENT_URL
     try:
-        content_html, description_source = _fetch_course_content_html(year, semester_text, code)
+        content_html, description_source = _fetch_course_content_html(
+            year, semester_text, code
+        )
         description = parse_course_description(content_html, code)
         description_status = "available" if description else "not_listed"
     except (NTURequestError, NTUPageError):
@@ -152,9 +174,13 @@ def get_course_prerequisite_metadata(
     try:
         metadata = parse_course_prerequisite_metadata(html, code)
     except NTUPageError as error:
-        raise NTURequestError(f"Could not safely parse NTU's course content for {code}: {error}") from error
+        raise NTURequestError(
+            f"Could not safely parse NTU's course content for {code}: {error}"
+        ) from error
     if metadata is None:
-        raise NTURequestError(f"NTU has no course-content record for {code} in the requested term.")
+        raise NTURequestError(
+            f"NTU has no course-content record for {code} in the requested term."
+        )
 
     result: dict[str, object] = {
         **metadata,
@@ -172,8 +198,14 @@ def get_course_prerequisite_metadata(
                 if cached_at - created_at >= CACHE_TTL_SECONDS
             ]:
                 del _prerequisite_cache[expired]
-            if key not in _prerequisite_cache and len(_prerequisite_cache) >= MAX_CACHE_ENTRIES:
-                oldest = min(_prerequisite_cache, key=lambda cache_key: _prerequisite_cache[cache_key][0])
+            if (
+                key not in _prerequisite_cache
+                and len(_prerequisite_cache) >= MAX_CACHE_ENTRIES
+            ):
+                oldest = min(
+                    _prerequisite_cache,
+                    key=lambda cache_key: _prerequisite_cache[cache_key][0],
+                )
                 del _prerequisite_cache[oldest]
             _prerequisite_cache[key] = (cached_at, deepcopy(result))
     return result

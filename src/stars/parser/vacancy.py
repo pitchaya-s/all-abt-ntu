@@ -8,20 +8,46 @@ from .common import NTUPageError, _Rows
 
 def parse_course_vacancies(html: str, expected_code: str) -> dict[str, Any]:
     """Read NTU's public vacancy snapshot, verifying its term, course, and table."""
+    if re.search(
+        r"""<script\b[^>]*>\s*alert\(\s*["']\s*Invalid Course or Course not offered\s*!\s*["']\s*\)""",
+        html,
+        re.IGNORECASE,
+    ):
+        raise NTUPageError(
+            "This course is not listed for the term currently published by NTU's vacancy lookup."
+        )
     parser = _Rows()
     parser.feed(html)
     text = " ".join(" ".join(parser.text_parts).split())
     term = re.search(r"Check Vacancies,\s*(20\d{2})\s+([12S])\b", text, re.IGNORECASE)
-    if term is None or not re.search(rf"\b{re.escape(expected_code)}\b", text, re.IGNORECASE):
+    if term is None or not re.search(
+        rf"\b{re.escape(expected_code)}\b", text, re.IGNORECASE
+    ):
         raise NTUPageError("Missing vacancy term or requested course code.")
 
-    headings = ["INDEX NUMBER", "VACANCIES AVAILABLE", "WAITLIST LENGTH", "CLASS TYPE", "GROUP", "DAY", "TIME", "VENUE"]
-    header = next((i for i, row in enumerate(parser.rows) if [cell.upper() for cell in row] == headings), None)
+    headings = [
+        "INDEX NUMBER",
+        "VACANCIES AVAILABLE",
+        "WAITLIST LENGTH",
+        "CLASS TYPE",
+        "GROUP",
+        "DAY",
+        "TIME",
+        "VENUE",
+    ]
+    header = next(
+        (
+            i
+            for i, row in enumerate(parser.rows)
+            if [cell.upper() for cell in row] == headings
+        ),
+        None,
+    )
     if header is None:
         raise NTUPageError("No recognized vacancy table was found.")
 
     indexes: dict[str, dict[str, int | None]] = {}
-    for row in parser.rows[header + 1:]:
+    for row in parser.rows[header + 1 :]:
         if not any(row):
             continue
         if len(row) != len(headings):
@@ -41,7 +67,10 @@ def parse_course_vacancies(html: str, expected_code: str) -> dict[str, Any]:
                 counts.append(int(count))
             else:
                 raise NTUPageError("Unrecognized vacancy or waitlist count.")
-        indexes[index] = {"vacancies_available": counts[0], "waitlist_length": counts[1]}
+        indexes[index] = {
+            "vacancies_available": counts[0],
+            "waitlist_length": counts[1],
+        }
     if not indexes:
         raise NTUPageError("NTU returned no vacancy index rows.")
     return {

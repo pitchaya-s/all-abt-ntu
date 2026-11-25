@@ -13,7 +13,7 @@ Public academic and room operations are implemented in `tools/academic.py` and `
 
 ### Inputs and results
 
-Undergraduate schedule tools take a `course_code`, `academic_year`, and `semester`. The year is the first year of the academic year; semester is `1`, `2`, or `"S"` for Special Term. Course codes contain letters and digits, up to 10 characters. Keep index numbers as strings.
+Undergraduate schedule tools take a `course_code`, `academic_year`, and `semester`. The year is the first year of the academic year; semester is `1`, `2`, or `"S"` for Special Term. Course codes contain letters and digits, up to 10 characters. Keep index numbers as strings. Course detail and index lookups use the full-time schedule when published and check the part-time schedule when NTU confirms that the full-time schedule is missing.
 
 Examples below use fictional course codes, indexes, and years. Replace them with the course and published term you want to query.
 
@@ -40,8 +40,9 @@ Only NTU endpoints supply timetable and academic records. Forms are followed wit
 | Undergraduate exams | [General Access entry](https://wis.ntu.edu.sg/webexe/owa/exam_timetable_und.main), [selection](https://wis.ntu.edu.sg/webexe/owa/exam_timetable_und.MainSubmit), [term page](https://wis.ntu.edu.sg/webexe/owa/exam_timetable_und.query_page), [exam response](https://wis.ntu.edu.sg/webexe/owa/exam_timetable_und.Get_detail) | Published exam dates/times through the public form workflow |
 | STARS Planner | [Authenticated entry](https://wish.wis.ntu.edu.sg/pls/webexe/aus_stars_planner.main), [selection](https://wish.wis.ntu.edu.sg/pls/webexe/AUS_STARS_PLANNER.time_table), [Planner view](https://wish.wis.ntu.edu.sg/pls/webexe/AUS_STARS_PLANNER.planner), [load plan](https://wish.wis.ntu.edu.sg/pls/webexe/AUS_STARS_PLANNER.load_time_table), [save plan](https://wish.wis.ntu.edu.sg/pls/webexe/AUS_STARS_PLANNER.save_time_table) | Registered courses and saved plans; saving is limited to the chosen saved plan |
 
-On 6 November 2026, the public Class Schedule form contained the hidden `staff_access=true` field. The client reproduces that public form value and sends no credentials to this endpoint; the field name alone does not establish that the caller is staff.
 | Degree Audit | [Authenticated audit](https://wish.wis.ntu.edu.sg/pls/webexe/DARS_RESULT_RO.main_display) | The student's published degree requirements and academic tables |
+
+The client sends the Class Schedule form's published fields without credentials.
 
 WISH authentication follows NTU's [login workflow](https://wish.wis.ntu.edu.sg/pls/webexe/ldap_login.login). Credentials come from the [shared credential store](../../architecture/credentials.md#credential-storage), also used by NTULearn and LibFacilities; access restrictions and challenges are respected. Manage it locally with `ntu auth save`, `auth status`, and `auth delete`. Passwords are never accepted as MCP arguments or read from environment variables/config files.
 
@@ -51,11 +52,11 @@ Run commands from the repository root. Offline fixtures use fictional course lab
 
 ```sh
 uv run python -m unittest discover -s tests -t . -v
-uv run python tests/stars/live_smoke.py --course-code COURSE_CODE --academic-year YEAR --semester 1
-uv run python tests/stars/live_search_smoke.py --query SEARCH_TEXT --academic-year YEAR --semester 1
-uv run python tests/stars/live_rooms_smoke.py --academic-year YEAR --semester 1 --day WED --start-time 14:00 --end-time 16:00 --week WEEK
-uv run python tests/stars/live_exam_smoke.py --course-code COURSE_CODE
-uv run --extra personal python tests/stars/live_personal_smoke.py
+uv run python -m tests.stars.live_smoke --course-code COURSE_CODE --academic-year YEAR --semester 1
+uv run python -m tests.stars.live_search_smoke --query SEARCH_TEXT --academic-year YEAR --semester 1
+uv run python -m tests.stars.live_rooms_smoke --academic-year YEAR --semester 1 --day WED --start-time 14:00 --end-time 16:00 --week WEEK
+uv run python -m tests.stars.live_exam_smoke --course-code COURSE_CODE
+uv run --extra personal python -m tests.stars.live_personal_smoke
 ```
 
 Replace placeholders for opt-in live checks. Public smoke tests accept caller-selected courses and terms. The personal smoke test reads records without editing saved plans; output is limited to counts and statuses.

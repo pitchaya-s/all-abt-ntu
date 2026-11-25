@@ -1,6 +1,6 @@
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 import httpx
 
@@ -37,7 +37,9 @@ class ClientTests(unittest.TestCase):
             request_html.assert_not_called()
 
     def test_undergraduate_fetch_uses_public_schedule_form(self) -> None:
-        with patch("stars.client.courses._fetch_html_request", return_value="page") as fetch:
+        with patch(
+            "stars.client.courses._fetch_html_request", return_value="page"
+        ) as fetch:
             html, source_url = courses._fetch_html("2026;1", "ZZ0001")
         request = fetch.call_args.args[0]
         fields = dict(part.split("=", 1) for part in request.data.decode().split("&"))
@@ -51,9 +53,14 @@ class ClientTests(unittest.TestCase):
         self.assertEqual(fields["staff_access"], "true")
 
     def test_network_failure_is_reported_and_not_cached(self) -> None:
-        with patch.object(http, "MAX_RETRIES", 0), patch(
-            "stars.client.http._request_html",
-            side_effect=httpx.ConnectError("offline", request=httpx.Request("GET", courses.BASE_URL)),
+        with (
+            patch.object(http, "MAX_RETRIES", 0),
+            patch(
+                "stars.client.http._request_html",
+                side_effect=httpx.ConnectError(
+                    "offline", request=httpx.Request("GET", courses.BASE_URL)
+                ),
+            ),
         ):
             with self.assertRaisesRegex(NTURequestError, "after 1 attempt"):
                 get_course("ZZ0001", 2026, 1)
@@ -86,7 +93,10 @@ class ClientTests(unittest.TestCase):
 
     def test_successful_parses_are_cached(self) -> None:
         with (
-            patch("stars.client.courses._fetch_html", return_value=(HTML, "https://ntu.example/course")) as fetch,
+            patch(
+                "stars.client.courses._fetch_html",
+                return_value=(HTML, "https://ntu.example/course"),
+            ) as fetch,
             patch(
                 "stars.client.courses._fetch_course_content_html",
                 return_value=(CONTENT_HTML, "https://ntu.example/content"),
@@ -101,9 +111,39 @@ class ClientTests(unittest.TestCase):
         self.assertEqual(first.course_description_status, "available")
         self.assertIn("example course one", first.course_description)
 
+    def test_part_time_schedule_falls_back_only_after_recognized_empty_page(self):
+        source = courses.BASE_URL
+        empty = ("<html>Class schedule is not available.</html>", source)
+        with (
+            patch.object(
+                courses, "_fetch_html", side_effect=[empty, (HTML, source)]
+            ) as fetch,
+            patch.object(
+                courses,
+                "_fetch_course_content_html",
+                return_value=(CONTENT_HTML, source),
+            ),
+        ):
+            self.assertTrue(get_course("ZZ0001", 2026, 1).indexes)
+        self.assertEqual(
+            fetch.call_args_list,
+            [call("2026;1", "ZZ0001"), call("2026;1", "ZZ0001", study_mode="P")],
+        )
+
+        courses._cache.clear()
+        with patch.object(
+            courses, "_fetch_html", return_value=("<html>Unknown page</html>", source)
+        ) as fetch:
+            with self.assertRaisesRegex(NTURequestError, "unrecognized class-schedule"):
+                get_course("ZZ0001", 2026, 1)
+        fetch.assert_called_once()
+
     def test_description_request_failure_does_not_hide_schedule(self) -> None:
         with (
-            patch("stars.client.courses._fetch_html", return_value=(HTML, "https://ntu.example/course")),
+            patch(
+                "stars.client.courses._fetch_html",
+                return_value=(HTML, "https://ntu.example/course"),
+            ),
             patch(
                 "stars.client.courses._fetch_course_content_html",
                 side_effect=NTURequestError("content page unavailable"),
@@ -120,7 +160,10 @@ class ClientTests(unittest.TestCase):
 
         with (
             patch.object(courses, "MAX_CACHE_ENTRIES", 2),
-            patch("stars.client.courses._fetch_html", side_effect=lambda _term, code: html_for(code)),
+            patch(
+                "stars.client.courses._fetch_html",
+                side_effect=lambda _term, code: html_for(code),
+            ),
             patch(
                 "stars.client.courses._fetch_course_content_html",
                 return_value=(CONTENT_HTML, "https://ntu.example/content"),
@@ -130,7 +173,9 @@ class ClientTests(unittest.TestCase):
             get_course("ZZ0002", 2026, 1)
             get_course("ZZ0003", 2026, 1)
 
-        self.assertEqual(set(courses._cache), {(2026, "1", "ZZ0002"), (2026, "1", "ZZ0003")})
+        self.assertEqual(
+            set(courses._cache), {(2026, "1", "ZZ0002"), (2026, "1", "ZZ0003")}
+        )
 
 
 if __name__ == "__main__":

@@ -38,6 +38,11 @@ class VacancyParserTests(unittest.TestCase):
         self.assertIsNone(result["indexes"]["00037"]["vacancies_available"])
         self.assertEqual(result["indexes"]["00037"]["waitlist_length"], 0)
 
+    def test_live_unlisted_course_alert_is_distinct_from_a_parser_failure(self):
+        html = '<html><script>alert(" Invalid Course or Course not offered !");history.back()</script></html>'
+        with self.assertRaisesRegex(NTUPageError, "not listed for the term"):
+            parse_course_vacancies(html, "ZZ0001")
+
     def test_unexpected_or_inconsistent_pages_are_rejected(self) -> None:
         for html in (
             "",
