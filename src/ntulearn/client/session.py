@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from shared.credentials import credential_status
+from shared.private_files import private_opener
 
 from ..models import AuthStatus, Download, LearnError
 from .auth import Authenticator, SessionExpired
@@ -267,7 +268,7 @@ class Session:
     def _write_new_file(target: Path, body: bytes) -> None:
         created = False
         try:
-            with target.open("xb") as output:
+            with open(target, "xb", opener=private_opener) as output:
                 created = True
                 output.write(body)
         except OSError:

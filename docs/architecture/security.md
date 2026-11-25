@@ -19,3 +19,5 @@ Some upstream actions can fail after the remote service has received a request. 
 Credentials are opt-in and stored in the native OS keyring. Passwords are not accepted through tool arguments or the configuration file. Authentication challenges, MFA and CAPTCHA remain part of the upstream login flow; the application does not bypass them.
 
 An AI client can see personal information returned by tools it is allowed to call. Published pages, article text and other upstream content are data supplied by external services, not instructions to the client. The public HTTP client applies host restrictions and bounded request handling described in [Public HTTP reads](public-http.md).
+
+On POSIX systems, NTULearn and One Stop create new download files with owner-only permissions. The files inherit applicable directory access and local filesystem rules. Use a private directory for downloaded personal data.

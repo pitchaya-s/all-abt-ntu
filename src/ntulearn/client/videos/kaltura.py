@@ -9,6 +9,8 @@ from urllib.parse import urljoin, urlsplit
 
 import anyio
 
+from shared.private_files import private_opener
+
 from ...models import LearnError
 
 if TYPE_CHECKING:
@@ -112,7 +114,9 @@ async def download_kaltura_file(
                         raise LearnError(
                             "This video exceeds the requested size limit; no video was saved."
                         )
-                    async with await anyio.open_file(destination, "xb") as output:
+                    async with await anyio.open_file(
+                        destination, "xb", opener=private_opener
+                    ) as output:
                         created = True
                         async for chunk in response.aiter_bytes():
                             total += len(chunk)

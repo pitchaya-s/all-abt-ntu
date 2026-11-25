@@ -1,6 +1,7 @@
 import asyncio
 import http.cookiejar
 import os
+import stat
 import sys
 import tempfile
 import unittest
@@ -863,6 +864,8 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
                 result = await session.download(path, str(target))
                 self.assertEqual(target.read_bytes(), b"%PDF-fixture")
                 self.assertEqual(result.bytes_written, len(b"%PDF-fixture"))
+                if os.name == "posix":
+                    self.assertEqual(stat.S_IMODE(target.stat().st_mode) & 0o077, 0)
             self.assertEqual(len(external_headers), 2)
             self.assertTrue(
                 all("cookie" not in headers for headers in external_headers)
@@ -893,6 +896,26 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
             ):
                 await session.download(path, str(Path(directory) / "file"))
         external.assert_not_called()
+
+    async def test_kaltura_download_creates_a_private_new_file(self):
+        def external(request):
+            return api_response(
+                request, content=b"video-fixture", headers={"Content-Type": "video/mp4"}
+            )
+
+        session = self.make_session(Mock(), external_handler=external)
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "video.mp4"
+            result = await session.download_kaltura_video(
+                "https://api.sg.kaltura.com/video.mp4",
+                str(target),
+                100,
+                "https://api.sg.kaltura.com/p/123/embedPlaykitJs",
+            )
+            self.assertEqual(target.read_bytes(), b"video-fixture")
+            self.assertEqual(result.bytes_written, len(b"video-fixture"))
+            if os.name == "posix":
+                self.assertEqual(stat.S_IMODE(target.stat().st_mode) & 0o077, 0)
 
     async def test_cancellation_and_shutdown_close_pending_authentication(self):
         entered = asyncio.Event()
