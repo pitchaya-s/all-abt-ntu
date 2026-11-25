@@ -39,6 +39,8 @@ class ConfirmationTests(unittest.IsolatedAsyncioTestCase):
             return ElicitResult(action="accept", content={"confirm": True})
 
         async with Client(server, mode="legacy", elicitation_callback=accept) as client:
+            tool = (await client.list_tools()).tools[0]
+            self.assertNotIn("confirmation_result", tool.input_schema["properties"])
             result = await client.call_tool(
                 "submit", {"draft_id": "synthetic-draft-id"}
             )

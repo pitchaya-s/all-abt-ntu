@@ -3,7 +3,7 @@
 import inspect
 from dataclasses import dataclass
 from contextlib import nullcontext
-from functools import wraps
+from functools import WRAPPER_ASSIGNMENTS, wraps
 from typing import Any, Optional, Protocol, get_type_hints
 
 from mcp.server import MCPServer
@@ -88,9 +88,14 @@ def bind_argument(function, argument):
 
 
 def translate_errors(function, name, *, failure_message=None, scope=nullcontext):
+    # MCP resolves confirmation from annotations assigned by confirmed_tool.
+    # Python 3.14's default wraps copies the annotation producer instead.
+    preserve_annotations = wraps(
+        function, assigned=(*WRAPPER_ASSIGNMENTS, "__annotations__")
+    )
     if inspect.iscoroutinefunction(function):
 
-        @wraps(function)
+        @preserve_annotations
         async def async_call(*args, **kwargs):
             try:
                 with scope(), request_budget():
@@ -106,7 +111,7 @@ def translate_errors(function, name, *, failure_message=None, scope=nullcontext)
 
         return async_call
 
-    @wraps(function)
+    @preserve_annotations
     def call(*args, **kwargs):
         try:
             with scope(), request_budget():
