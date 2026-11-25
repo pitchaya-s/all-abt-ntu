@@ -1,9 +1,9 @@
 """Terminal views for DR-NTU commands."""
 
-from .common import detail, details, listing, pagination, table
+from .common import detail, details, file_size, listing, pagination, table
 
 search = listing(
-    "Research", "items", ("item_id", "title", "authors", "dates_issued", "url")
+    "Research", "items", ("title", "authors", "dates_issued", "item_id", "url")
 )
 item_default = detail(
     "Research item",
@@ -18,15 +18,12 @@ item_default = detail(
     ),
 )
 browse_communities = listing(
-    "Communities", "containers", ("container_id", "name", "archived_items_count", "url")
+    "Communities", "containers", ("name", "container_id", "archived_items_count", "url")
 )
 browse_collections = listing(
-    "Collections", "containers", ("container_id", "name", "archived_items_count", "url")
+    "Collections", "containers", ("name", "container_id", "archived_items_count", "url")
 )
-item_bundles = listing("Bundles", "bundles", ("bundle_id", "name"))
-bundle_files = listing(
-    "Files", "files", ("file_id", "name", "size_bytes", "rights", "content_url")
-)
+item_bundles = listing("Bundles", "bundles", ("name", "bundle_id"))
 oai_info = detail(
     "OAI repository",
     (
@@ -59,6 +56,18 @@ oai_record = detail(
     ),
     nested="record",
 )
+
+
+def _file_rows(data):
+    return [
+        {**file, "size": file_size(file.get("size_bytes"))}
+        for file in data.get("files") or []
+    ]
+
+
+def bundle_files(console, data):
+    table(console, "Files", _file_rows(data), ("name", "size", "rights", "content_url"))
+    pagination(console, data)
 
 
 def oai_records(console, data):
@@ -94,9 +103,7 @@ def facets(console, data):
     if data.get("definitions"):
         table(console, "Facets", data["definitions"], ("name", "facet_type"))
     if data.get("values"):
-        table(
-            console, "Facet values", data["values"], ("label", "count", "authority_key")
-        )
+        table(console, "Facet values", data["values"], ("label", "count"))
     if not data.get("definitions") and not data.get("values"):
         console.print("Facets: No results.")
     pagination(console, data)
@@ -124,7 +131,7 @@ def dataset(console, data):
     table(
         console,
         "Files",
-        data.get("files"),
-        ("file_id", "name", "directory", "media_type", "size_bytes", "restricted"),
+        _file_rows(data),
+        ("name", "directory", "size", "restricted"),
     )
     pagination(console, data)

@@ -77,13 +77,72 @@ class OutputTests(unittest.TestCase):
         )
         stops = {
             "stops": [
-                {"name": "Hall 1", "stop_code": "Hall 1", "route_code": "Blue"},
-                {"name": "Hall 1", "stop_code": "Hall 1", "route_code": "Red"},
+                {"name": "Hall 1", "stop_code": "12345", "route_code": "Blue"},
+                {"name": "Hall 1", "stop_code": "12345", "route_code": "Red"},
             ],
             "total_count": 2,
             "next_offset": None,
         }
-        self.assertIn("Blue, Red", self.output(stops, bus.stops))
+        output = self.output(stops, bus.stops)
+        self.assertIn("Hall 1", output)
+        self.assertIn("Blue, Red", output)
+        self.assertNotIn("12345", output)
+        self.assertEqual(
+            json.loads(self.output(stops, bus.stops, json_output=True)), stops
+        )
+
+    def test_lta_arrivals_show_stop_names_and_readable_estimates(self):
+        data = {
+            "lta_arrivals": [
+                {
+                    "service_no": "179",
+                    "stop_name": "Example Hall",
+                    "stop_code": "54321",
+                    "eta_minutes": "0",
+                    "next_eta_minutes": "5",
+                    "load": "SEA",
+                },
+            ]
+        }
+        output = self.output(data, bus.arrivals)
+        for expected in ("Example Hall", "Due", "5 min", "Seats available"):
+            self.assertIn(expected, output)
+        self.assertNotIn("54321", output)
+        self.assertEqual(
+            json.loads(self.output(data, bus.arrivals, json_output=True)), data
+        )
+
+    def test_readable_results_keep_machine_fields_in_json(self):
+        examples = (
+            (
+                {"users": [{"name": "Example Student", "id": "_900_1"}]},
+                learn.users,
+                "Example Student",
+                "_900_1",
+            ),
+            (
+                {
+                    "files": [
+                        {
+                            "name": "Notes.pdf",
+                            "size_bytes": 1_200_000,
+                            "file_id": "internal-file",
+                        }
+                    ]
+                },
+                research.bundle_files,
+                "1.2 MB",
+                "internal-file",
+            ),
+        )
+        for data, presenter, expected, internal in examples:
+            with self.subTest(expected=expected):
+                output = self.output(data, presenter)
+                self.assertIn(expected, output)
+                self.assertNotIn(internal, output)
+                self.assertEqual(
+                    json.loads(self.output(data, presenter, json_output=True)), data
+                )
 
     def test_stops_collect_other_pages_without_changing_json(self):
         def stop(route):

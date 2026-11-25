@@ -6,18 +6,18 @@ search = listing(
     "Library resources",
     "records",
     (
-        "record_id",
         "title",
         "authors",
         "publication_dates",
         "resource_types",
         "availability_label",
+        "record_id",
+        "context",
     ),
 )
 record = detail(
     "Library record",
     (
-        "record_id",
         "title",
         "authors",
         "resource_types",
@@ -30,11 +30,13 @@ record = detail(
         "identifiers",
         "links",
         "catalogue_url",
+        "record_id",
+        "context",
     ),
     nested="record",
 )
 map_availability = listing(
-    "Facility availability", "spaces", ("space_id", "name", "status")
+    "Facility availability", "spaces", ("name", "status", "space_id")
 )
 
 
@@ -58,7 +60,7 @@ def facilities_default(console, data):
         console,
         "Library facilities",
         data.get("facilities"),
-        ("library", "name", "space_id", "location_id", "group_id", "map_slug", "url"),
+        ("name", "library", "map_slug", "space_id", "location_id", "group_id", "url"),
     )
     for notice in data.get("notices") or []:
         console.print(f"Notice: {notice}")
@@ -75,10 +77,10 @@ def facilities_schedule(console, data):
     for space in spaces:
         table(
             console,
-            space.get("name") or str(space.get("item_id") or "Facility"),
+            space.get("name") or "Facility",
             space.get("slots"),
             ("start", "end", "status"),
         )
-    if data.get("window_end"):
-        console.print("The facility's booking window ends on this date.")
+    if data.get("window_end") and data.get("date"):
+        console.print(f"Booking window ends on {data['date']}.")
     pagination(console, data)

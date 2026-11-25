@@ -94,7 +94,7 @@ def cmd_arrivals(
         "--route",
         help="Campus shuttle route or supported LTA service.",
     ),
-    stop_query: str = typer.Option("", "--stop", help="A stop name or code."),
+    stop_query: str = typer.Option("", "--stop", help="Search by stop name."),
     source: Annotated[
         Literal["all", "shuttle", "lta"],
         typer.Option(

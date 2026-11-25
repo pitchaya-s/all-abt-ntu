@@ -25,9 +25,7 @@ def cmd_search(
     query: str = typer.Argument(..., help="Search text or keywords."),
     field: Annotated[
         Literal["any", "title", "creator", "isbn", "issn", "sub"],
-        typer.Option(
-            help="The field to search or update, depending on the command. Choices: any, title, creator, isbn, issn, sub. Default: any."
-        ),
+        typer.Option(help="Which field to search, such as title, creator, or ISBN."),
     ] = "any",
     match: Annotated[
         Literal["contains", "exact"],
@@ -69,9 +67,7 @@ def cmd_search(
 def cmd_record(
     record_id: Annotated[
         str,
-        typer.Argument(
-            help="A record ID for a request target when the request contains multiple records."
-        ),
+        typer.Argument(help="Record ID from ntu library search."),
     ],
     context: Annotated[
         Literal["L", "PC"],
@@ -100,9 +96,7 @@ def cmd_record(
 def cmd_availability(
     record_id: Annotated[
         str,
-        typer.Argument(
-            help="A record ID for a request target when the request contains multiple records."
-        ),
+        typer.Argument(help="Record ID from ntu library search."),
     ],
     context: Annotated[
         Literal["L", "PC"],

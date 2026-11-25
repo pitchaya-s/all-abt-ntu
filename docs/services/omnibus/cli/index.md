@@ -53,7 +53,7 @@ For the corresponding MCP operation and its field types, see the [MCP schema](..
 
 Search NTU shuttle and LTA bus stops by stop name or code, optionally limited to a route/service.
 
-Terminal output combines matching records for the same stop and shows its routes. Distinct stop codes remain separate. Pagination still applies to the underlying stop-and-route records, so a stop can also appear on a later page. JSON output retains the original records and pagination fields.
+The terminal shows stop names and their routes. A stop can appear on a later page if it serves several routes.
 
 #### Usage
 
@@ -86,7 +86,7 @@ Get arrival estimates for NTU shuttles and LTA services 179, 179A, 179B, and 199
 
 ```sh
 ntu bus arrivals --route Blue --stop "North Spine" --source shuttle
-ntu bus arrivals --stop 27211 --source lta
+ntu bus arrivals --stop "Lee Wee Nam" --source lta
 ```
 
 Use `ntu bus arrivals --help` for the current interface.
@@ -94,7 +94,7 @@ Use `ntu bus arrivals --help` for the current interface.
 #### Arguments and options
 
 - `--route`: Campus shuttle route or LTA service. Choices: `Blue`, `Brown`, `Green`, `Grey`, `Red`, `179`, `179A`, `179B`, `199`.
-- `--stop`: A stop name or code.
+- `--stop`: Search by stop name.
 - `--source`: Which arrival-data source to use. Choices: `all`, `shuttle`, `lta`. Default: `all`.
 - `--json`, `-j`: Write the result as JSON to stdout; diagnostics go to stderr.
 

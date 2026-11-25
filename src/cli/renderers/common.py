@@ -4,6 +4,7 @@ from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
 from rich.console import Console
+from rich.filesize import decimal
 from rich.table import Table
 from rich.tree import Tree
 
@@ -49,6 +50,10 @@ def text(value) -> str:
     if isinstance(value, bool):
         return "Yes" if value else "No"
     return str(value)
+
+
+def file_size(bytes_count: int | None) -> str | None:
+    return decimal(bytes_count) if bytes_count is not None else None
 
 
 def table(console: Console, title: str, rows, fields: Sequence[str]) -> None:
@@ -218,4 +223,12 @@ auth_status = detail(
 action = detail(
     "Result", ("outcome", "message", "verified", "resource_id", "references")
 )
-download = detail("Download", ("path", "bytes_written"))
+
+
+def download(console, data):
+    details(
+        console,
+        "Download",
+        {"path": data.get("path"), "size": file_size(data.get("bytes_written"))},
+        ("path", "size"),
+    )

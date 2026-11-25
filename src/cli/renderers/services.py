@@ -10,5 +10,5 @@ search = listing(
 
 
 def filters(console, data):
-    table(console, "Service types", data.get("types"), ("id", "name"))
-    table(console, "Categories", data.get("categories"), ("id", "name"))
+    table(console, "Service types", data.get("types"), ("name", "id"))
+    table(console, "Categories", data.get("categories"), ("name", "id"))

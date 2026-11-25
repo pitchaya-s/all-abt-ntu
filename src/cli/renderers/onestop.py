@@ -14,10 +14,10 @@ from .common import (
 )
 
 catalog_search = listing(
-    "Catalog", "items", ("item_id", "title", "kind", "form_item_id")
+    "Catalog", "items", ("title", "kind", "form_item_id", "item_id")
 )
 knowledge_search = listing(
-    "Knowledge articles", "articles", ("article_id", "number", "title", "published")
+    "Knowledge articles", "articles", ("title", "number", "published", "article_id")
 )
 knowledge_article = detail(
     "Article", ("number", "title", "updated_on", "text", "links")
@@ -38,18 +38,16 @@ knowledge_feedback = detail(
     ),
 )
 requests_list = listing(
-    "Requests", "requests", ("request_id", "number", "title", "state", "created_on")
+    "Requests", "requests", ("title", "number", "state", "created_on", "request_id")
 )
 attachments_list = listing(
     "Attachments",
     "attachments",
-    ("attachment_id", "file_name", "size_label", "content_type"),
+    ("file_name", "size_label", "attachment_id"),
 )
-favourites_default = listing(
-    "Favourites", "items", ("favourite_id", "item_id", "title", "pinned")
-)
+favourites_default = listing("Favourites", "items", ("title", "pinned", "favourite_id"))
 payments_services = listing(
-    "Payment services", "records", ("record_id", "title", "url")
+    "Payment services", "records", ("title", "record_id", "url")
 )
 payments_service = detail("Payment service", ("service_id", "title", "fixed_amount"))
 payments_checkout_link = detail(
@@ -182,7 +180,7 @@ def _records(console, title, rows):
             if field.get("value") not in (None, "")
         ]
         records.append({**row, "details": "\n".join(fields)})
-    table(console, title, records, ("record_id", "title", "details", "url"))
+    table(console, title, records, ("title", "details", "url"))
 
 
 def profile_default(console, data):
@@ -270,9 +268,9 @@ def cart_default(console, data):
         console,
         "Cart",
         data.get("items"),
-        ("cart_item_id", "title", "quantity", "price_label"),
+        ("title", "quantity", "price_label", "cart_item_id"),
     )
-    table(console, "Saved carts", data.get("saved_carts"), ("cart_id", "name"))
+    table(console, "Saved carts", data.get("saved_carts"), ("name", "cart_id"))
     details(
         console,
         "Delivery",
@@ -298,7 +296,6 @@ def knowledge_comments_default(console, data):
             comment,
             (
                 "comment_id",
-                "parent_id",
                 "created_on",
                 "text",
                 "liked",

@@ -7,6 +7,7 @@ from .common import (
     detail,
     details,
     download,
+    file_size,
     listing,
     notices,
     pagination,
@@ -16,19 +17,19 @@ from .common import (
 )
 
 courses_default = listing(
-    "Courses", "courses", ("id", "course_code", "name", "available")
+    "Courses", "courses", ("course_code", "name", "id", "available")
 )
-attachments = listing("Attachments", "attachments", ("id", "file_name", "mime_type"))
+attachments = listing("Attachments", "attachments", ("file_name", "id"))
 announcements = sections("Announcements", "announcements", date="created")
-users = listing("Participants", "users", ("id", "name", "role"))
-groups_default = listing("Groups", "groups", ("id", "name", "available"))
-groups_members = listing("Group members", "users", ("id", "name", "role"))
+users = listing("Participants", "users", ("name", "role"))
+groups_default = listing("Groups", "groups", ("name", "id", "available"))
+groups_members = listing("Group members", "users", ("name", "role"))
 search_default = listing(
-    "Content matches", "matches", ("course_id", "content_id", "title", "breadcrumb")
+    "Content matches", "matches", ("title", "breadcrumb", "course_id", "content_id")
 )
 search_all = search_default
 calendar = listing(
-    "Calendar", "items", ("title", "start", "end", "location", "course_id")
+    "Calendar", "items", ("title", "calendar_name", "start", "end", "location")
 )
 upcoming = calendar
 files_read = detail(
@@ -64,14 +65,14 @@ def messages_list(console, data):
         console,
         "Messages",
         messages,
-        ("id", "course_id", "subject", "sender", "created", "read"),
+        ("subject", "sender", "created", "read", "id", "course_id"),
     )
     pagination(console, data)
 
 
 def content_default(console, data):
     entries = data.get("contents") or []
-    table(console, "Course content", entries, ("id", "title", "type", "has_children"))
+    table(console, "Course content", entries, ("title", "id", "type", "has_children"))
     for entry in entries:
         if entry.get("body") or entry.get("description"):
             details(
@@ -99,21 +100,21 @@ def grades(console, data):
         if grade["column_id"] not in known_columns:
             rows.append(
                 {
-                    "name": grade["column_id"],
+                    "name": "Unnamed grade item",
                     "score": grade.get("score"),
                     "status": grade.get("status"),
                 }
             )
     table(console, "Grades", rows, ("name", "score", "possible_score", "status", "due"))
     names = {
-        column["id"]: column.get("name") or column["id"]
+        column["id"]: column.get("name") or "Unnamed grade item"
         for column in data.get("columns", [])
     }
     for grade in data.get("grades", []):
         if grade.get("text") or grade.get("feedback") or grade.get("exempt"):
             details(
                 console,
-                names.get(grade["column_id"], grade["column_id"]),
+                names.get(grade["column_id"], "Unnamed grade item"),
                 grade,
                 ("text", "feedback", "exempt"),
             )
@@ -132,11 +133,12 @@ def messages_read(console, data):
         console.print(f"Created: {message['created']}")
     if data.get("body"):
         console.print(text(data["body"]), markup=False)
-    recipients = [
-        person.get("name") or person.get("id") for person in data.get("recipients", [])
-    ]
-    if recipients:
-        console.print("Recipients: " + ", ".join(filter(None, recipients)))
+    recipients = data.get("recipients") or []
+    names = [person["name"] for person in recipients if person.get("name")]
+    if len(names) < len(recipients):
+        names.append(f"{len(recipients) - len(names)} without a published name")
+    if names:
+        console.print("Recipients: " + ", ".join(names))
     notices(console, data)
 
 
@@ -144,13 +146,16 @@ def courses_download(console, data):
     table(
         console,
         "Downloaded files",
-        data.get("files"),
-        ("path", "status", "bytes_written"),
+        [
+            {**file, "size": file_size(file.get("bytes_written"))}
+            for file in data.get("files") or []
+        ],
+        ("path", "status", "size"),
     )
     if data.get("destination"):
         console.print(f"Destination: {data['destination']}")
     if data.get("bytes_written") is not None:
-        console.print(f"Bytes written: {data['bytes_written']}")
+        console.print(f"Total size: {file_size(data['bytes_written'])}")
     notices(console, data)
 
 
@@ -160,7 +165,7 @@ def digest(console, data):
         console,
         "Upcoming",
         data.get("upcoming"),
-        ("title", "start", "end", "course_id", "location"),
+        ("title", "calendar_name", "start", "end", "location"),
     )
     rows = []
     for entry in data.get("grades", []):

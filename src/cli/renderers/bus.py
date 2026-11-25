@@ -25,22 +25,25 @@ def stops(console, data, *, related_stops=None):
         if key not in grouped:
             grouped[key] = {
                 "name": key[0],
-                "stop_code": key[1] if key[1] != key[0] else None,
                 "routes": [],
             }
         route = stop.get("route_code")
         if route and route not in grouped[key]["routes"]:
             grouped[key]["routes"].append(route)
-    table(console, "Stops", grouped.values(), ("name", "stop_code", "routes"))
+    table(console, "Stops", grouped.values(), ("name", "routes"))
     _stop_coverage(console, data)
-    if data.get("total_count") is not None:
-        console.print(f"Total stop-route entries: {data['total_count']}")
     if data.get("next_offset") is not None:
-        console.print(f"More results: --offset {data['next_offset']}")
+        console.print(f"More stops: --offset {data['next_offset']}")
     if related_stops is None and data.get("total_count", 0) > len(page):
         console.print(
             "Routes shown are from this page; more routes may appear on later pages."
         )
+
+
+def _eta(minutes):
+    if minutes is None:
+        return None
+    return "Due" if minutes == "0" else f"{minutes} min"
 
 
 def arrivals(console, data):
@@ -60,7 +63,8 @@ def arrivals(console, data):
             [
                 {
                     **row,
-                    "eta_minutes": row.get("eta_minutes") or "No ETA",
+                    "eta": _eta(row.get("eta_minutes")) or "No ETA",
+                    "next_eta": _eta(row.get("next_eta_minutes")),
                     "crowding": _LOAD_LABELS.get(row.get("load"), row.get("load")),
                 }
                 for row in lta
@@ -68,9 +72,8 @@ def arrivals(console, data):
             (
                 "service_no",
                 "stop_name",
-                "stop_code",
-                "eta_minutes",
-                "next_eta_minutes",
+                "eta",
+                "next_eta",
                 "crowding",
             ),
         )
@@ -80,11 +83,19 @@ def arrivals(console, data):
 
 
 def live(console, data):
+    buses = [
+        {
+            **bus,
+            "location": f"{bus['latitude']:.5f}, {bus['longitude']:.5f}",
+        }
+        for bus in data.get("buses") or []
+        if bus.get("latitude") is not None and bus.get("longitude") is not None
+    ]
     table(
         console,
         "Live buses",
-        data.get("buses"),
-        ("vehicle_plate", "latitude", "longitude", "speed", "crowd_level", "occupancy"),
+        buses,
+        ("location", "crowd_level", "occupancy"),
     )
     if data.get("reported_bus_count") is not None:
         console.print(f"Buses reported: {data['reported_bus_count']}")

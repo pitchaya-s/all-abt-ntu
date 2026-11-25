@@ -41,7 +41,7 @@ Use `ntu library search --help` for the current interface.
 #### Arguments and options
 
 - `QUERY`: **Required.** The search terms. Quote multiword text so the shell passes it as one argument.
-- `--field`: The field to search or update, depending on the command. Choices: `any`, `title`, `creator`, `isbn`, `issn`, `sub`. Default: `any`.
+- `--field`: Which field to search. Choices: `any`, `title`, `creator`, `isbn`, `issn`, `sub`. Default: `any`.
 - `--match`: How the search should match the selected field. Choices: `contains`, `exact`. Default: `contains`.
 - `--resource-type`: The published resource-type facet token.
 - `--limit`, `-l`: Maximum number of results to return in this page. Default: `10`.
@@ -70,7 +70,7 @@ Replace the uppercase placeholders with values returned by the relevant listing 
 
 #### Arguments and options
 
-- `RECORD_ID`: **Required.** A record ID for a request target when the request contains multiple records.
+- `RECORD_ID`: **Required.** Record ID from `ntu library search`.
 - `--context`: The library search context: local catalogue (`L`) or broader discovery (`PC`). Choices: `L`, `PC`. Default: `L`.
 - `--refresh`, `-r`: Fetch fresh data instead of using an available cached result.
 - `--json`, `-j`: Write the result as JSON to stdout; diagnostics go to stderr.
@@ -96,7 +96,7 @@ Replace the uppercase placeholders with values returned by the relevant listing 
 
 #### Arguments and options
 
-- `RECORD_ID`: **Required.** A record ID for a request target when the request contains multiple records.
+- `RECORD_ID`: **Required.** Record ID from `ntu library search`.
 - `--context`: The library search context: local catalogue (`L`) or broader discovery (`PC`). Choices: `L`, `PC`. Default: `L`.
 - `--refresh`, `-r`: Fetch fresh data instead of using an available cached result.
 - `--json`, `-j`: Write the result as JSON to stdout; diagnostics go to stderr.
