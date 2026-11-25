@@ -34,9 +34,9 @@ Search parameters include `vid=65NTU_INST:65NTU_INST`, `tab=Everything`, `scope=
 
 The supplied `/rest/pub/pnxs` and `/rest/external/pnxs` endpoints were compared with an algorithms search, exact ISBN, and an article-filtered machine-learning search. Ordered canonical record IDs and total counts matched in those samples. The first two samples also had identical record payloads; the article comparison differed in some source, facet, ranking, and delivery metadata. This does not prove universal equivalence.
 
-The implementation uses `/pub/pnxs` consistently because its search and both local/central record-detail workflows were verified. It avoids duplicate requests and does not switch endpoints to evade service errors. The separate Ex Libris API-key gateway is not used.
+The implementation uses `/pub/pnxs` for search and for both local and central record details.
 
-The [Ex Libris PNX API documentation](https://developers.exlibrisgroup.com/primo/apis/webservices/rest/pnxs/) and [search documentation](https://developers.exlibrisgroup.com/primo/apis/docs/primoSearch/R0VUIC9wcmltby92MS9zZWFyY2g%3D/) explain the general PNX/search conventions; the deployment-specific public routes and response formats were tested directly.
+The [Ex Libris PNX API documentation](https://developers.exlibrisgroup.com/primo/apis/webservices/rest/pnxs/) and [search documentation](https://developers.exlibrisgroup.com/primo/apis/docs/primoSearch/R0VUIC9wcmltby92MS9zZWFyY2g%3D/) explain the general PNX and search conventions.
 
 ### Tests
 

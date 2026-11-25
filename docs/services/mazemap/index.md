@@ -25,7 +25,7 @@ The supplied campus information, single-building, POI-type, floor-outline, and w
 
 The bulk campus POI endpoint returned 2,000 entries and a limit of 2,000. Its `zlevel=1` response included rooms on other levels. The integration uses the dedicated search service instead of treating that bulk response as complete or correctly floor-filtered.
 
-Provider documentation: [search](https://mazemap.atlassian.net/wiki/spaces/MCSH/pages/3761668097/Developers+Guide+Search+-+JS+SDK), [v2 routing](https://mazemap.atlassian.net/wiki/spaces/MCSH/pages/3304685834/Supplementary+Guide+for+Version+2+Routing+in+MazeMap+JS+API). The [older Data API reference](https://github.com/MazeMap/Data-API) is marked deprecated; current response shapes were checked directly over HTTPS.
+Provider documentation: [search](https://mazemap.atlassian.net/wiki/spaces/MCSH/pages/3761668097/Developers+Guide+Search+-+JS+SDK), [v2 routing](https://mazemap.atlassian.net/wiki/spaces/MCSH/pages/3304685834/Supplementary+Guide+for+Version+2+Routing+in+MazeMap+JS+API). The [older Data API reference](https://github.com/MazeMap/Data-API) is deprecated.
 
 ### Tests
 

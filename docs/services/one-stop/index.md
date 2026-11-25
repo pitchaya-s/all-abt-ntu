@@ -62,7 +62,3 @@ Offline tests cover all tool schemas and hosted exclusion, membership, condition
 uv run python -m unittest discover -s tests/onestop -t . -v
 uv run --extra personal python -m tests.onestop.live_smoke
 ```
-
-Development checked the native hydrated widgets and controller/service contracts in an authenticated session. New dashboard/profile/cart/favourite/knowledge/payment reads and appointment availability/local selection were checked there. The expanded authenticated end-to-end stdio check was not completed. Real write actions were tested with simulated responses rather than changes to a real account. Source changes or different permissions may require updates.
-
-On 6 November 2026, a subsequent live check reached credential status but the One Stop sign-in reported that NTU rejected the login; authenticated portal reads were not verified in that check. A failed login is not retried automatically. Other NTU services accepting the same account do not establish that this student portal accepts it.

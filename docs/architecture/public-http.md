@@ -2,8 +2,6 @@
 
 Faculty, news, campus services, OneSearch, MazeMap, and DR-NTU use the top-level `public_http_client.py` for pooled public HTTPS reads. Each service keeps a five-minute response cache bounded to 64 entries and 16 MB, reuses connections, limits concurrent requests, and spaces request starts. The client follows only HTTPS redirects to that service's allowlisted hosts, rejects cookies, bounds responses to 8 MB, and makes at most one retry for transient network errors, HTTP 429, or selected 5xx responses. It honors short `Retry-After` delays and returns an error rather than retrying before a longer delay.
 
-For context when choosing the 16 MB cap, bounded public reads sampled on 6 November 2026 were about 12 KB for a Faculty page, 143 KB for News filters, 34 KB for five OneSearch results, and 137 KB for Service filters. This small sample is not a distribution or a peak measurement; responses can be much larger. The cap allows at most two maximum-size responses per client while retaining many responses of the sampled sizes.
-
 Set these variables before starting the server to tune the public-read scheduler:
 
 | Variable | Default | Range | Effect |
