@@ -2,21 +2,14 @@
 
 import argparse
 import asyncio
-from pathlib import Path
 
 from mcp import Client
-from mcp.client.stdio import StdioServerParameters
 
-ROOT = Path(__file__).resolve().parents[2]
+from tests.live import local_stdio
 
 
 async def main(args):
-    params = StdioServerParameters(
-        command="uvx",
-        args=["--no-cache", "--from", str(ROOT), "ntu", "mcp"],
-        cwd=str(ROOT),
-    )
-    async with Client(params) as client:
+    async with Client(local_stdio()) as client:
         query = dict(
             query=args.query,
             academic_year=args.academic_year,

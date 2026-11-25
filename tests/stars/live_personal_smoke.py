@@ -1,42 +1,14 @@
 """Live personal WISH tools over stdio MCP. Prints statuses and counts only."""
 
 import asyncio
-import os
-from pathlib import Path
 
 from mcp import Client
-from mcp.client.stdio import StdioServerParameters
 
-ROOT = Path(__file__).resolve().parents[2]
+from tests.live import local_stdio
 
 
 async def main() -> None:
-    async with Client(
-        StdioServerParameters(
-            command="uvx",
-            args=[
-                "--no-cache",
-                "--from",
-                str(ROOT),
-                "--with",
-                "playwright>=1.50,<2",
-                "ntu",
-                "mcp",
-                "--profile",
-                "personal",
-            ],
-            env={
-                key: os.environ[key]
-                for key in (
-                    "NTU_PERSONAL_CACHE_TTL_SECONDS",
-                    "DBUS_SESSION_BUS_ADDRESS",
-                    "XDG_RUNTIME_DIR",
-                )
-                if key in os.environ
-            },
-            cwd=str(ROOT),
-        )
-    ) as client:
+    async with Client(local_stdio("personal")) as client:
         listing = await client.list_tools()
         assert {
             "stars_auth_status",

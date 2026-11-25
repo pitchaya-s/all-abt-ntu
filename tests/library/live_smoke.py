@@ -11,6 +11,8 @@ from mcp import Client
 from mcp.client.stdio import StdioServerParameters
 from jsonschema import Draft202012Validator
 
+from tests.live import failure_kind
+
 
 async def main(personal=False):
     env = {
@@ -27,10 +29,12 @@ async def main(personal=False):
 
         async def call(name, **arguments):
             result = await client.call_tool(name, arguments)
-            assert not result.is_error, result
-            Draft202012Validator(tools[name].output_schema).validate(
+            if result.is_error:
+                raise RuntimeError(f"{name}: {failure_kind(result)}")
+            if not Draft202012Validator(tools[name].output_schema).is_valid(
                 result.structured_content
-            )
+            ):
+                raise RuntimeError(name + ": output schema mismatch")
             print(name + ": OK", flush=True)
             return result.structured_content
 

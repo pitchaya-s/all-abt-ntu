@@ -9,6 +9,9 @@ from mcp.types import ElicitResult
 
 from server import create_server
 
+from tests.live import failure_kind
+
+
 mcp = create_server("personal")
 
 
@@ -26,7 +29,7 @@ async def main():
             async def call(name, **arguments):
                 reply = await client.call_tool(name, arguments)
                 if reply.is_error:
-                    raise RuntimeError(reply.content[0].text)
+                    raise RuntimeError(f"{name}: {failure_kind(reply)}")
                 return reply.structured_content
 
             courses = await call("ntulearn_list_courses", limit=100)

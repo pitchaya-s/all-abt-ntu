@@ -9,6 +9,9 @@ from mcp.types import ElicitResult
 
 from server import create_server
 
+from tests.live import failure_kind
+
+
 mcp = create_server("personal")
 
 
@@ -30,7 +33,7 @@ async def main():
             async def call(name, **arguments):
                 result = await client.call_tool(name, arguments)
                 if result.is_error:
-                    raise RuntimeError(result.content[0].text)
+                    raise RuntimeError(f"{name}: {failure_kind(result)}")
                 return result.structured_content
 
             assert (

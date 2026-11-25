@@ -81,8 +81,8 @@ Run from the repository root. Offline fixtures use synthetic names, messages, ID
 
 ```sh
 uv run python -m unittest discover -s tests -t . -v
-uv run --extra personal python tests/ntulearn/live_session_smoke.py
-uv run --extra personal python tests/ntulearn/live_tools_smoke.py
+uv run --extra personal python -m tests.ntulearn.live_session_smoke
+uv run --extra personal python -m tests.ntulearn.live_tools_smoke
 ```
 
 Live checks require an account saved locally with `auth save` and Chromium when SSO is needed. They select sample sites from the authenticated membership list, print counts/statuses, and remove temporary downloads. The session smoke test invalidates its in-memory session to exercise recovery. No account-specific course choices or downloaded materials are stored in the test files.

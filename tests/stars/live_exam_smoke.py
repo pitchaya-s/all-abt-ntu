@@ -2,23 +2,19 @@
 
 import argparse
 import asyncio
-from pathlib import Path
 
 from mcp import Client
-from mcp.client.stdio import StdioServerParameters
 
-ROOT = Path(__file__).resolve().parents[2]
+from tests.live import local_stdio
 
 
 async def main(args):
-    params = StdioServerParameters(
-        command="uvx",
-        args=["--no-cache", "--from", str(ROOT), "ntu", "mcp"],
-        cwd=str(ROOT),
-    )
-    async with Client(params) as client:
+    arguments = {"course_code": args.course_code}
+    if args.academic_year is not None:
+        arguments.update(academic_year=args.academic_year, semester=args.semester)
+    async with Client(local_stdio()) as client:
         result = await client.call_tool(
-            "stars_get_undergraduate_exam_schedule", {"course_code": args.course_code}
+            "stars_get_undergraduate_exam_schedule", arguments
         )
         if result.is_error:
             raise RuntimeError(
@@ -27,6 +23,9 @@ async def main(args):
         data = result.structured_content
         assert data["course_code"] == args.course_code.upper()
         assert data["exam_count"] == len(data["exams"])
+        if args.academic_year is not None:
+            assert data["academic_year"] == args.academic_year
+            assert str(data["semester"]) == str(args.semester)
         print(
             "Live public exam checks passed; status:",
             data["exam_status"],
@@ -38,4 +37,9 @@ async def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--course-code", required=True)
-    asyncio.run(main(parser.parse_args()))
+    parser.add_argument("--academic-year", type=int)
+    parser.add_argument("--semester", type=int, choices=(1, 2))
+    args = parser.parse_args()
+    if (args.academic_year is None) != (args.semester is None):
+        parser.error("pass --academic-year and --semester together")
+    asyncio.run(main(args))

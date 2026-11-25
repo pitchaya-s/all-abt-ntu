@@ -2,18 +2,15 @@
 
 import argparse
 import asyncio
-import sys
 
 from jsonschema import Draft202012Validator
 from mcp import Client
-from mcp.client.stdio import StdioServerParameters
+
+from tests.live import local_stdio
 
 
 async def main(args):
-    params = StdioServerParameters(
-        command=sys.executable, args=["-c", "from cli.cli import main; main()", "mcp"]
-    )
-    async with Client(params) as client:
+    async with Client(local_stdio()) as client:
         tools = {tool.name: tool for tool in (await client.list_tools()).tools}
 
         async def call(name, arguments):

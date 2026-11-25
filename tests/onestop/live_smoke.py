@@ -10,6 +10,8 @@ from jsonschema import Draft202012Validator
 from mcp import Client
 from mcp.client.stdio import StdioServerParameters
 
+from tests.live import failure_kind
+
 
 async def main():
     env = {
@@ -36,11 +38,7 @@ async def main():
         async def call(name, **arguments):
             result = await client.call_tool(name, arguments)
             if result.is_error:
-                raise RuntimeError(
-                    name
-                    + ": "
-                    + " ".join(c.text for c in result.content if hasattr(c, "text"))
-                )
+                raise RuntimeError(f"{name}: {failure_kind(result)}")
             try:
                 Draft202012Validator(tools[name].output_schema).validate(
                     result.structured_content
