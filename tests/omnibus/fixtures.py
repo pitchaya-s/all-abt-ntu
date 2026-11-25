@@ -4,8 +4,8 @@ import json
 
 import httpx
 
-from omnibus.client import OmnibusClient
-from omnibus.client.lta import ARRIVAL_URL, SERVICES_URL, STOPS_URL
+from services.omnibus.client import OmnibusClient
+from services.omnibus.client.lta import ARRIVAL_URL, SERVICES_URL, STOPS_URL
 
 
 RESPONSES = {

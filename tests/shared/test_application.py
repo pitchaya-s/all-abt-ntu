@@ -2,22 +2,37 @@ import os
 import unittest
 from unittest.mock import AsyncMock, patch
 
-from ntulearn.client.session import Session
+from services.ntulearn.client.session import Session
 from shared.credentials import read_credentials
-from stars.wish.session import WishSessionManager
+from services.stars.wish.session import WishSessionManager
 from tests.shared.credential_fixtures import MemoryKeyring, stored_credentials
 
 
 class CredentialTests(unittest.IsolatedAsyncioTestCase):
+    async def test_invalid_stars_setting_does_not_disable_unrelated_tools(self):
+        from mcp import Client
+        from server import create_server
+
+        with patch.dict(os.environ, {"NTU_CACHE_TTL_SECONDS": "invalid"}):
+            server = create_server("public")
+        self.addAsyncCleanup(server.ntu_application.close)
+        async with Client(server) as client:
+            tools = {tool.name for tool in (await client.list_tools()).tools}
+            self.assertIn("mazemap_search_places", tools)
+            result = await client.call_tool(
+                "stars_search_courses",
+                {"query": "algorithms", "academic_year": 2026, "semester": 1},
+            )
+            self.assertTrue(result.is_error)
+            self.assertIn("NTU_CACHE_TTL_SECONDS", result.content[0].text)
+
     async def test_profile_boundaries_and_missing_dependency(self):
         from mcp import Client
         from server import create_server
 
         names = {}
         for profile in ("public", "personal"):
-            async with Client(
-                create_server(profile, check_dependencies=False)
-            ) as client:
+            async with Client(create_server(profile)) as client:
                 names[profile] = {
                     tool.name for tool in (await client.list_tools()).tools
                 }
@@ -33,16 +48,6 @@ class CredentialTests(unittest.IsolatedAsyncioTestCase):
             self.assertNotIn(name, names["public"])
             self.assertIn(name, names["personal"])
         self.assertLess(names["public"], names["personal"])
-        with patch("server.find_spec", return_value=None):
-            with self.assertRaisesRegex(RuntimeError, "Playwright"):
-                create_server("personal")
-            create_server("public")
-        with (
-            patch("server.find_spec", return_value=object()),
-            patch("server.chromium_installed", return_value=False),
-        ):
-            with self.assertRaisesRegex(RuntimeError, "Chromium"):
-                create_server("personal")
 
     def test_network_username_derives_student_email(self):
         with stored_credentials("student001", "shared-test-secret"):
@@ -94,9 +99,7 @@ class CredentialTests(unittest.IsolatedAsyncioTestCase):
         from application import Application
 
         application = Application()
-        instance = server.create_server(
-            "personal", check_dependencies=False, application=application
-        )
+        instance = server.create_server("personal", application=application)
         with (
             patch.object(server, "create_server", return_value=instance),
             patch.object(instance, "run_stdio_async", new=AsyncMock()),

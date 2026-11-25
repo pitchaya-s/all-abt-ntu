@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from ntulearn.services import content
+from services.ntulearn.services import content
 
 
 class ServiceScopeTests(unittest.IsolatedAsyncioTestCase):
@@ -26,7 +26,7 @@ class ServiceScopeTests(unittest.IsolatedAsyncioTestCase):
             events.extend(["request 1", "request 2"])
             return []
 
-        with patch("ntulearn.services.content.tree", tree):
+        with patch("services.ntulearn.services.content.tree", tree):
             result = await content.get_content_tree(client, "course", 5, 10, 10, False)
         self.assertEqual(result.contents, [])
         self.assertEqual(events, ["enter", "request 1", "request 2", "exit"])
@@ -46,7 +46,7 @@ class ServiceScopeTests(unittest.IsolatedAsyncioTestCase):
             raise RuntimeError("failure")
 
         client = SimpleNamespace(session=Session())
-        with patch("ntulearn.services.content.tree", tree):
+        with patch("services.ntulearn.services.content.tree", tree):
             with self.assertRaises(RuntimeError):
                 await content.get_content_tree(client, "course", 5, 10, 10, False)
         self.assertEqual(events, ["exit"])

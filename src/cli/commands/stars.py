@@ -51,7 +51,7 @@ def cmd_courses_search(
 ):
     """Search NTU's public undergraduate Class Schedule by partial code or title keywords."""
     with application_scope():
-        from stars.tools import academic
+        from services.stars.tools import academic
 
         return invoke(
             academic.search_courses,
@@ -83,7 +83,7 @@ def cmd_course(
 ):
     """Get course name, AUs, prerequisites, description, and term metadata."""
     with application_scope():
-        from stars.tools import academic
+        from services.stars.tools import academic
 
         return invoke(
             academic.get_course_metadata,
@@ -146,7 +146,7 @@ def cmd_prerequisites(
     The before branch follows the course's prerequisite rules; the after branch finds courses
     that depend on it in the selected term."""
     with application_scope():
-        from stars.tools import academic
+        from services.stars.tools import academic
 
         return invoke(
             academic.get_prerequisite_tree,
@@ -183,7 +183,7 @@ def cmd_indexes_default(
 ):
     """List a page of indexes with timetable details and matching-term vacancies/waitlists."""
     with application_scope():
-        from stars.tools import academic
+        from services.stars.tools import academic
 
         return invoke(
             academic.get_course_indexes,
@@ -220,7 +220,7 @@ def cmd_index(
 ):
     """Get one index's complete schedule, vacancies, and waitlist where matching-term counts are published."""
     with application_scope():
-        from stars.tools import academic
+        from services.stars.tools import academic
 
         return invoke(
             academic.get_index,
@@ -256,7 +256,7 @@ def cmd_indexes_compare(
 ):
     """Compare shared and index-specific sessions; optionally check clashes with supplied time slots."""
     with application_scope():
-        from stars.tools import academic
+        from services.stars.tools import academic
 
         against_sessions = (
             read_json_file(against_sessions) if against_sessions is not None else None
@@ -296,7 +296,7 @@ def cmd_indexes_match(
 ):
     """Find indexes matching day/time/lesson/week rules and avoiding supplied timetable clashes."""
     with application_scope():
-        from stars.tools import academic
+        from services.stars.tools import academic
 
         constraints = read_json_file(constraints) if constraints is not None else None
         against_sessions = (
@@ -337,7 +337,7 @@ def cmd_exams(
 ):
     """Get public General Access exam dates and times for a course in the latest or specified published term."""
     with application_scope():
-        from stars.tools import academic
+        from services.stars.tools import academic
 
         return invoke(
             academic.get_undergraduate_exam_schedule,
@@ -360,7 +360,7 @@ def cmd_graduate(
 ):
     """Get a graduate course's class groups for NTU's currently published academic term."""
     with application_scope():
-        from stars.tools import academic
+        from services.stars.tools import academic
 
         return invoke(
             academic.get_graduate_course_schedule,
@@ -407,7 +407,7 @@ def cmd_rooms_schedule(
 ):
     """Get all published undergraduate course/index lessons using one observed room, including full-time and part-time offerings."""
     with application_scope():
-        from stars.tools import rooms
+        from services.stars.tools import rooms
 
         return invoke(
             rooms.get_room_schedule,
@@ -455,7 +455,7 @@ def cmd_planner_show(
 ):
     """Get registered courses, the published term, and saved Plans 1–3 with indexes and timetables."""
     with application_scope() as application:
-        from stars.tools import personal
+        from services.stars.tools import personal
 
         return invoke(
             partial(personal.get_stars_planner, application),
@@ -487,7 +487,7 @@ def cmd_planner_save(
 ):
     """Replace saved Plan 1, 2, or 3 with the complete supplied course/index list for the current Planner term."""
     with application_scope() as application:
-        from stars.tools import personal
+        from services.stars.tools import personal
 
         courses = read_json_file(courses)
         typer.echo("Warning: this replaces the complete saved plan.", err=True)
@@ -513,7 +513,7 @@ def cmd_audit(
 ):
     """Get your degree requirements, examination results, and registered courses from Degree Audit."""
     with application_scope() as application:
-        from stars.tools import personal
+        from services.stars.tools import personal
 
         return invoke(
             partial(personal.get_degree_audit, application),
@@ -598,7 +598,7 @@ def cmd_rooms_available(
 ):
     """Find teaching-free rooms; this does not establish occupancy or bookability."""
     with application_scope():
-        from stars.tools import rooms
+        from services.stars.tools import rooms
 
         window = {
             "day": day,

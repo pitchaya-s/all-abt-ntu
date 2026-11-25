@@ -5,9 +5,13 @@ from urllib.parse import parse_qs
 
 import httpx
 
-from stars.client import NTURequestError, exams, get_undergraduate_exam_schedule
-from stars.parser import CourseUnavailable, NTUPageError
-from stars.parser.exam import (
+from services.stars.client import (
+    NTURequestError,
+    exams,
+    get_undergraduate_exam_schedule,
+)
+from services.stars.parser import CourseUnavailable, NTUPageError
+from services.stars.parser.exam import (
     parse_undergraduate_exam_plan,
     parse_undergraduate_exam_schedule,
 )
@@ -102,7 +106,7 @@ class UndergraduateExamClientTests(unittest.TestCase):
 
     def test_public_general_access_flow_and_cache(self) -> None:
         with patch(
-            "stars.client.exams._fetch_html_request",
+            "services.stars.client.exams._fetch_html_request",
             side_effect=[LANDING_HTML, PLAN_HTML, FILTER_HTML, EXAM_HTML],
         ) as fetch:
             result = get_undergraduate_exam_schedule("zz0001")
@@ -128,7 +132,7 @@ class UndergraduateExamClientTests(unittest.TestCase):
         )
 
     def test_validates_term_and_reports_ntus_network_errors(self) -> None:
-        with patch("stars.client.exams._fetch_html_request") as fetch:
+        with patch("services.stars.client.exams._fetch_html_request") as fetch:
             with self.assertRaisesRegex(ValueError, "both academic_year and semester"):
                 get_undergraduate_exam_schedule("ZZ0001", 2026)
             with self.assertRaisesRegex(ValueError, "not Special Term"):
@@ -138,7 +142,7 @@ class UndergraduateExamClientTests(unittest.TestCase):
             fetch.assert_not_called()
 
         with patch(
-            "stars.client.exams._fetch_html_request",
+            "services.stars.client.exams._fetch_html_request",
             side_effect=NTURequestError("offline"),
         ):
             with self.assertRaisesRegex(NTURequestError, "offline"):

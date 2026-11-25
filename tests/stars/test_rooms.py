@@ -7,19 +7,19 @@ from pydantic import ValidationError
 
 from server import create_server
 
-from stars.client import teaching
-from stars.domain.models import Course, Session
-from stars.domain.rooms import (
+from services.stars.client import teaching
+from services.stars.domain.models import Course, Session
+from services.stars.domain.rooms import (
     available_rooms,
     build_catalogue,
     normalize_venue,
     room_schedule,
     room_type,
 )
-from stars.parser import NTUPageError, parse_course_page
-from stars.parser.schedule import parse_teaching_schedule
-from stars.parser.search import parse_course_search
-from stars.schemas.rooms import RoomFilters, RoomWindow
+from services.stars.parser import NTUPageError, parse_course_page
+from services.stars.parser.schedule import parse_teaching_schedule
+from services.stars.parser.search import parse_course_search
+from services.stars.schemas.rooms import RoomFilters, RoomWindow
 
 from .room_fixtures import FULL_TIME, PART_TIME, block, page, snapshot
 
@@ -288,7 +288,7 @@ class TeachingClientTests(unittest.TestCase):
 class RoomMCPTests(unittest.IsolatedAsyncioTestCase):
     async def test_discovery_structured_results_and_validation_before_fetch(self):
         with patch(
-            "stars.tools.rooms.get_teaching_snapshot", side_effect=snapshot
+            "services.stars.tools.rooms.get_teaching_snapshot", side_effect=snapshot
         ) as fetch:
             async with Client(mcp) as client:
                 args = {

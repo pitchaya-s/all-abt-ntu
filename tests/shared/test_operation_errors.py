@@ -1,15 +1,33 @@
 import unittest
 
+from mcp import Client
 from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import BaseModel
 
 from cli.execution import execute
-from mazemap.models import MapError
-from shared.mcp import translate_errors
+from services.mazemap.models import MapError
+from mcp_adapters.tools import NTUMCPServer, translate_errors
 from shared.errors import OperationError
 
 
 class OperationErrorTests(unittest.IsolatedAsyncioTestCase):
+    async def test_validation_identifies_field_without_echoing_value(self):
+        server = NTUMCPServer("validation-test")
+
+        @server.tool(name="lookup")
+        def lookup(limit: int) -> dict[str, int]:
+            return {"limit": limit}
+
+        arguments = {"limit": "synthetic sensitive value"}
+        async with Client(server) as client:
+            reply = await client.call_tool("lookup", arguments)
+            self.assertTrue(reply.is_error)
+        with self.assertRaises(OperationError) as cli_error:
+            await execute(lookup, arguments)
+        for message in (reply.content[0].text, str(cli_error.exception)):
+            self.assertIn("limit", message)
+            self.assertNotIn(arguments["limit"], message)
+
     async def test_cli_and_mcp_preserve_expected_service_errors(self):
         def failure():
             raise MapError("The place was not found.")

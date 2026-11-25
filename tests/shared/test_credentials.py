@@ -10,9 +10,9 @@ from keyring.backends.null import Keyring as NullKeyring
 from keyring.backends.SecretService import Keyring as SecretService
 from mcp import Client
 
-from ntulearn.client.browser_cookies import SessionCookie
-from ntulearn.client.session import Session
-from ntulearn.models import LearnError
+from services.ntulearn.client.browser_cookies import SessionCookie
+from services.ntulearn.client.session import Session
+from services.ntulearn.models import LearnError
 from shared.credentials import (
     ACCOUNT,
     SERVICE,
@@ -23,8 +23,8 @@ from shared.credentials import (
     read_credentials,
     save_credentials,
 )
-from stars.wish.models import NTUAuthError
-from stars.wish.session import WishSessionManager
+from services.stars.wish.models import NTUAuthError
+from services.stars.wish.session import WishSessionManager
 from tests.shared.credential_fixtures import MemoryKeyring, stored_credentials
 
 
@@ -212,7 +212,7 @@ class MCPCredentialTests(unittest.IsolatedAsyncioTestCase):
     ):
         from server import create_server
 
-        mcp = create_server("personal", check_dependencies=False)
+        mcp = create_server("personal")
         with stored_credentials("example001", "mcp-test-secret") as backend:
             with patch.object(
                 backend,
@@ -239,7 +239,7 @@ class MCPCredentialTests(unittest.IsolatedAsyncioTestCase):
     async def test_status_and_credential_errors_never_expose_keyring_secrets(self):
         from server import create_server
 
-        mcp = create_server("personal", check_dependencies=False)
+        mcp = create_server("personal")
         with stored_credentials("example001", "mcp-test-secret"):
             async with Client(mcp) as client:
                 for name in (

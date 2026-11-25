@@ -11,7 +11,7 @@ from cli.cli import create_app
 from cli.output import render
 from cli.renderers import bus, learn, onestop, research, stars
 from cli.renderers.common import auth_status, pagination
-from omnibus.models import Stop, Stops
+from services.omnibus.models import Stop, Stops
 from datetime import datetime, timezone
 from typer.testing import CliRunner
 

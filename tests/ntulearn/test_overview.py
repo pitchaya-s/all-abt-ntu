@@ -2,9 +2,9 @@ import unittest
 from datetime import timedelta
 from unittest.mock import patch
 
-from ntulearn.client.client import LearnClient
-from ntulearn.models import LearnError
-from ntulearn.services import overview
+from services.ntulearn.client.client import LearnClient
+from services.ntulearn.models import LearnError
+from services.ntulearn.services import overview
 
 from .fixtures import COURSE, NOW, FixtureSession
 
@@ -20,7 +20,7 @@ class OverviewTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertTrue(result.complete)
         self.assertEqual(len(result.items), 1)
-        with patch("ntulearn.services.overview.datetime") as clock:
+        with patch("services.ntulearn.services.overview.datetime") as clock:
             clock.now.return_value = NOW
             result = await overview.whats_new(
                 self.client, since=NOW - timedelta(days=1), course_ids=[COURSE]

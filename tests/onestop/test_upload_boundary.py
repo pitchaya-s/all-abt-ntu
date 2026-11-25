@@ -6,8 +6,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from onestop.attachments import upload_directory, upload_file
-from onestop.models import OneStopError
+from services.onestop.attachments import upload_directory, upload_file
+from services.onestop.models import OneStopError
 
 
 @unittest.skipUnless(
@@ -68,7 +68,7 @@ class UploadBoundaryTests(unittest.TestCase):
 
             with patch.dict(os.environ, {"NTU_ONESTOP_UPLOAD_DIR": str(approved)}):
                 with patch(
-                    "onestop.attachments.local_files.os.open",
+                    "services.onestop.attachments.local_files.os.open",
                     side_effect=swap_before_open,
                 ) as mocked_open:
                     with patch.object(os, "supports_dir_fd", {mocked_open}):
@@ -102,7 +102,7 @@ class UploadBoundaryTests(unittest.TestCase):
 
             with patch.dict(os.environ, {"NTU_ONESTOP_UPLOAD_DIR": str(approved)}):
                 with patch(
-                    "onestop.attachments.local_files.os.open",
+                    "services.onestop.attachments.local_files.os.open",
                     side_effect=swap_after_open,
                 ) as mocked_open:
                     with patch.object(os, "supports_dir_fd", {mocked_open}):

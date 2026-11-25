@@ -9,10 +9,10 @@ from mcp import Client
 
 from server import create_server
 
-from stars import compact
-from stars.client import NTURequestError
-from stars.tools.academic import get_course_indexes, get_index
-from stars.parser import parse_course_page
+from services.stars import compact
+from services.stars.client import NTURequestError
+from services.stars.tools.academic import get_course_indexes, get_index
+from services.stars.parser import parse_course_page
 
 from .mcp_fixtures import COURSE, EXAM_COURSE, GRADUATE_COURSE
 
@@ -31,9 +31,11 @@ class CompactOutputTests(unittest.TestCase):
             )
             course = replace(course, academic_year=2026, semester="1")
             with (
-                patch("stars.tools.academic.fetch_course", return_value=course),
                 patch(
-                    "stars.tools.academic.fetch_course_vacancies",
+                    "services.stars.tools.academic.fetch_course", return_value=course
+                ),
+                patch(
+                    "services.stars.tools.academic.fetch_course_vacancies",
                     side_effect=NTURequestError("offline"),
                 ),
             ):
@@ -165,9 +167,9 @@ class OutputSchemaTests(unittest.IsolatedAsyncioTestCase):
         self,
     ):
         with (
-            patch("stars.tools.academic.fetch_course", return_value=COURSE),
+            patch("services.stars.tools.academic.fetch_course", return_value=COURSE),
             patch(
-                "stars.tools.academic.fetch_course_vacancies",
+                "services.stars.tools.academic.fetch_course_vacancies",
                 return_value={
                     "status": "closed",
                     "retrieved_at": None,
@@ -194,7 +196,8 @@ class OutputSchemaTests(unittest.IsolatedAsyncioTestCase):
     async def test_malformed_tool_results_fail_schema_validation(self):
         broken = {**GRADUATE_COURSE, "academic_year": "not-a-year"}
         with patch(
-            "stars.tools.academic.fetch_graduate_course_schedule", return_value=broken
+            "services.stars.tools.academic.fetch_graduate_course_schedule",
+            return_value=broken,
         ):
             async with Client(mcp) as client:
                 with self.assertLogs("mcp.server", level="ERROR"):

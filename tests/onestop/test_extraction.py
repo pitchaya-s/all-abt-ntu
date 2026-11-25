@@ -3,12 +3,16 @@
 from importlib.util import find_spec
 import unittest
 
-from onestop.session import _EXTRACT
+from services.onestop.session import _EXTRACT
 
 
-@unittest.skipUnless(find_spec("playwright"), "The optional personal extra is not installed")
+@unittest.skipUnless(
+    find_spec("playwright"), "The optional personal extra is not installed"
+)
 class ExtractionTests(unittest.TestCase):
-    def test_projection_excludes_prefilled_hidden_identity_and_conversation_values(self):
+    def test_projection_excludes_prefilled_hidden_identity_and_conversation_values(
+        self,
+    ):
         from playwright.sync_api import sync_playwright
 
         with sync_playwright() as p:
@@ -18,10 +22,12 @@ class ExtractionTests(unittest.TestCase):
                 self.skipTest("Optional Chromium is not installed")
             try:
                 page = browser.new_page()
-                page.set_content('<div id="form" widget="widget" data="data"></div>'
-                                 '<div id="header" widget="widget" data="data"></div>'
-                                 '<div id="ticket" widget="widget" data="data"></div>'
-                                 '<div id="fields" widget="widget" data="data"></div>')
+                page.set_content(
+                    '<div id="form" widget="widget" data="data"></div>'
+                    '<div id="header" widget="widget" data="data"></div>'
+                    '<div id="ticket" widget="widget" data="data"></div>'
+                    '<div id="fields" widget="widget" data="data"></div>'
+                )
                 page.evaluate("""() => {
                   const scopes = {
                     form: {widget: {id: 'ntu-widget-sc-cat-item-v2'}, data: {
@@ -46,6 +52,9 @@ class ExtractionTests(unittest.TestCase):
                 self.assertNotIn("private-", str(result))
                 self.assertEqual(len(result["item"]["fields"]), 1)
                 self.assertEqual(result["item"]["fields"][0]["name"], "email")
-                self.assertEqual(result["ticket_fields"]["variables"][0]["display_value"], "Visible answer")
+                self.assertEqual(
+                    result["ticket_fields"]["variables"][0]["display_value"],
+                    "Visible answer",
+                )
             finally:
                 browser.close()

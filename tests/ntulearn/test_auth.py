@@ -12,16 +12,16 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import httpx
 
-from ntulearn.client.browser_cookies import (
+from services.ntulearn.client.browser_cookies import (
     SessionCookie,
     install_cookies,
     playwright_cookies,
     read_browser_cookie_sets,
 )
-from ntulearn.client.config import SessionConfig
-from ntulearn.client.http import AuthGenerationChanged
-from ntulearn.client.session import Session
-from ntulearn.models import LearnError
+from services.ntulearn.client.config import SessionConfig
+from services.ntulearn.client.http import AuthGenerationChanged
+from services.ntulearn.client.session import Session
+from services.ntulearn.models import LearnError
 from shared.credentials import CredentialError, Credentials
 
 PREFIX = "/learn/api/public/v1"
@@ -172,6 +172,30 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
             )
         self.assertEqual(sent, [])
 
+    async def test_transport_stops_reading_when_decoded_json_exceeds_limit(self):
+        chunks_read = []
+
+        class OversizedResponse(httpx.AsyncByteStream):
+            async def __aiter__(self):
+                for chunk in (b"x" * 65536, b"not read"):
+                    chunks_read.append(chunk)
+                    yield chunk
+
+        def handler(request):
+            return httpx.Response(
+                200,
+                headers={"content-type": "application/json"},
+                stream=OversizedResponse(),
+            )
+
+        session = self.make_session(handler)
+        with (
+            patch("services.ntulearn.client.http.MAX_JSON_BYTES", 128),
+            self.assertRaisesRegex(LearnError, "response limit"),
+        ):
+            await session.http.get(COURSES)
+        self.assertEqual(len(chunks_read), 1)
+
     async def test_stale_response_cannot_overwrite_rotated_session_cookies(self):
         request_started = asyncio.Event()
         release_response = asyncio.Event()
@@ -314,7 +338,9 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
             sso_login=sso,
             browser_cookies=True,
         )
-        with patch("ntulearn.client.auth.read_environment_cookie") as environment:
+        with patch(
+            "services.ntulearn.client.auth.read_environment_cookie"
+        ) as environment:
             first, freshness = await session.get(COURSES)
             second, cached = await session.get(COURSES)
         environment.assert_not_called()
@@ -326,7 +352,7 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("XSRF-TOKEN=synthetic-xsrf", requests[-1].headers["cookie"])
         sso.assert_not_awaited()
         with patch(
-            "ntulearn.client.session.credential_status",
+            "services.ntulearn.client.session.credential_status",
             return_value={
                 "credentials_configured": False,
                 "credential_storage": "os_keyring",
@@ -360,7 +386,8 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
         with (
             patch.dict(os.environ, {"NTULEARN_SESSION_COOKIE": "expires:1,id:expired"}),
             patch(
-                "ntulearn.client.auth.read_credentials", return_value=LOGIN_CREDENTIALS
+                "services.ntulearn.client.auth.read_credentials",
+                return_value=LOGIN_CREDENTIALS,
             ),
         ):
             await session.get(COURSES)
@@ -400,9 +427,11 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
                 )
                 with (
                     patch.dict(os.environ, {"NTULEARN_SESSION_COOKIE": value}),
-                    patch("ntulearn.client.auth.read_credentials") as read_keyring,
                     patch(
-                        "ntulearn.client.session.credential_status",
+                        "services.ntulearn.client.auth.read_credentials"
+                    ) as read_keyring,
+                    patch(
+                        "services.ntulearn.client.session.credential_status",
                         return_value=credential_status,
                     ),
                 ):
@@ -437,7 +466,8 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
                 os.environ, {"NTULEARN_SESSION_COOKIE": "secret; unrelated=value"}
             ),
             patch(
-                "ntulearn.client.auth.read_credentials", return_value=LOGIN_CREDENTIALS
+                "services.ntulearn.client.auth.read_credentials",
+                return_value=LOGIN_CREDENTIALS,
             ),
         ):
             await session.get(COURSES)
@@ -459,7 +489,8 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
             browser_cookies=True,
         )
         with patch(
-            "ntulearn.client.auth.read_credentials", return_value=LOGIN_CREDENTIALS
+            "services.ntulearn.client.auth.read_credentials",
+            return_value=LOGIN_CREDENTIALS,
         ):
             data, _ = await session.get(COURSES)
         self.assertEqual(data["results"][0]["id"], "_100_1")
@@ -475,7 +506,8 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
             self.authenticated_handler, browser_reader=reader, sso_login=sso
         )
         with patch(
-            "ntulearn.client.auth.read_credentials", return_value=LOGIN_CREDENTIALS
+            "services.ntulearn.client.auth.read_credentials",
+            return_value=LOGIN_CREDENTIALS,
         ):
             await session.get(COURSES)
         reader.assert_not_called()
@@ -496,7 +528,8 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
             browser_cookies=True,
         )
         with patch(
-            "ntulearn.client.auth.read_credentials", return_value=LOGIN_CREDENTIALS
+            "services.ntulearn.client.auth.read_credentials",
+            return_value=LOGIN_CREDENTIALS,
         ):
             self.assertIsNone(session.auth.state)
             await session.get(COURSES)
@@ -516,7 +549,7 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
             return cookies("expires:1,id:sso")
 
         session = self.make_session(self.authenticated_handler, sso_login=sso)
-        with patch("ntulearn.client.auth.read_credentials", side_effect=read):
+        with patch("services.ntulearn.client.auth.read_credentials", side_effect=read):
             async with session.operation():
                 async with session.operation():
                     await asyncio.gather(
@@ -539,7 +572,8 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
 
         session = self.make_session(self.authenticated_handler, sso_login=broken_login)
         with patch(
-            "ntulearn.client.auth.read_credentials", return_value=LOGIN_CREDENTIALS
+            "services.ntulearn.client.auth.read_credentials",
+            return_value=LOGIN_CREDENTIALS,
         ):
             with self.assertRaises(LearnError) as error:
                 await session.get(COURSES)
@@ -620,7 +654,7 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
         api.async_playwright = Manager
         modules = {"playwright": package, "playwright.async_api": api}
         with patch.dict(sys.modules, modules):
-            from ntulearn.client.sso import login
+            from services.ntulearn.client.sso import login
 
             with self.assertRaisesRegex(LearnError, "MFA or CAPTCHA"):
                 await login(LOGIN_CREDENTIALS, headless=True)
@@ -762,7 +796,7 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
             return api_response(request, data={"results": [{"version": api_calls}]})
 
         session = self.make_session(handler, sso_login=sso)
-        with patch("ntulearn.client.auth.read_credentials", side_effect=read):
+        with patch("services.ntulearn.client.auth.read_credentials", side_effect=read):
             first, _ = await session.get(COURSES)
             self.assertEqual((await session.get(COURSES))[1]["from_cache"], True)
             current = Credentials(
@@ -805,7 +839,8 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
 
         session = self.make_session(handler, sso_login=sso, transport_type="async")
         with patch(
-            "ntulearn.client.auth.read_credentials", side_effect=lambda: current
+            "services.ntulearn.client.auth.read_credentials",
+            side_effect=lambda: current,
         ):
             old_read = asyncio.create_task(session.get(COURSES, {"offset": 0}, True))
             await old_request_started.wait()
@@ -845,7 +880,9 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
         session = self.make_session(
             handler, browser_reader=lambda: [cookies()], browser_cookies=True
         )
-        with patch("ntulearn.client.http.asyncio.sleep", new=AsyncMock()) as sleep:
+        with patch(
+            "services.ntulearn.client.http.asyncio.sleep", new=AsyncMock()
+        ) as sleep:
             await session.get(COURSES, refresh=True)
         self.assertEqual(attempts, 3)
         sleep.assert_any_await(1.0)
@@ -860,7 +897,7 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
         session = self.make_session(
             slow, browser_reader=lambda: [cookies()], browser_cookies=True
         )
-        with patch("ntulearn.client.http.asyncio.sleep", new=AsyncMock()):
+        with patch("services.ntulearn.client.http.asyncio.sleep", new=AsyncMock()):
             with self.assertRaisesRegex(LearnError, "longer than one minute"):
                 await session.get(COURSES, refresh=True)
 
@@ -1082,6 +1119,22 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
 
 
 class SsoFlowTests(unittest.IsolatedAsyncioTestCase):
+    async def test_sso_rejects_a_form_that_submits_to_another_origin(self):
+        from services.ntulearn.client.sso import _check_form
+
+        host = "login.microsoftonline.com"
+        page = SimpleNamespace(url=f"https://{host}/sign-in")
+        field = SimpleNamespace(
+            evaluate=AsyncMock(
+                return_value={
+                    "method": "post",
+                    "action": "https://unexpected.invalid/submit",
+                }
+            )
+        )
+        with self.assertRaisesRegex(LearnError, "unexpected sign-in form"):
+            await _check_form(page, field, host)
+
     def modules_for(self, page, context, browser):
         playwright = SimpleNamespace(
             chromium=SimpleNamespace(launch=AsyncMock(return_value=browser))
@@ -1120,7 +1173,7 @@ class SsoFlowTests(unittest.IsolatedAsyncioTestCase):
                     return Body(self)
                 if "loginfmt" in selector:
                     return Locator(self, "email")
-                if "password" in selector:
+                if "passwd" in selector:
                     return Locator(self, "password")
                 return Locator(self, "back")
 
@@ -1160,6 +1213,9 @@ class SsoFlowTests(unittest.IsolatedAsyncioTestCase):
             async def fill(self, value):
                 fills.append((self.page.url, value))
 
+            async def evaluate(self, expression):
+                return {"method": "post", "action": self.page.url}
+
             async def wait_for(self, **kwargs):
                 pass
 
@@ -1190,7 +1246,7 @@ class SsoFlowTests(unittest.IsolatedAsyncioTestCase):
             new_context=AsyncMock(return_value=context), close=AsyncMock()
         )
         with patch.dict(sys.modules, self.modules_for(page, context, browser)):
-            from ntulearn.client.sso import login
+            from services.ntulearn.client.sso import login
 
             result = await login(LOGIN_CREDENTIALS, headless=True)
         self.assertEqual(
@@ -1217,7 +1273,7 @@ class SsoFlowTests(unittest.IsolatedAsyncioTestCase):
             new_context=AsyncMock(return_value=context), close=AsyncMock()
         )
         with patch.dict(sys.modules, self.modules_for(None, context, browser)):
-            from ntulearn.client.sso import login
+            from services.ntulearn.client.sso import login
 
             with self.assertRaisesRegex(LearnError, "unexpected host"):
                 await login(LOGIN_CREDENTIALS, headless=True)

@@ -7,11 +7,11 @@ from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 
 from mcp.server.mcpserver.exceptions import ToolError
-from shared.mcp import translate_errors
+from mcp_adapters.tools import translate_errors
 
-from service import parser
-from service.client import ServiceClient
-from service.models import ServiceError
+from services.campus import parser
+from services.campus.client import ServiceClient
+from services.campus.models import ServiceError
 from public_http_client import PublicRequestError
 
 from .fixtures import CATEGORY_ID, FORM, ROWS, TYPE_ID, fake_get

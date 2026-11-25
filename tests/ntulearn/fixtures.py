@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
-from ntulearn.models import AuthStatus, Download
+from services.ntulearn.models import AuthStatus, Download
 
 PREFIX = "/learn/api/public/v1"
 COURSE = "_100_1"

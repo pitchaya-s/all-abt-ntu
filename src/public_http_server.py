@@ -1,13 +1,13 @@
 """Stateless HTTP application exposing only public NTU tools."""
 
 import os
+import logging
 import re
 import time
 from collections import deque
 from contextlib import asynccontextmanager
 from threading import Lock
 
-from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.server.transport_security import TransportSecuritySettings
 from starlette.applications import Starlette
@@ -15,6 +15,7 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 
 import public_server
+from mcp_adapters.tools import NTUMCPServer
 from shared.version import VERSION
 
 EXPENSIVE_TOOLS = frozenset(
@@ -28,9 +29,10 @@ EXPENSIVE_TOOLS = frozenset(
         "drntu_oai_list_sets",
     }
 )
+logger = logging.getLogger(__name__)
 
 
-class PublicServer(MCPServer):
+class PublicServer(NTUMCPServer):
     """Additional per-process protection for calls that fan out upstream."""
 
     def __init__(self, *args, **kwargs):
@@ -40,6 +42,20 @@ class PublicServer(MCPServer):
         self._clock = time.monotonic
 
     async def call_tool(self, name, arguments, context=None):
+        started = time.monotonic()
+        outcome = "error"
+        try:
+            result = await self._call_public_tool(name, arguments, context)
+            outcome = "ok"
+            return result
+        finally:
+            logger.info(
+                "Public MCP call %s in %d ms",
+                outcome,
+                round((time.monotonic() - started) * 1000),
+            )
+
+    async def _call_public_tool(self, name, arguments, context):
         if name in self._expensive_calls:
             now = self._clock()
             with self._rate_lock:
@@ -55,7 +71,8 @@ class PublicServer(MCPServer):
 
 
 def transport_security():
-    hosts = {"localhost", "127.0.0.1", "[::1]"}
+    loopback = {"localhost", "127.0.0.1", "[::1]"}
+    hosts = set(loopback)
     configured = [
         os.environ.get(name, "")
         for name in (
@@ -77,9 +94,7 @@ def transport_security():
     allowed = sorted(hosts | {host + ":*" for host in hosts})
     origins = {"https://" + host for host in allowed}
     origins.update(
-        "http://" + host
-        for host in allowed
-        if host.startswith(("localhost", "127.0.0.1", "[::1]"))
+        "http://" + host for host in loopback | {host + ":*" for host in loopback}
     )
     return TransportSecuritySettings(
         allowed_hosts=allowed, allowed_origins=sorted(origins)

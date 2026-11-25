@@ -7,12 +7,12 @@ from mcp import Client
 from shared.credentials import delete_credentials
 from server import create_server
 
-mcp = create_server("personal", check_dependencies=False)
-from stars.parser import NTUPageError
-from stars.wish import plan_editor as editor
-from stars.wish.models import NTUAuthError, NTUPersonalDataError
-from stars.wish.planner import PLANNER_VIEW_URL, SAVE_PLAN_URL, _post
-from stars.wish.session import WishSessionManager
+mcp = create_server("personal")
+from services.stars.parser import NTUPageError
+from services.stars.wish import plan_editor as editor
+from services.stars.wish.models import NTUAuthError, NTUPersonalDataError
+from services.stars.wish.planner import PLANNER_VIEW_URL, SAVE_PLAN_URL, _post
+from services.stars.wish.session import WishSessionManager
 from tests.shared.credential_fixtures import stored_credentials
 
 COURSES = [{"course_code": "ZZ0001", "index": "00001"}]
@@ -279,8 +279,12 @@ class PlanSessionTests(unittest.TestCase):
 
         with (
             patch.object(self.manager, "_get_personal_data", side_effect=read) as fetch,
-            patch("stars.wish.session.prepare_stars_plan", return_value=[]) as prepare,
-            patch("stars.wish.session.submit_stars_plan", side_effect=save) as submit,
+            patch(
+                "services.stars.wish.session.prepare_stars_plan", return_value=[]
+            ) as prepare,
+            patch(
+                "services.stars.wish.session.submit_stars_plan", side_effect=save
+            ) as submit,
         ):
             result = self.manager.save_stars_plan(1, COURSES, 2026, 2)
         self.assertEqual(result["status"], "saved")
@@ -297,7 +301,7 @@ class PlanSessionTests(unittest.TestCase):
     def test_identical_contents_do_not_submit_a_save(self):
         with (
             patch.object(self.manager, "_get_personal_data", return_value=snapshot()),
-            patch("stars.wish.session.submit_stars_plan") as submit,
+            patch("services.stars.wish.session.submit_stars_plan") as submit,
         ):
             self.assertEqual(
                 self.manager.save_stars_plan(1, COURSES, 2026, 2)["status"], "unchanged"
@@ -307,7 +311,7 @@ class PlanSessionTests(unittest.TestCase):
     def test_term_mismatch_fails_before_preparation(self):
         with (
             patch.object(self.manager, "_get_personal_data", return_value=snapshot()),
-            patch("stars.wish.session.prepare_stars_plan") as prepare,
+            patch("services.stars.wish.session.prepare_stars_plan") as prepare,
         ):
             with self.assertRaisesRegex(NTUPersonalDataError, "current Planner term"):
                 self.manager.save_stars_plan(1, COURSES, 2026, 1)
@@ -325,8 +329,10 @@ class PlanSessionTests(unittest.TestCase):
                     "_get_personal_data",
                     side_effect=[snapshot([]), after],
                 ),
-                patch("stars.wish.session.prepare_stars_plan", return_value=[]),
-                patch("stars.wish.session.submit_stars_plan") as submit,
+                patch(
+                    "services.stars.wish.session.prepare_stars_plan", return_value=[]
+                ),
+                patch("services.stars.wish.session.submit_stars_plan") as submit,
             ):
                 with self.assertRaises(NTUPersonalDataError):
                     self.manager.save_stars_plan(1, COURSES, 2026, 2)
@@ -348,10 +354,10 @@ class PlanSessionTests(unittest.TestCase):
         with (
             patch.object(self.manager, "_get_personal_data", return_value=snapshot([])),
             patch(
-                "stars.wish.session.prepare_stars_plan",
+                "services.stars.wish.session.prepare_stars_plan",
                 side_effect=RuntimeError("private-session-token"),
             ),
-            patch("stars.wish.session.submit_stars_plan") as submit,
+            patch("services.stars.wish.session.submit_stars_plan") as submit,
         ):
             with self.assertRaises(NTUPersonalDataError) as error:
                 self.manager.save_stars_plan(1, COURSES, 2026, 2)
@@ -360,9 +366,9 @@ class PlanSessionTests(unittest.TestCase):
         self.manager._cache["stars_planner"] = (0, snapshot([]))
         with (
             patch.object(self.manager, "_get_personal_data", return_value=snapshot([])),
-            patch("stars.wish.session.prepare_stars_plan", return_value=[]),
+            patch("services.stars.wish.session.prepare_stars_plan", return_value=[]),
             patch(
-                "stars.wish.session.submit_stars_plan",
+                "services.stars.wish.session.submit_stars_plan",
                 side_effect=NTUPersonalDataError("uncertain"),
             ) as submit,
         ):
@@ -377,7 +383,8 @@ class PlanMCPTests(unittest.IsolatedAsyncioTestCase):
         from mcp.types import ElicitResult
 
         async def approve(context, params):
-            self.assertIn("stars_save_stars_plan", params.message)
+            self.assertIn("stars save stars plan", params.message)
+            self.assertIn("Plan 1", params.message)
             return ElicitResult(action="accept", content={"confirm": True})
 
         reply = {
@@ -389,7 +396,8 @@ class PlanMCPTests(unittest.IsolatedAsyncioTestCase):
             "source_url": SAVE_PLAN_URL,
         }
         with patch(
-            "stars.wish.session.WishSessionManager.save_stars_plan", return_value=reply
+            "services.stars.wish.session.WishSessionManager.save_stars_plan",
+            return_value=reply,
         ) as save:
             async with Client(mcp, elicitation_callback=approve) as client:
                 tool = next(

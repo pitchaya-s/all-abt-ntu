@@ -1,9 +1,9 @@
 import unittest
 from unittest.mock import patch
 
-from ntulearn.client.client import LearnClient
-from ntulearn.models import LearnError
-from ntulearn.services import content
+from services.ntulearn.client.client import LearnClient
+from services.ntulearn.models import LearnError
+from services.ntulearn.services import content
 
 from .fixtures import CONTENT, COURSE, PREFIX, RESPONSES, FixtureSession
 

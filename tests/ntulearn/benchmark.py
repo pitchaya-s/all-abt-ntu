@@ -24,10 +24,10 @@ import httpx
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
-from ntulearn.client.browser_cookies import SessionCookie  # noqa: E402
-from ntulearn.client.client import LearnClient  # noqa: E402
-from ntulearn.client.session import Session  # noqa: E402
-from ntulearn.services.overview import whats_new  # noqa: E402
+from services.ntulearn.client.browser_cookies import SessionCookie  # noqa: E402
+from services.ntulearn.client.client import LearnClient  # noqa: E402
+from services.ntulearn.client.session import Session  # noqa: E402
+from services.ntulearn.services.overview import whats_new  # noqa: E402
 from shared.credentials import Credentials  # noqa: E402
 
 PREFIX = "/learn/api/public/v1"
@@ -332,7 +332,10 @@ async def run():
     }
     with (
         patch.dict(os.environ, env),
-        patch("ntulearn.client.auth.read_credentials", return_value=LOGIN_CREDENTIALS),
+        patch(
+            "services.ntulearn.client.auth.read_credentials",
+            return_value=LOGIN_CREDENTIALS,
+        ),
     ):
         print(
             f"Synthetic benchmark; {ITERATIONS} iteration(s), {LATENCY * 1000:.0f} ms local HTTP latency"

@@ -18,4 +18,4 @@ if __name__ == "__main__":
         new_callable=PropertyMock,
         return_value=FixtureSession(),
     ):
-        main("personal", check_dependencies=False, application=application)
+        main("personal", application=application)

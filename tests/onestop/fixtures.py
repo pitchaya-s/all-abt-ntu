@@ -3,8 +3,8 @@
 from copy import deepcopy
 from datetime import datetime, timezone
 
-from onestop.models import AuthStatus
-from onestop.session import LIST_PAGES, PortalPage, page_url
+from services.onestop.models import AuthStatus
+from services.onestop.session import LIST_PAGES, PortalPage, page_url
 
 
 CATEGORY, CHILD, FORM, ARTICLE, REQUEST = (str(i) * 32 for i in range(1, 6))
@@ -41,6 +41,9 @@ RECORD = dict(
 
 
 class FixtureSession:
+    def _run(self, function, *args):
+        return function(*args)
+
     def __init__(self):
         self.calls = []
         self.revision = "fixture-revision"

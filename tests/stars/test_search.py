@@ -7,9 +7,9 @@ from mcp import Client
 
 from server import create_server
 
-from stars.client import NTURequestError, search, search_courses
-from stars.client.courses import _fetch_html
-from stars.parser import NTUPageError, parse_course_search
+from services.stars.client import NTURequestError, search, search_courses
+from services.stars.client.courses import _fetch_html
+from services.stars.parser import NTUPageError, parse_course_search
 
 mcp = create_server()
 
@@ -68,7 +68,7 @@ class SearchClientTests(unittest.TestCase):
 
     def test_request_reuses_official_post_form_and_study_mode(self):
         with patch(
-            "stars.client.courses._fetch_html_request", return_value=HTML
+            "services.stars.client.courses._fetch_html_request", return_value=HTML
         ) as fetch:
             _fetch_html("2026;1", "DATA STRUCTURES", study_mode="P")
         request = fetch.call_args.args[0]
@@ -170,7 +170,10 @@ class SearchClientTests(unittest.TestCase):
 class SearchMCPTests(unittest.IsolatedAsyncioTestCase):
     async def test_tool_returns_typed_results_and_actionable_errors(self):
         with (
-            patch("stars.tools.academic.fetch_course_search", wraps=search_courses),
+            patch(
+                "services.stars.tools.academic.fetch_course_search",
+                wraps=search_courses,
+            ),
             patch.object(search, "_fetch_html", return_value=(TITLE_HTML, SOURCE)),
         ):
             async with Client(mcp) as client:
@@ -193,7 +196,7 @@ class SearchMCPTests(unittest.IsolatedAsyncioTestCase):
                     )
                     self.assertTrue(error.is_error)
                 with patch(
-                    "stars.tools.academic.fetch_course_search",
+                    "services.stars.tools.academic.fetch_course_search",
                     side_effect=NTURequestError("NTU unavailable"),
                 ):
                     error = await client.call_tool("stars_search_courses", args)

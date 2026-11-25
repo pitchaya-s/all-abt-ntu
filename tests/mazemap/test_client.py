@@ -6,11 +6,11 @@ from datetime import datetime, timezone
 from unittest.mock import patch
 
 from mcp.server.mcpserver.exceptions import ToolError
-from shared.mcp import translate_errors
+from mcp_adapters.tools import translate_errors
 
-from mazemap import parser
-from mazemap.client import MapClient
-from mazemap.models import MapError
+from services.mazemap import parser
+from services.mazemap.client import MapClient
+from services.mazemap.models import MapError
 from public_http_client import PublicRequestError
 
 from .fixtures import COLLECTION, POI, ROUTING, SEARCH_POI, fake_get

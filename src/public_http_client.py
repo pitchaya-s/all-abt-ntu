@@ -1,6 +1,5 @@
 """Pooled, bounded public HTTPS reads shared by NTU services."""
 
-import os
 import logging
 import time
 import weakref
@@ -8,14 +7,25 @@ from collections import OrderedDict
 from concurrent.futures import Future, wait
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from email.utils import parsedate_to_datetime
-from http.cookiejar import DefaultCookiePolicy
 from threading import BoundedSemaphore, Lock
 from urllib.parse import urljoin, urlsplit
 
 import httpx
 
 from shared.errors import OperationError
+from shared.http import (
+    REDIRECT_STATUS,
+    TRANSIENT_STATUS,
+    NoCookies,
+    allowed_https_url,
+    failed_request_url,
+    remaining_time,
+    request_budget,
+    request_timeout,
+    retry_after_seconds,
+    retryable_connection_error,
+)
+from shared.settings import SettingsError, setting_value
 
 MAX_RESPONSE_BYTES = 8_000_000
 MAX_RETRY_DELAY_SECONDS = 10.0
@@ -27,36 +37,32 @@ REQUEST_TIMEOUT_SECONDS = 20.0
 CACHE_TTL_SECONDS = 300.0
 MAX_CACHE_ENTRIES = 64
 MAX_CACHE_BYTES = 16_000_000
-_RETRYABLE = {429, 500, 502, 503, 504}
-_REDIRECTS = {301, 302, 303, 307, 308}
 _SCHEDULERS_LOCK = Lock()
 logger = logging.getLogger(__name__)
 
 
 def _setting(name, default, cast, minimum, maximum):
     try:
-        value = cast(os.environ.get(name, default))
+        value = cast(setting_value(name, str(default)))
     except (TypeError, ValueError):
-        raise RuntimeError(
+        raise SettingsError(
             f"{name} must be a number between {minimum} and {maximum}."
         ) from None
     if not minimum <= value <= maximum:
-        raise RuntimeError(f"{name} must be a number between {minimum} and {maximum}.")
+        raise SettingsError(f"{name} must be a number between {minimum} and {maximum}.")
     return value
 
 
-REQUEST_CONCURRENCY = _setting(
-    "NTU_PUBLIC_HTTP_CONCURRENCY", REQUEST_CONCURRENCY, int, 1, 8
-)
-REQUEST_INTERVAL_SECONDS = _setting(
-    "NTU_PUBLIC_HTTP_INTERVAL_SECONDS", REQUEST_INTERVAL_SECONDS, float, 0.0, 10.0
-)
-REQUEST_TIMEOUT_SECONDS = _setting(
-    "NTU_PUBLIC_HTTP_TIMEOUT_SECONDS", REQUEST_TIMEOUT_SECONDS, float, 1.0, 120.0
-)
-MAX_RETRY_DELAY_SECONDS = _setting(
-    "NTU_PUBLIC_HTTP_MAX_RETRY_DELAY_SECONDS", MAX_RETRY_DELAY_SECONDS, float, 0.0, 30.0
-)
+def public_timeout() -> float:
+    return _setting(
+        "NTU_PUBLIC_HTTP_TIMEOUT_SECONDS", REQUEST_TIMEOUT_SECONDS, float, 1, 120
+    )
+
+
+def max_retry_delay() -> float:
+    return _setting(
+        "NTU_PUBLIC_HTTP_MAX_RETRY_DELAY_SECONDS", MAX_RETRY_DELAY_SECONDS, float, 0, 30
+    )
 
 
 class PublicRequestError(OperationError):
@@ -69,19 +75,14 @@ class PublicRequestError(OperationError):
         self.response_too_large = response_too_large
 
 
-class _NoCookies(DefaultCookiePolicy):
-    def set_ok(self, cookie, request):
-        return False
-
-    def return_ok(self, cookie, request):
-        return False
-
-
 class _HostScheduler:
     """Share concurrency and pacing between clients that call the same host."""
 
-    def __init__(self, interval=REQUEST_INTERVAL_SECONDS):
-        self._slots = BoundedSemaphore(REQUEST_CONCURRENCY)
+    def __init__(self, interval):
+        concurrency = _setting(
+            "NTU_PUBLIC_HTTP_CONCURRENCY", REQUEST_CONCURRENCY, int, 1, 8
+        )
+        self._slots = BoundedSemaphore(concurrency)
         self._interval = interval
         self._pace_lock = Lock()
         self._last_request = 0.0
@@ -89,15 +90,28 @@ class _HostScheduler:
 
     @contextmanager
     def request_slot(self):
-        self._slots.acquire()
+        if not self._slots.acquire(timeout=remaining_time()):
+            raise PublicRequestError(
+                "The upstream lookup ran out of time waiting for a connection."
+            )
         try:
             with self._pace_lock:
                 now = time.monotonic()
+                if self._defer_until - now > max_retry_delay():
+                    raise PublicRequestError(
+                        "The upstream service requested a cooldown. Try again later.",
+                        status=429,
+                    )
                 ready_at = max(
                     self._defer_until,
                     self._last_request + self._interval,
                 )
                 delay = max(0.0, ready_at - now)
+                remaining = remaining_time()
+                if remaining is not None and delay >= remaining:
+                    raise PublicRequestError(
+                        "The upstream lookup ran out of time waiting for a request slot."
+                    )
                 if delay:
                     time.sleep(delay)
                 self._last_request = time.monotonic()
@@ -127,11 +141,15 @@ def _scheduler_for(url):
         if scheduler is None:
             # DR-NTU (Data) publishes a 60-second crawl delay. Be conservative
             # for API requests too, including calls from different clients.
-            interval = (
-                max(REQUEST_INTERVAL_SECONDS, 60.0)
-                if host == "researchdata.ntu.edu.sg"
-                else REQUEST_INTERVAL_SECONDS
+            interval = _setting(
+                "NTU_PUBLIC_HTTP_INTERVAL_SECONDS",
+                REQUEST_INTERVAL_SECONDS,
+                float,
+                0,
+                10,
             )
+            if host == "researchdata.ntu.edu.sg":
+                interval = max(interval, 60.0)
             scheduler = _HostScheduler(interval)
             _SCHEDULERS[host] = scheduler
         return scheduler
@@ -153,20 +171,7 @@ class _Redirects:
         self.hosts = frozenset(host.lower() for host in hosts)
 
     def validate(self, url):
-        try:
-            parsed = urlsplit(url)
-            safe = (
-                parsed.scheme == "https"
-                and parsed.hostname is not None
-                and parsed.hostname.lower() in self.hosts
-                and parsed.port in (None, 443)
-                and parsed.username is None
-                and parsed.password is None
-                and not parsed.fragment
-            )
-        except (TypeError, ValueError):
-            safe = False
-        if not safe:
+        if not allowed_https_url(url, self.hosts):
             raise PublicRequestError(
                 "The public service returned an unexpected URL or redirect; retrieval stopped."
             )
@@ -184,10 +189,10 @@ class PublicHTTPClient:
         self.service = service
         self.content_types = frozenset(value.lower() for value in content_types)
         self.redirects = _Redirects(hosts)
+        self._timeout = public_timeout()
+        self._max_retry_delay = max_retry_delay()
         self.client = httpx.Client(
-            timeout=httpx.Timeout(
-                REQUEST_TIMEOUT_SECONDS, connect=min(10.0, REQUEST_TIMEOUT_SECONDS)
-            ),
+            timeout=httpx.Timeout(self._timeout, connect=min(10.0, self._timeout)),
             follow_redirects=False,
             transport=transport,
             headers={
@@ -195,7 +200,7 @@ class PublicHTTPClient:
                 "Accept": ", ".join(sorted(self.content_types)),
             },
         )
-        self.client.cookies.jar.set_policy(_NoCookies())
+        self.client.cookies.jar.set_policy(NoCookies())
         self._lock = Lock()
         self._cache: OrderedDict[str, tuple[float, bytes, datetime]] = OrderedDict()
         self._inflight: dict[tuple[str, bool], Future[tuple[bytes, datetime]]] = {}
@@ -205,6 +210,10 @@ class PublicHTTPClient:
         self._finalizer = weakref.finalize(self, self.client.close)
 
     def get(self, url, refresh=False):
+        with request_budget():
+            return self._get(url, refresh)
+
+    def _get(self, url, refresh):
         self.redirects.validate(url)
         key = (url, bool(refresh))
         with self._lock:
@@ -230,7 +239,12 @@ class PublicHTTPClient:
                 self._latest_started[url] = sequence
 
         if not owner:
-            body, retrieved = flight.result()
+            try:
+                body, retrieved = flight.result(timeout=remaining_time())
+            except TimeoutError:
+                raise PublicRequestError(
+                    "The upstream lookup ran out of time."
+                ) from None
             return body, self._snapshot(url, retrieved, cached=True)
 
         try:
@@ -291,15 +305,13 @@ class PublicHTTPClient:
             try:
                 status, headers, body, response_url = self._request_chain(url)
             except httpx.RequestError as error:
-                if attempt + 1 < MAX_ATTEMPTS:
-                    try:
-                        failure_url = str(error.request.url)
-                    except RuntimeError:
-                        failure_url = url
-                    defer_host_requests(failure_url, min(4.0, 2.0**attempt))
+                if attempt + 1 < MAX_ATTEMPTS and retryable_connection_error(error):
+                    defer_host_requests(
+                        failed_request_url(error, url), min(4.0, 2.0**attempt)
+                    )
                     continue
                 raise PublicRequestError(
-                    f"Could not reach {self.service} after two attempts; try again later."
+                    f"Could not reach {self.service}; try again later."
                 ) from None
             except httpx.HTTPError:
                 raise PublicRequestError(
@@ -308,10 +320,13 @@ class PublicHTTPClient:
 
             if status == 429:
                 logger.warning("%s upstream returned HTTP 429", self.service)
-            if status in _RETRYABLE and attempt + 1 < MAX_ATTEMPTS:
-                delay = self._retry_delay(headers.get("retry-after"))
-                if delay <= MAX_RETRY_DELAY_SECONDS:
+            if status in TRANSIENT_STATUS:
+                advertised = headers.get("retry-after")
+                delay = retry_after_seconds(advertised, 1.0)
+                retry = attempt + 1 < MAX_ATTEMPTS and delay <= self._max_retry_delay
+                if retry or advertised or status == 429:
                     defer_host_requests(response_url, delay)
+                if retry:
                     continue
             if status >= 400:
                 raise PublicRequestError(
@@ -330,9 +345,11 @@ class PublicHTTPClient:
             self.redirects.validate(current_url)
             with (
                 host_request_slot(current_url),
-                self.client.stream("GET", current_url) as response,
+                self.client.stream(
+                    "GET", current_url, timeout=request_timeout(self._timeout)
+                ) as response,
             ):
-                if response.status_code in _REDIRECTS:
+                if response.status_code in REDIRECT_STATUS:
                     location = response.headers.get("location")
                     if not location:
                         raise PublicRequestError(
@@ -344,7 +361,7 @@ class PublicHTTPClient:
 
                 headers = response.headers
                 status = response.status_code
-                if status in _RETRYABLE or status >= 400:
+                if status >= 400:
                     return status, headers, b"", current_url
                 content_type = (
                     headers.get("content-type", "").split(";", 1)[0].strip().lower()
@@ -362,34 +379,17 @@ class PublicHTTPClient:
                     )
                 body = bytearray()
                 for chunk in response.iter_bytes():
-                    body.extend(chunk)
-                    if len(body) > MAX_RESPONSE_BYTES:
+                    remaining_time()
+                    if len(body) + len(chunk) > MAX_RESPONSE_BYTES:
                         raise PublicRequestError(
                             f"{self.service} response exceeded the 8 MB safety limit.",
                             response_too_large=True,
                         )
+                    body.extend(chunk)
                 return status, headers, bytes(body), current_url
         raise PublicRequestError(
             f"{self.service} returned too many redirects; retrieval stopped."
         )
-
-    @staticmethod
-    def _retry_delay(value):
-        if value is None:
-            return 1.0
-        try:
-            delay = max(0.0, float(value))
-        except ValueError:
-            try:
-                retry_at = parsedate_to_datetime(value)
-                if retry_at.tzinfo is None:
-                    retry_at = retry_at.replace(tzinfo=timezone.utc)
-                delay = max(
-                    0.0, (retry_at - datetime.now(timezone.utc)).total_seconds()
-                )
-            except (TypeError, ValueError, OverflowError):
-                delay = 1.0
-        return delay
 
     def close(self):
         with self._lock:

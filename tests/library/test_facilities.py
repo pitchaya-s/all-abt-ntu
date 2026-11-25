@@ -4,15 +4,15 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from shared.credentials import CredentialError, Credentials
-from library.facilities import (
+from services.library.facilities import (
     FacilitiesClient,
     map_availability,
     requested_time,
     script_json,
 )
-from library.models import LibraryError
-from library.facilities.session import FacilitySession
-from library.facilities.schedule import parse_slots, schedule_path
+from services.library.models import LibraryError
+from services.library.facilities.session import FacilitySession
+from services.library.facilities.schedule import parse_slots, schedule_path
 from .facility_fixtures import GRID, MAP, fake_facility_get, fake_schedule, snapshot
 
 
@@ -99,7 +99,7 @@ class FacilityTests(unittest.TestCase):
         session = FacilitySession()
         self.addCleanup(session.close)
         with patch(
-            "library.facilities.session.read_credentials",
+            "services.library.facilities.session.read_credentials",
             side_effect=CredentialError("Keyring locked"),
         ):
             with self.assertRaisesRegex(LibraryError, "Keyring locked"):
@@ -120,14 +120,16 @@ class FacilityTests(unittest.TestCase):
             fake_schedule("2026-10-24", 100),
         )
         with patch(
-            "library.facilities.session.read_credentials", return_value=credentials
+            "services.library.facilities.session.read_credentials",
+            return_value=credentials,
         ):
             first = session.get_schedule("2026-10-24", 100)
             first.spaces.clear()
             self.assertTrue(session.get_schedule("2026-10-24", 100).spaces)
             self.assertTrue(first.cached)
         with patch(
-            "library.facilities.session.read_credentials", return_value=Credentials()
+            "services.library.facilities.session.read_credentials",
+            return_value=Credentials(),
         ):
             with self.assertRaises(LibraryError):
                 session.get_schedule("2026-10-24", 100)
@@ -181,7 +183,7 @@ class FacilityTests(unittest.TestCase):
                 context = session._context
                 with (
                     patch(
-                        "library.facilities.session.read_credentials",
+                        "services.library.facilities.session.read_credentials",
                         return_value=credentials,
                     ),
                     patch.object(session, "_navigate") as login,
@@ -301,7 +303,8 @@ class FacilityTests(unittest.TestCase):
         context.request.post.return_value = response
         with (
             patch(
-                "library.facilities.session.read_credentials", return_value=credentials
+                "services.library.facilities.session.read_credentials",
+                return_value=credentials,
             ),
             patch.object(session, "_navigate"),
             patch.object(session, "_pace"),
@@ -325,7 +328,8 @@ class FacilityTests(unittest.TestCase):
         )
         with (
             patch(
-                "library.facilities.session.read_credentials", return_value=credentials
+                "services.library.facilities.session.read_credentials",
+                return_value=credentials,
             ),
             patch.object(session, "_navigate"),
         ):

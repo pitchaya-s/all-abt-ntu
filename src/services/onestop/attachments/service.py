@@ -1,0 +1,433 @@
+"""Portal attachment context and verified attachment operations."""
+
+from typing import Annotated
+from pydantic import Field
+from ..models import ActionResult, ID
+
+from dataclasses import dataclass
+from datetime import datetime, timezone
+import hashlib
+import os
+from pathlib import Path
+from urllib.parse import urlencode
+
+from pydantic import TypeAdapter
+
+from ..browser import action_result, commit, evaluate
+from ..services.forms import Draft, draft_for
+from ..models import (
+    Attachment,
+    Attachments,
+    AttachmentTarget,
+    FileDownload,
+    OneStopError,
+)
+from ..parser import sys_id
+from ..session import BASE
+from .local_files import MAX_BYTES, upload_file
+
+
+@dataclass
+class FileContext:
+    page: object
+    source_url: str
+    table: str
+    record_id: str
+    files: list
+    can_upload: bool
+    can_delete: bool
+    max_bytes: int
+    max_files: int | None = None
+    comment: bool = False
+    draft: Draft | None = None
+
+
+def native_files(page, table, record_id):
+    return evaluate(
+        page,
+        r"""
+      const h=angular.element(document.body).injector().get('snAttachmentHandler').create(args.table,args.id);
+      const files=await h.getAttachments();
+      return files.map(f=>pick(f,['sys_id','file_name','size_bytes','size','content_type','state']));
+    """,
+        {"table": table, "id": record_id},
+        asynchronous=True,
+    )
+
+
+def attachment(file, can_delete):
+    attachment_id = sys_id(file["sys_id"])
+    size = file.get("size_bytes")
+    if isinstance(size, str) and size.isdigit():
+        size = int(size)
+    if type(size) is not int:
+        size = None
+    return Attachment(
+        attachment_id=attachment_id,
+        file_name=str(file["file_name"]),
+        size_bytes=size,
+        size_label=str(file["size"]) if file.get("size") is not None else None,
+        content_type=file.get("content_type"),
+        url=BASE + "/sys_attachment.do?" + urlencode({"sys_id": attachment_id}),
+        can_delete=can_delete,
+    )
+
+
+class AttachmentService:
+    def __init__(self, session, tickets, knowledge):
+        self.session, self.tickets, self.knowledge = session, tickets, knowledge
+
+    def context(self, session, revision, target):
+        target = TypeAdapter(AttachmentTarget).validate_python(target)
+        if target.kind == "request":
+            ticket = self.tickets.context(
+                session, revision, target.request_id, target.record_id
+            )
+            p = ticket.permissions
+            if (
+                p["attachment_record_id"] != ticket.record_id
+                or p["attachment_table"] != ticket.table
+            ):
+                raise OneStopError(
+                    "The portal did not verify this request's attachment container."
+                )
+            maximum = min(
+                MAX_BYTES, int(float(p["max_attachment_mb"] or 20) * 1024 * 1024)
+            )
+            return FileContext(
+                session._page,
+                ticket.snapshot.source_url,
+                ticket.table,
+                ticket.record_id,
+                native_files(session._page, ticket.table, ticket.record_id),
+                p["can_upload"],
+                p["can_delete"],
+                maximum,
+            )
+        if target.kind == "draft":
+            draft = draft_for(session, revision, target.draft_id)
+            data = evaluate(
+                draft.page,
+                r"""
+              const s=scope('ntu-widget-sc-cat-item-v2');
+              return {table:s.data._attachmentTable,id:s.data._generatedItemGUID,
+                allowed:s.c.showAttachments(),max_mb:s.data.maxAttachmentSize};
+            """,
+            )
+            table, owner = data["table"], sys_id(data["id"])
+            return FileContext(
+                draft.page,
+                draft.preview.source_url,
+                table,
+                owner,
+                native_files(draft.page, table, owner),
+                data["allowed"],
+                data["allowed"],
+                min(MAX_BYTES, int(float(data["max_mb"] or 20) * 1024 * 1024)),
+                draft=draft,
+            )
+        page, article_id = self.knowledge._open(session, target.article_id)
+        if target.kind == "article":
+            files = evaluate(
+                session._page,
+                "return (scope('kb-article-content').data.attachments||[]).map(f=>pick(f,['sys_id','file_name','size_bytes','size','content_type','state']));",
+            )
+            return FileContext(
+                session._page,
+                page.source_url,
+                "kb_knowledge",
+                article_id,
+                files,
+                False,
+                False,
+                MAX_BYTES,
+            )
+        raw = evaluate(
+            session._page,
+            r"""
+          const s=scope('knowledge-comments');let found=null;
+          function visit(items){for(const c of items||[]){if(c.sys_id===args){found=c;return;}visit(c.children);}}
+          visit(s.c.comments);
+          if(!found)return null;
+          return {files:(found.attachments||[]).map(f=>({sys_id:f.sys_id,file_name:f.file_name,
+              size_bytes:typeof f.size==='number'?f.size:null,size:f.size,content_type:f.type,state:f.state})),
+            can_write:s.c.getMenuItems(found)===true, max_mb:s.data.maxFileSize,max_files:s.data.maxFiles};
+        """,
+            target.comment_id,
+        )
+        if not raw:
+            raise OneStopError("This comment is not visible on the article.")
+        return FileContext(
+            session._page,
+            page.source_url,
+            "kb_feedback",
+            sys_id(target.comment_id),
+            raw["files"],
+            raw["can_write"],
+            raw["can_write"],
+            min(MAX_BYTES, int(float(raw["max_mb"] or 20) * 1024 * 1024)),
+            int(raw["max_files"]) if raw.get("max_files") else None,
+            comment=True,
+        )
+
+    def list(self, target: AttachmentTarget) -> Attachments:
+        "List attachments on a verified own request/item, a readable knowledge article/comment, or an active local draft. Returns IDs, names, sizes, URLs and upload/delete permissions. Article assets are read-only; comments are editable only when the native menu permits it."
+        return self.session.workflow(self._list, target)
+
+    def _list(self, session, revision, target):
+        context = self.context(session, revision, target)
+        return Attachments(
+            retrieved_at=datetime.now(timezone.utc),
+            source_url=context.source_url,
+            cached=False,
+            attachments=[attachment(f, context.can_delete) for f in context.files],
+            can_upload=context.can_upload,
+            max_upload_bytes=context.max_bytes,
+        )
+
+    def upload(self, target: AttachmentTarget, file_path: str) -> ActionResult:
+        "Upload an explicitly selected file from the configured One Stop upload directory to the verified target. The default is the dedicated onestop-uploads folder in the app configuration directory; NTU_ONESTOP_UPLOAD_DIR can override it. Requires an absolute path and obeys the smaller of the source limit and 20 MB. Article-comment uploads are visible to the article audience. Never chooses files automatically."
+        return self.session.workflow(self._upload, target, file_path)
+
+    def _upload(self, session, revision, target, path):
+        context = self.context(session, revision, target)
+        if not context.can_upload:
+            raise OneStopError(
+                "The native portal does not allow uploading to this resource in its current state."
+            )
+        if (
+            context.max_files is not None
+            and context.max_files >= 0
+            and len(context.files) >= context.max_files
+        ):
+            raise OneStopError(
+                "This resource has reached its native attachment count limit."
+            )
+        name, mime, data = upload_file(path, context.max_bytes)
+
+        def perform():
+            token = context.page.evaluate("window.g_ck")
+            if context.comment:
+                response = session._context.request.post(
+                    BASE + "/api/now/v1/attachment_csm/file",
+                    params={
+                        "table_name": context.table,
+                        "table_sys_id": context.record_id,
+                        "file_name": name,
+                    },
+                    data=data,
+                    headers={
+                        "Content-Type": mime,
+                        "Accept": "application/json",
+                        "X-UserToken": token,
+                    },
+                    max_redirects=0,
+                    timeout=60000,
+                )
+            else:
+                response = session._context.request.post(
+                    BASE + "/angular.do",
+                    params={
+                        "sysparm_type": "ngk_attachments",
+                        "sys_id": context.record_id,
+                        "table": context.table,
+                        "action": "add",
+                    },
+                    multipart={
+                        "attachments_modified": "true",
+                        "sysparm_table": context.table,
+                        "sysparm_sys_id": context.record_id,
+                        "sysparm_nostack": "yes",
+                        "sysparm_encryption_context": "",
+                        "sysparm_ck": token,
+                        "attachFile": {"name": name, "mimeType": mime, "buffer": data},
+                    },
+                    max_redirects=0,
+                    timeout=60000,
+                )
+            try:
+                if response.status not in {200, 201} or len(response.body()) > 1000000:
+                    raise OneStopError(
+                        "The file upload did not return a verifiable receipt; inspect attachments before retrying."
+                    )
+                payload = response.json()
+                file = payload.get("result", payload)
+                file_id = sys_id(file["sys_id"])
+            finally:
+                response.dispose()
+            if not context.comment:
+                evaluate(
+                    context.page,
+                    "const s=scopes.find(s=>s.attachmentHandler&&s.data&&(s.data._generatedItemGUID===args||s.data.sys_id===args)); if(s)s.attachmentHandler.getAttachmentList('added'); return true;",
+                    context.record_id,
+                )
+                context.page.wait_for_load_state("networkidle", timeout=15000)
+            return file_id
+
+        if context.draft:
+            context.draft.attachment_revision += 1
+        file_id = commit(session, revision, perform)
+        return action_result(
+            "upload_attachment",
+            context.source_url,
+            file_id,
+            verified=True,
+            outcome="completed",
+        )
+
+    def download(
+        self, target: AttachmentTarget, attachment_id: ID, destination: str
+    ) -> FileDownload:
+        "Download a listed attachment of the verified target to a new explicit absolute file path, up to 20 MB. Existing files and symbolic-link destinations are refused. Returns file size and SHA-256; does not execute or automatically open files."
+        return self.session.workflow(
+            self._download, target, sys_id(attachment_id), destination
+        )
+
+    def _download(self, session, revision, target, attachment_id, destination):
+        context = self.context(session, revision, target)
+        file = next((f for f in context.files if f["sys_id"] == attachment_id), None)
+        if not file:
+            raise OneStopError(
+                "This attachment is not listed on the verified resource."
+            )
+        if (
+            not isinstance(destination, str)
+            or not Path(destination).expanduser().is_absolute()
+        ):
+            raise OneStopError(
+                "Choose an explicit absolute path for the new download file."
+            )
+        path = Path(destination).expanduser()
+        if (
+            path.exists()
+            or path.is_symlink()
+            or not path.parent.is_dir()
+            or any(p.is_symlink() for p in path.parents)
+        ):
+            raise OneStopError(
+                "The destination must be new, with an existing directory and no symbolic-link path components."
+            )
+        response = session._context.request.get(
+            BASE + "/sys_attachment.do",
+            params={"sys_id": attachment_id},
+            max_redirects=0,
+            timeout=60000,
+        )
+        try:
+            if response.status != 200 or (
+                "text/html" in response.headers.get("content-type", "")
+                and "attachment" not in response.headers.get("content-disposition", "")
+            ):
+                raise OneStopError(
+                    "The portal did not return the authorized attachment file."
+                )
+            body = response.body()
+            if len(body) > MAX_BYTES:
+                raise OneStopError("The attachment exceeds the 20 MB download limit.")
+        finally:
+            response.dispose()
+        try:
+            fd = os.open(
+                path,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0),
+                0o600,
+            )
+            try:
+                with os.fdopen(fd, "wb") as out:
+                    out.write(body)
+            except Exception:
+                path.unlink(missing_ok=True)
+                raise
+        except OSError:
+            raise OneStopError(
+                "The new download file could not be written; existing files are never overwritten."
+            ) from None
+        return FileDownload(
+            attachment_id=attachment_id,
+            path=str(path),
+            bytes_written=len(body),
+            sha256=hashlib.sha256(body).hexdigest(),
+            downloaded_at=datetime.now(timezone.utc),
+        )
+
+    def delete(self, target: AttachmentTarget, attachment_id: ID) -> ActionResult:
+        "Delete an attachment only when it is listed on the verified target and native editing is allowed. Knowledge article assets and closed/read-only ticket attachments cannot be deleted."
+        return self.session.workflow(self._delete, target, sys_id(attachment_id))
+
+    def _delete(self, session, revision, target, attachment_id):
+        context = self.context(session, revision, target)
+        if not context.can_delete or not any(
+            f["sys_id"] == attachment_id for f in context.files
+        ):
+            raise OneStopError(
+                "This attachment is not deletable on the verified resource."
+            )
+        if context.draft:
+            context.draft.attachment_revision += 1
+        commit(
+            session,
+            revision,
+            lambda: evaluate(
+                context.page,
+                "await angular.element(document.body).injector().get('snAttachmentHandler').deleteAttachment(args);return true;",
+                attachment_id,
+                asynchronous=True,
+            ),
+        )
+        return action_result(
+            "delete_attachment",
+            context.source_url,
+            attachment_id,
+            outcome="uncertain",
+            verified=False,
+            message="The native deletion returned; refresh the attachment list to verify removal.",
+        )
+
+    def rename(
+        self,
+        target: AttachmentTarget,
+        attachment_id: ID,
+        file_name: Annotated[str, Field(min_length=1, max_length=200)],
+    ) -> ActionResult:
+        "Rename a listed editable attachment using the native attachment service. The new name cannot contain path separators or control characters."
+        if (
+            not isinstance(file_name, str)
+            or not file_name.strip()
+            or len(file_name) > 200
+            or any(c in "/\\" or ord(c) < 32 or ord(c) == 127 for c in file_name)
+        ):
+            raise OneStopError(
+                "Provide a filename of 1–200 characters without path separators or control characters."
+            )
+        return self.session.workflow(
+            self._rename, target, sys_id(attachment_id), file_name.strip()
+        )
+
+    def _rename(self, session, revision, target, attachment_id, file_name):
+        context = self.context(session, revision, target)
+        if not context.can_delete or not any(
+            f["sys_id"] == attachment_id for f in context.files
+        ):
+            raise OneStopError(
+                "This attachment is not editable on the verified resource."
+            )
+        if context.draft:
+            context.draft.attachment_revision += 1
+        commit(
+            session,
+            revision,
+            lambda: evaluate(
+                context.page,
+                "await angular.element(document.body).injector().get('snAttachmentHandler').renameAttachment(args.id,args.name);return true;",
+                {"id": attachment_id, "name": file_name},
+                asynchronous=True,
+            ),
+        )
+        return action_result(
+            "rename_attachment",
+            context.source_url,
+            attachment_id,
+            outcome="uncertain",
+            verified=False,
+            message="The native rename returned; refresh the attachment list to verify it.",
+        )

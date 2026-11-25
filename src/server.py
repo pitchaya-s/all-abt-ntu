@@ -1,12 +1,11 @@
 """Static local stdio profiles for public and personal tools."""
 
 import asyncio
-from importlib.util import find_spec
 
 from mcp.server import MCPServer
 
 import public_server
-from shared.browser import chromium_installed
+from mcp_adapters.tools import NTUMCPServer
 from shared.version import VERSION
 
 PROFILES = ("public", "personal")
@@ -22,37 +21,26 @@ PERSONAL_INSTRUCTIONS = (
 )
 
 
-def create_server(
-    profile: str = "public", *, check_dependencies: bool = True, application=None
-) -> MCPServer:
+def create_server(profile: str = "public", *, application=None) -> MCPServer:
     if profile not in PROFILES:
         raise ValueError(f"Unknown server profile: {profile!r}")
-    if profile != "public" and check_dependencies and find_spec("playwright") is None:
-        raise RuntimeError(
-            "Personal profiles require Playwright. Install all-abt-ntu[mcp,personal] and Chromium; see the setup guide."
-        )
-    if profile != "public" and check_dependencies and not chromium_installed():
-        raise RuntimeError(
-            "Personal profiles require Playwright Chromium. Install it using the setup guide before starting this profile."
-        )
-
     instructions = public_server.INSTRUCTIONS
     if profile != "public":
-        import careeraxis.mcp
-        import library.personal_tools
-        import ntulearn.mcp
-        import onestop.mcp
+        from services.careeraxis import mcp as careeraxis_mcp
+        from services.library import personal_tools as library_personal_tools
+        from services.ntulearn import mcp as ntulearn_mcp
+        from services.onestop import mcp as onestop_mcp
 
         instructions += " " + PERSONAL_INSTRUCTIONS
         instructions += " " + " ".join(
             (
-                ntulearn.mcp.INSTRUCTIONS,
-                library.personal_tools.INSTRUCTIONS,
-                onestop.mcp.INSTRUCTIONS,
-                careeraxis.mcp.INSTRUCTIONS,
+                ntulearn_mcp.INSTRUCTIONS,
+                library_personal_tools.INSTRUCTIONS,
+                onestop_mcp.INSTRUCTIONS,
+                careeraxis_mcp.INSTRUCTIONS,
             )
         )
-    server = MCPServer(
+    server = NTUMCPServer(
         "all-abt-ntu-mcp",
         version=VERSION,
         instructions=instructions,
@@ -60,8 +48,8 @@ def create_server(
     )
     public_server.register_tools(server, application)
     if profile != "public":
-        from shared.catalog import register_personal
-        from shared.mcp import MCPAdapter
+        from mcp_adapters.catalog import register_personal
+        from mcp_adapters.tools import MCPAdapter
 
         register_personal(MCPAdapter(server, getattr(server, "ntu_application")))
     return server
@@ -70,14 +58,11 @@ def create_server(
 def main(
     profile: str = "public",
     *,
-    check_dependencies: bool = True,
     disabled_tools=(),
     select_disabled_tools=None,
     application=None,
 ) -> None:
-    server = create_server(
-        profile, check_dependencies=check_dependencies, application=application
-    )
+    server = create_server(profile, application=application)
 
     async def serve() -> None:
         try:

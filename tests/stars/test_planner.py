@@ -5,22 +5,22 @@ from types import SimpleNamespace
 from unittest.mock import patch
 from urllib.parse import parse_qs
 
-from stars.client import NTURequestError
-from stars.parser import NTUPageError, parse_stars_planner_page
-from stars.parser.planner import parse_saved_plan_timetable
-from stars.wish.models import NTUPersonalDataError
-from stars.wish.planner import PLANNER_VIEW_URL, read_stars_planner
+from services.stars.client import NTURequestError
+from services.stars.parser import NTUPageError, parse_stars_planner_page
+from services.stars.parser.planner import parse_saved_plan_timetable
+from services.stars.wish.models import NTUPersonalDataError
+from services.stars.wish.planner import PLANNER_VIEW_URL, read_stars_planner
 
 FIXTURES = Path(__file__).parent / "fixtures"
 CALENDAR = (FIXTURES / "personal-planner-calendar-sanitized.html").read_text()
-LOAD = '''<html><body onload="xyz.target='_parent';xyz.submit()">
+LOAD = """<html><body onload="xyz.target='_parent';xyz.submit()">
 <form action="AUS_STARS_PLANNER.planner" method="post" id="xyz">
 <input type="hidden" name="p1" value="private-session-token">
 <input type="hidden" name="acad" value="2026"><input type="hidden" name="semester" value="2">
 <input type="hidden" name="plan_no" value="1">
 <input type="hidden" name="subj_code" value="ZZ0001"><input type="hidden" name="index_nmbr" value="00001"><input type="hidden" name="subj_type" value="C">
 <input type="hidden" name="subj_code" value=""><input type="hidden" name="index_nmbr" value=""><input type="hidden" name="subj_type" value="">
-</form></body></html>'''
+</form></body></html>"""
 COURSES = [{"course_code": "ZZ0001", "index": "00001", "course_type": "C"}]
 
 
@@ -40,11 +40,23 @@ class _Response:
 
 class _Page:
     def __init__(self, flags=None, responses=None, selection=False) -> None:
-        self.url = PLANNER_VIEW_URL if not selection else PLANNER_VIEW_URL.replace(".planner", ".time_table")
+        self.url = (
+            PLANNER_VIEW_URL
+            if not selection
+            else PLANNER_VIEW_URL.replace(".planner", ".time_table")
+        )
         self.context = SimpleNamespace(request=self)
-        self.responses = responses if responses is not None else [_Response(LOAD), _Response(CALENDAR)]
+        self.responses = (
+            responses
+            if responses is not None
+            else [_Response(LOAD), _Response(CALENDAR)]
+        )
         self.calls = []
-        self.flags = flags or {"plan1_exists": "Y", "plan2_exists": "N", "plan3_exists": "N"}
+        self.flags = flags or {
+            "plan1_exists": "Y",
+            "plan2_exists": "N",
+            "plan3_exists": "N",
+        }
         self.action = PLANNER_VIEW_URL
         self.selection_action = self.url
         self.submitted = False
@@ -55,7 +67,18 @@ class _Page:
     def evaluate(self, *_args):
         if self.url != PLANNER_VIEW_URL:
             raise AssertionError("Calendar was not opened before loading plans")
-        return {"flags": self.flags, "action": self.action, "fields": [["p1", "private-session-token"], ["acad", "2026"], ["semester", "2"], ["subj_code", ""], ["subj_code", ""], ["plan_no", "1"]]}
+        return {
+            "flags": self.flags,
+            "action": self.action,
+            "fields": [
+                ["p1", "private-session-token"],
+                ["acad", "2026"],
+                ["semester", "2"],
+                ["subj_code", ""],
+                ["subj_code", ""],
+                ["plan_no", "1"],
+            ],
+        }
 
     def post(self, url, **kwargs):
         self.calls.append((url, kwargs))
@@ -115,10 +138,16 @@ class PlannerParserTests(unittest.TestCase):
         self.assertEqual(sessions["WED"]["index"], "00001")
 
     def test_unusual_schedule_content_is_preserved(self):
-        result = parse_saved_plan_timetable(CALENDAR.replace("0930to1020", "TBA"), COURSES)
+        result = parse_saved_plan_timetable(
+            CALENDAR.replace("0930to1020", "TBA"), COURSES
+        )
         self.assertEqual(result["timetable_status"], "unparsed")
-        self.assertTrue(any("TBA" in row["text"] for row in result["unparsed_sessions"]))
-        unknown_weeks = parse_saved_plan_timetable(CALENDAR.replace("Wk1-6,8-13", "By arrangement"), COURSES)
+        self.assertTrue(
+            any("TBA" in row["text"] for row in result["unparsed_sessions"])
+        )
+        unknown_weeks = parse_saved_plan_timetable(
+            CALENDAR.replace("Wk1-6,8-13", "By arrangement"), COURSES
+        )
         lecture = next(s for s in unknown_weeks["sessions"] if s["day"] == "MON")
         self.assertIsNone(lecture["teaching_weeks"])
         self.assertEqual(lecture["remarks"], "By arrangement")
@@ -129,10 +158,12 @@ class PlannerParserTests(unittest.TestCase):
         with self.assertRaises(NTUPageError):
             parse_saved_plan_timetable("<p>Changed HTML</p>", COURSES)
         with self.assertRaisesRegex(NTUPageError, "cell span"):
-            parse_saved_plan_timetable(CALENDAR.replace('rowspan="2"', 'rowspan="999999"'), COURSES)
+            parse_saved_plan_timetable(
+                CALENDAR.replace('rowspan="2"', 'rowspan="999999"'), COURSES
+            )
 
 
-@patch("stars.wish.planner._wait_for_request_slot")
+@patch("services.stars.wish.planner._wait_for_request_slot")
 class PlannerNavigationTests(unittest.TestCase):
     def test_only_read_only_display_endpoints_are_requested(self, _pace):
         page = _Page(selection=True)
@@ -145,21 +176,43 @@ class PlannerNavigationTests(unittest.TestCase):
         self.assertEqual(len(page.calls), 2)
         self.assertTrue(page.calls[0][0].endswith(".load_time_table"))
         self.assertEqual(page.calls[1][0], PLANNER_VIEW_URL)
-        self.assertEqual(parse_qs(page.calls[1][1]["data"], keep_blank_values=True)["subj_code"], ["ZZ0001", ""])
+        self.assertEqual(
+            parse_qs(page.calls[1][1]["data"], keep_blank_values=True)["subj_code"],
+            ["ZZ0001", ""],
+        )
         self.assertTrue(all(call[1]["max_redirects"] == 0 for call in page.calls))
         self.assertNotIn("private-session-token", repr(result))
 
     def test_all_three_plans_are_loaded_independently(self, _pace):
-        responses = [r for i in (1, 2, 3) for r in (_Response(LOAD.replace('name="plan_no" value="1"', f'name="plan_no" value="{i}"')), _Response(CALENDAR))]
-        page = _Page(flags={f"plan{i}_exists": "Y" for i in (1, 2, 3)}, responses=responses)
+        responses = [
+            r
+            for i in (1, 2, 3)
+            for r in (
+                _Response(
+                    LOAD.replace(
+                        'name="plan_no" value="1"', f'name="plan_no" value="{i}"'
+                    )
+                ),
+                _Response(CALENDAR),
+            )
+        ]
+        page = _Page(
+            flags={f"plan{i}_exists": "Y" for i in (1, 2, 3)}, responses=responses
+        )
         result = read_stars_planner(page)
         self.assertEqual([p["plan_number"] for p in result["saved_plans"]], [1, 2, 3])
-        self.assertEqual([parse_qs(page.calls[i][1]["data"])["plan_no"] for i in (0, 2, 4)], [["1"], ["2"], ["3"]])
+        self.assertEqual(
+            [parse_qs(page.calls[i][1]["data"])["plan_no"] for i in (0, 2, 4)],
+            [["1"], ["2"], ["3"]],
+        )
 
     def test_unsaved_and_unknown_plans_do_not_trigger_loads(self, _pace):
         page = _Page(flags={"plan1_exists": "N", "plan2_exists": "N"})
         result = read_stars_planner(page)
-        self.assertEqual([p["status"] for p in result["saved_plans"]], ["not_saved", "not_saved", "unknown"])
+        self.assertEqual(
+            [p["status"] for p in result["saved_plans"]],
+            ["not_saved", "not_saved", "unknown"],
+        )
         self.assertEqual(page.calls, [])
 
     def test_changed_forms_are_not_submitted(self, _pace):
@@ -178,31 +231,49 @@ class PlannerNavigationTests(unittest.TestCase):
         login = _Response('<form><input name="UID"></form>')
         self.assertIsNone(read_stars_planner(_Page(responses=[login])))
         self.assertTrue(login.disposed)
-        expired = _Response('', status=302, headers={"location": "/pls/webexe/ldap_login.login"})
+        expired = _Response(
+            "", status=302, headers={"location": "/pls/webexe/ldap_login.login"}
+        )
         self.assertIsNone(read_stars_planner(_Page(responses=[expired])))
-        external = _Response('', status=302, headers={"location": "https://other.example"})
+        external = _Response(
+            "", status=302, headers={"location": "https://other.example"}
+        )
         with self.assertRaisesRegex(NTUPersonalDataError, "no redirect was followed"):
             read_stars_planner(_Page(responses=[external]))
 
     def test_service_failures_and_changed_load_responses_fail_clearly(self, _pace):
         with self.assertRaisesRegex(NTURequestError, "HTTP 503"):
-            read_stars_planner(_Page(responses=[_Response('', status=503)]))
+            read_stars_planner(_Page(responses=[_Response("", status=503)]))
         with self.assertRaisesRegex(NTUPageError, "Load response"):
-            read_stars_planner(_Page(responses=[_Response('<p>Unexpected</p>')]))
+            read_stars_planner(_Page(responses=[_Response("<p>Unexpected</p>")]))
         with self.assertRaisesRegex(NTUPageError, "inconsistent"):
-            read_stars_planner(_Page(responses=[_Response(LOAD.replace('name="index_nmbr"', 'name="changed"'))]))
+            read_stars_planner(
+                _Page(
+                    responses=[
+                        _Response(LOAD.replace('name="index_nmbr"', 'name="changed"'))
+                    ]
+                )
+            )
 
     def test_saved_plan_identity_and_term_must_match_the_request(self, _pace):
         for name, value in (("plan_no", "2"), ("acad", "2025"), ("semester", "1")):
             with self.subTest(field=name):
-                wrong = re.sub(f'name="{name}" value="[^"]*"', f'name="{name}" value="{value}"', LOAD)
+                wrong = re.sub(
+                    f'name="{name}" value="[^"]*"',
+                    f'name="{name}" value="{value}"',
+                    LOAD,
+                )
                 page = _Page(responses=[_Response(wrong)])
-                with self.assertRaisesRegex(NTUPageError, "different plan or academic term"):
+                with self.assertRaisesRegex(
+                    NTUPageError, "different plan or academic term"
+                ):
                     read_stars_planner(page)
                 self.assertEqual(len(page.calls), 1)
 
     def test_duplicate_courses_do_not_get_ambiguous_index_assignments(self, _pace):
-        duplicate = LOAD.replace('name="subj_code" value=""', 'name="subj_code" value="ZZ0001"')
+        duplicate = LOAD.replace(
+            'name="subj_code" value=""', 'name="subj_code" value="ZZ0001"'
+        )
         with self.assertRaisesRegex(NTUPageError, "duplicate courses"):
             read_stars_planner(_Page(responses=[_Response(duplicate)]))
 

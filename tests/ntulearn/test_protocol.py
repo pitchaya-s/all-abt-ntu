@@ -12,8 +12,8 @@ from mcp.types import ElicitResult
 
 from server import create_server
 
-mcp = create_server("personal", check_dependencies=False)
-from ntulearn.models import LearnError
+mcp = create_server("personal")
+from services.ntulearn.models import LearnError
 from .fixtures import CONTENT, COURSE, SECRET
 
 

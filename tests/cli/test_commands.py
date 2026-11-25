@@ -18,7 +18,7 @@ from typer.testing import CliRunner
 
 from cli.cli import create_app
 from cli.config import load_config, save_config
-from omnibus.models import Stops
+from services.omnibus.models import Stops
 
 
 class UnifiedCLITests(unittest.TestCase):
@@ -58,7 +58,7 @@ class UnifiedCLITests(unittest.TestCase):
             "sys.argv=['ntu','mcp','--profile','public']; p=patch('server.main'); p.start(); "
             "\ntry: main()\nexcept SystemExit as error: assert error.code == 0\n"
             "assert not any(n in sys.modules for n in "
-            "('ntulearn', 'onestop', 'careeraxis', 'playwright', 'stars.tools.personal'))"
+            "('services.ntulearn', 'services.onestop', 'services.careeraxis', 'playwright', 'services.stars.tools.personal'))"
         )
         result = subprocess.run(
             [sys.executable, "-c", program], capture_output=True, text=True
@@ -140,9 +140,10 @@ class UnifiedCLITests(unittest.TestCase):
 
     def test_service_auth_status_calls_live_verification(self):
         for service in ("stars", "learn", "career", "onestop"):
+            module = "onestop.auth" if service == "onestop" else service
             with (
                 self.subTest(service=service),
-                patch(f"cli.commands.{service}.invoke") as invoke,
+                patch(f"cli.commands.{module}.invoke") as invoke,
             ):
                 result = self.runner.invoke(self.app, [service, "auth", "status"])
                 self.assertEqual(result.exit_code, 0, result.output)
@@ -170,8 +171,8 @@ class UnifiedCLITests(unittest.TestCase):
             "p=patch('cli.commands.map.invoke', return_value={}); p.start(); "
             "result=CliRunner().invoke(create_app(), ['map','search','LT1']); "
             "assert result.exit_code == 0, result.output; "
-            "assert 'shared.catalog' not in sys.modules; "
-            "assert 'mazemap.mcp' not in sys.modules"
+            "assert 'mcp_adapters.catalog' not in sys.modules; "
+            "assert 'services.mazemap.mcp' not in sys.modules"
         )
         result = subprocess.run(
             [sys.executable, "-c", program], capture_output=True, text=True
@@ -387,7 +388,7 @@ class UnifiedCLITests(unittest.TestCase):
             ("news", ["news", "search", "AI"], "search"),
             ("services", ["services", "filters"], "list_filters"),
             ("bus", ["bus", "stops", "--route", "Blue"], "list_stops"),
-            ("onestop", ["onestop", "requests", "list"], "list_my_requests"),
+            ("onestop.requests", ["onestop", "requests", "list"], "list_my_requests"),
         )
         for module, arguments, operation in cases:
             with (
@@ -419,7 +420,8 @@ class UnifiedCLITests(unittest.TestCase):
         }
         with (
             patch(
-                "stars.tools.academic.fetch_course_search", return_value=response
+                "services.stars.tools.academic.fetch_course_search",
+                return_value=response,
             ) as search,
             patch("server.create_server", side_effect=AssertionError("transport used")),
         ):
@@ -549,7 +551,7 @@ class UnifiedCLITests(unittest.TestCase):
         self.assertEqual(dispatch.call_args.args[1]["courses"][0]["index"], "12345")
 
     def test_typed_attachments_and_fixed_cart_actions(self):
-        with patch("cli.commands.onestop.invoke") as dispatch:
+        with patch("cli.commands.onestop.attachments.invoke") as dispatch:
             result = self.runner.invoke(
                 self.app,
                 ["onestop", "attachments", "list", "comment:article-id/comment-id"],
@@ -563,7 +565,7 @@ class UnifiedCLITests(unittest.TestCase):
                 "comment_id": "comment-id",
             },
         )
-        with patch("cli.commands.onestop.invoke") as dispatch:
+        with patch("cli.commands.onestop.cart.invoke") as dispatch:
             result = self.runner.invoke(
                 self.app, ["onestop", "cart", "quantity", "item-id", "3"]
             )
@@ -611,7 +613,7 @@ class UnifiedCLITests(unittest.TestCase):
             result = self.runner.invoke(self.app, ["learn", "courses", "--json"])
             self.assertEqual(result.exit_code, 0, result.output)
         with patch(
-            "ntulearn.client.session.Session.download", new=AsyncMock()
+            "services.ntulearn.client.session.Session.download", new=AsyncMock()
         ) as download:
             result = self.runner.invoke(
                 self.app,
@@ -635,7 +637,7 @@ class UnifiedCLITests(unittest.TestCase):
         import typer
         from functools import partial
         from cli.services import invoke
-        from ntulearn.services.videos import download_video
+        from services.ntulearn.services.videos import download_video
 
         with (
             patch("sys.stdin.isatty", return_value=True),
@@ -648,8 +650,8 @@ class UnifiedCLITests(unittest.TestCase):
         self.assertNotIn("partial(", confirm.call_args.args[0])
 
     def test_apply_reviews_before_submit(self):
-        from cli.commands.onestop import cmd_requests_apply
-        from onestop.services.forms import FormService
+        from cli.commands.onestop.requests import cmd_requests_apply
+        from services.onestop.services.forms import FormService
 
         field = SimpleNamespace(
             name="reason", label="Reason", read_only=False, choices=[]
@@ -671,9 +673,10 @@ class UnifiedCLITests(unittest.TestCase):
         with (
             patch("cli.session.session_scope", return_value=nullcontext()),
             patch(
-                "cli.commands.onestop.invoke",
+                "cli.commands.onestop.requests.invoke",
                 side_effect=[initial, updated, {"ok": True}],
             ) as invoke,
+            patch("cli.commands.onestop.workflows.invoke", invoke),
             patch("typer.prompt", return_value="Example"),
             patch("typer.confirm", return_value=False),
         ):
@@ -687,9 +690,9 @@ class UnifiedCLITests(unittest.TestCase):
         )
 
     def test_request_workflow_searches_references_and_selects_attachments(self):
-        from cli.commands.onestop import _add_draft_attachments, _fill_draft
-        from onestop.services.forms import FormService
-        from onestop.attachments import AttachmentService
+        from cli.commands.onestop.workflows import _add_draft_attachments, _fill_draft
+        from services.onestop.services.forms import FormService
+        from services.onestop.attachments import AttachmentService
 
         field = SimpleNamespace(
             name="location",
@@ -717,7 +720,7 @@ class UnifiedCLITests(unittest.TestCase):
         )
         with (
             patch(
-                "cli.commands.onestop.invoke", side_effect=[choices, updated]
+                "cli.commands.onestop.workflows.invoke", side_effect=[choices, updated]
             ) as invoke,
             patch("typer.prompt", side_effect=["search", 1]),
             patch("typer.confirm", return_value=False),
@@ -730,7 +733,8 @@ class UnifiedCLITests(unittest.TestCase):
         self.assertEqual(invoke.call_args.args[1]["values"], {"location": "choice"})
         with (
             patch(
-                "cli.commands.onestop.invoke", side_effect=[{"ok": True}, updated]
+                "cli.commands.onestop.workflows.invoke",
+                side_effect=[{"ok": True}, updated],
             ) as invoke,
             patch("typer.prompt", return_value="/approved/file.pdf"),
             patch("typer.confirm", side_effect=[True, False]),
@@ -750,7 +754,7 @@ class UnifiedCLITests(unittest.TestCase):
 
         from pydantic import BaseModel
 
-        from cli.commands.onestop import _show_workflow
+        from cli.commands.onestop.workflows import _show_workflow
         from cli.renderers.onestop import draft_preview
 
         class Preview(BaseModel):
@@ -766,15 +770,16 @@ class UnifiedCLITests(unittest.TestCase):
         self.assertNotIn("internal-", output.getvalue())
 
     def test_checkout_and_booking_workflows(self):
-        from cli.commands.onestop import cmd_appointments_book, cmd_cart_checkout
-        from onestop.services.cart import CartService
-        from onestop.services.appointments import AppointmentService
+        from cli.commands.onestop.appointments import cmd_appointments_book
+        from cli.commands.onestop.cart import cmd_cart_checkout
+        from services.onestop.services.cart import CartService
+        from services.onestop.services.appointments import AppointmentService
 
         preview = SimpleNamespace(checkout_id="checkout")
         with (
             patch("cli.session.session_scope", return_value=nullcontext()),
             patch(
-                "cli.commands.onestop.invoke", side_effect=[preview, {"ok": True}]
+                "cli.commands.onestop.cart.invoke", side_effect=[preview, {"ok": True}]
             ) as invoke,
         ):
             self.assertEqual(cmd_cart_checkout(), {"ok": True})
@@ -794,7 +799,7 @@ class UnifiedCLITests(unittest.TestCase):
         with (
             patch("cli.session.session_scope", return_value=nullcontext()),
             patch(
-                "cli.commands.onestop.invoke",
+                "cli.commands.onestop.appointments.invoke",
                 side_effect=[draft, config, slots, {"ok": True}],
             ) as invoke,
             patch("typer.prompt", side_effect=["2026-11-15", 1]),
@@ -807,7 +812,7 @@ class UnifiedCLITests(unittest.TestCase):
     def test_apply_does_not_submit_when_confirmation_is_declined(self):
         import typer
 
-        from cli.commands.onestop import cmd_requests_apply
+        from cli.commands.onestop.requests import cmd_requests_apply
 
         current = load_config()
         current["profile"] = "personal"

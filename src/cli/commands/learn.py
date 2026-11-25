@@ -210,7 +210,7 @@ def cmd_content_tree(
 ):
     """Read a course's nested content tree."""
     with application_scope() as application:
-        from ntulearn.services import content
+        from services.ntulearn.services import content
 
         return invoke(
             partial(content.get_content_tree, application.learn),
@@ -298,7 +298,7 @@ def cmd_files_read(
     else:
         course_id, content_id = content_reference(course_id, content_id)
     with application_scope() as application:
-        from ntulearn.services import files
+        from services.ntulearn.services import files
 
         return invoke(
             partial(files.read_file_content, application.learn),
@@ -391,7 +391,7 @@ def cmd_videos_download(
     """Download a Kaltura video using course and content IDs, or an NTULearn content URL."""
     course_id, content_id = content_reference(course_id, content_id)
     with application_scope() as application:
-        from ntulearn.services import videos
+        from services.ntulearn.services import videos
 
         return invoke(
             partial(videos.download_video, application.learn),
@@ -448,7 +448,7 @@ def cmd_courses_download(
 ):
     """Recursively save readable Blackboard attachments under destination/course_id with content folder names and stable file IDs."""
     with application_scope() as application:
-        from ntulearn.services import files
+        from services.ntulearn.services import files
 
         return invoke(
             partial(files.download_course, application.learn),
@@ -599,7 +599,7 @@ def cmd_upcoming(
 ):
     """Collect all calendar pages across your enrolled courses."""
     with application_scope() as application:
-        from ntulearn.services import overview
+        from services.ntulearn.services import overview
 
         return invoke(
             partial(overview.get_upcoming, application.learn),
@@ -646,7 +646,7 @@ def cmd_digest(
 ):
     """Digest of recent announcements, upcoming calendar items and your gradebook across courses."""
     with application_scope() as application:
-        from ntulearn.services import overview
+        from services.ntulearn.services import overview
 
         return invoke(
             partial(overview.whats_new, application.learn),
@@ -700,7 +700,7 @@ def cmd_messages_list(
 ):
     """List Blackboard inbox/sent messages through readable course conversations, without marking them read."""
     with application_scope() as application:
-        from ntulearn.services import messages
+        from services.ntulearn.services import messages
 
         return invoke(
             partial(messages.list_messages, application.learn),
@@ -751,7 +751,7 @@ def cmd_messages_read(
 ):
     """Read a message's full body and published conversation recipients."""
     with application_scope() as application:
-        from ntulearn.services import messages
+        from services.ntulearn.services import messages
 
         return invoke(
             partial(messages.read_message, application.learn),
@@ -784,7 +784,7 @@ def cmd_users(
 ):
     """List course users visible to your account, with their published names and roles."""
     with application_scope() as application:
-        from ntulearn.services import people
+        from services.ntulearn.services import people
 
         return invoke(
             partial(people.list_course_users, application.learn),
@@ -816,7 +816,7 @@ def cmd_groups_default(
 ):
     """List groups and group sets defined in a course."""
     with application_scope() as application:
-        from ntulearn.services import people
+        from services.ntulearn.services import people
 
         return invoke(
             partial(people.list_course_groups, application.learn),
@@ -854,7 +854,7 @@ def cmd_groups_members(
 ):
     """List visible members of a course group through Blackboard's browser membership API."""
     with application_scope() as application:
-        from ntulearn.services import people
+        from services.ntulearn.services import people
 
         return invoke(
             partial(people.get_group_members, application.learn),
@@ -905,7 +905,7 @@ def cmd_search_default(
 ):
     """Recursively search one course's content titles, body and description for a case-insensitive substring."""
     with application_scope() as application:
-        from ntulearn.services import content
+        from services.ntulearn.services import content
 
         return invoke(
             partial(content.search_course_content, application.learn),
@@ -955,7 +955,7 @@ def cmd_search_all(
 ):
     """Recursively search content across available enrolled courses, or selected course_ids."""
     with application_scope() as application:
-        from ntulearn.services import content
+        from services.ntulearn.services import content
 
         return invoke(
             partial(content.search_all_courses, application.learn),

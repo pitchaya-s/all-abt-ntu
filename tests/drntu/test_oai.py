@@ -6,9 +6,9 @@ from urllib.parse import parse_qs, urlsplit
 from shared.errors import OperationError as ToolError
 from application import Application
 
-from drntu import oai
-from drntu.oai import parser
-from drntu.models import RepositoryError
+from services.drntu import oai
+from services.drntu.oai import parser
+from services.drntu.models import RepositoryError
 from .oai_fixtures import DELETED, IDENTIFIER, STAMP, TOKEN, envelope, fake_get, record
 
 

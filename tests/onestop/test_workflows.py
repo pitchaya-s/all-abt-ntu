@@ -11,16 +11,22 @@ import time
 import unittest
 from unittest.mock import Mock, patch
 
-from onestop.services.appointments import AppointmentService
-from onestop.attachments import AttachmentService, FileContext, upload_file
-from onestop.browser import commit
-from onestop.services.cart import CartService, FavouriteService
-from onestop.services.forms import Draft, FormService, apply_values, draft_for, preview
-from onestop.services.knowledge import KnowledgeService
-from onestop.models import OneStopError
-from onestop.services.portal import PortalService
-from onestop.session import BASE, OneStopSession, PortalPage
-from onestop.services.tickets import TicketContext, TicketService
+from services.onestop.services.appointments import AppointmentService
+from services.onestop.attachments import AttachmentService, FileContext, upload_file
+from services.onestop.browser import commit
+from services.onestop.services.cart import CartService, FavouriteService
+from services.onestop.services.forms import (
+    Draft,
+    FormService,
+    apply_values,
+    draft_for,
+    preview,
+)
+from services.onestop.services.knowledge import KnowledgeService
+from services.onestop.models import OneStopError
+from services.onestop.services.portal import PortalService
+from services.onestop.session import BASE, OneStopSession, PortalPage
+from services.onestop.services.tickets import TicketContext, TicketService
 from tests.shared.credential_fixtures import stored_credentials
 
 
@@ -75,7 +81,7 @@ class SubmissionTests(unittest.TestCase):
             },
         )
         service = TicketService(session, reader)
-        with patch("onestop.services.tickets.evaluate", return_value={}):
+        with patch("services.onestop.services.tickets.evaluate", return_value={}):
             context = service.context(session, "revision", parent)
         self.assertEqual(context.record_id, RECORD)
         self.assertEqual(session.read.call_count, 1)
@@ -145,8 +151,8 @@ class SubmissionTests(unittest.TestCase):
             SimpleNamespace(value=response)
         )
         with (
-            patch("onestop.services.forms.preview", return_value=info),
-            patch("onestop.services.forms.evaluate") as native,
+            patch("services.onestop.services.forms.preview", return_value=info),
+            patch("services.onestop.services.forms.evaluate") as native,
         ):
             service = FormService(s)
             receipt = service.submit(d.draft_id)
@@ -161,7 +167,7 @@ class SubmissionTests(unittest.TestCase):
     ):
         s, d, info = self.form()
         info.ready = False
-        with patch("onestop.services.forms.preview", return_value=info):
+        with patch("services.onestop.services.forms.preview", return_value=info):
             self.assertEqual(
                 FormService(s).submit(d.draft_id).outcome, "requires_user_action"
             )
@@ -171,8 +177,8 @@ class SubmissionTests(unittest.TestCase):
             SimpleNamespace(value=Mock(status=500))
         )
         with (
-            patch("onestop.services.forms.preview", return_value=info),
-            patch("onestop.services.forms.evaluate") as native,
+            patch("services.onestop.services.forms.preview", return_value=info),
+            patch("services.onestop.services.forms.evaluate") as native,
         ):
             self.assertEqual(FormService(s).submit(d.draft_id).outcome, "uncertain")
             with self.assertRaisesRegex(OneStopError, "uncertain"):
@@ -657,7 +663,7 @@ class AttachmentTests(unittest.TestCase):
     def test_delete_rename_require_target_membership_and_edit_permission(self):
         with (
             patch.object(self.service, "context", return_value=self.context),
-            patch("onestop.attachments.service.evaluate") as native,
+            patch("services.onestop.attachments.service.evaluate") as native,
         ):
             for fn in (
                 lambda: self.service.delete({}, COMMENT),

@@ -17,7 +17,7 @@ from tests.stars.mcp_fixtures import COURSE
 
 application = Application()
 PATCHES = [
-    patch("stars.tools.academic.fetch_course", return_value=COURSE),
+    patch("services.stars.tools.academic.fetch_course", return_value=COURSE),
     patch.object(application.faculty.http, "get", side_effect=faculty_get),
     patch.object(application.library.http, "get", side_effect=library_get),
     patch.object(

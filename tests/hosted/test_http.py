@@ -5,7 +5,7 @@ import sys
 import unittest
 from contextlib import ExitStack, nullcontext
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
 import httpx2
 from jsonschema import Draft202012Validator
@@ -88,7 +88,17 @@ class PublicHTTPTests(unittest.IsolatedAsyncioTestCase):
 
         application = Application()
         self.addAsyncCleanup(application.close)
+        omnibus = OmnibusFixtureClient()
+        self.addCleanup(omnibus.close)
         with ExitStack() as stack:
+            stack.enter_context(
+                patch.object(
+                    Application,
+                    "omnibus",
+                    new_callable=PropertyMock,
+                    return_value=omnibus,
+                )
+            )
             for target, attribute, data in [
                 (application.faculty.http, "get", faculty_get),
                 (application.library.http, "get", library_get),
@@ -101,11 +111,10 @@ class PublicHTTPTests(unittest.IsolatedAsyncioTestCase):
                 (application.research, "get", repository_get),
                 (application.campus_services.http, "get", service_get),
                 (application.research_oai, "get", oai_get),
-                (application.omnibus, "_post", OmnibusFixtureClient()._post),
             ]:
                 stack.enter_context(patch.object(target, attribute, side_effect=data))
             stack.enter_context(
-                patch("stars.tools.academic.fetch_course", return_value=COURSE)
+                patch("services.stars.tools.academic.fetch_course", return_value=COURSE)
             )
             async with http_client(create_app(application)) as http:
                 for mode in ("auto", "legacy"):
@@ -258,7 +267,7 @@ import importlib.abc
 import sys
 class RejectPersonal(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
-        if fullname in {"keyring", "shared.credentials", "server", "stars.tools.personal", "library.personal_tools", "library.facilities.session"} or fullname.startswith(("ntulearn", "stars.wish", "playwright", "onestop", "careeraxis")):
+        if fullname in {"keyring", "shared.credentials", "server", "services.stars.tools.personal", "services.library.personal_tools", "services.library.facilities.session"} or fullname.startswith(("services.ntulearn", "services.stars.wish", "playwright", "services.onestop", "services.careeraxis")):
             raise AssertionError("Hosted entrypoint imported a personal module: " + fullname)
 sys.meta_path.insert(0, RejectPersonal())
 from api.index import app

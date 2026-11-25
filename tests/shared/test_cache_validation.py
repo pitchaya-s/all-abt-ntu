@@ -5,12 +5,12 @@ import json
 import unittest
 from unittest.mock import patch
 
-from drntu.models import RepositoryError
-from drntu.oai import service as oai_service
-from drntu.oai.client import OAIClient
-from drntu.rest import repository
-from drntu.rest.client import RepositoryClient
-from library.client import LibraryClient
+from services.drntu.models import RepositoryError
+from services.drntu.oai import service as oai_service
+from services.drntu.oai.client import OAIClient
+from services.drntu.rest import repository
+from services.drntu.rest.client import RepositoryClient
+from services.library.client import LibraryClient
 from tests.library.fixtures import LOCAL
 from tests.drntu.fixtures import ITEM, ITEM_ID
 from tests.drntu.oai_fixtures import envelope, fake_get as oai_fixture

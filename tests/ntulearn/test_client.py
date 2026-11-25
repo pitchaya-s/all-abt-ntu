@@ -3,9 +3,9 @@ import unittest
 from datetime import datetime, timedelta
 from unittest.mock import Mock, patch
 
-from ntulearn.client.client import LearnClient
-from ntulearn.models import LearnError
-from ntulearn.parser.response import records, text
+from services.ntulearn.client.client import LearnClient
+from services.ntulearn.models import LearnError
+from services.ntulearn.parser.response import records, text
 
 from .fixtures import CONTENT, COURSE, NOW, PREFIX, SECRET, USER, FixtureSession
 
@@ -33,7 +33,10 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(root.contents[1].has_children)
         children = await self.client.get_course_contents(COURSE, CONTENT)
         self.assertEqual(children.contents[0].parent_id, CONTENT)
-        self.assertEqual((await self.client.get_announcements(COURSE)).announcements[0].body, "Bring your laptop.")
+        self.assertEqual(
+            (await self.client.get_announcements(COURSE)).announcements[0].body,
+            "Bring your laptop.",
+        )
         self.assertEqual(text("<style>secret</style><p>a</p><p>b</p>"), "a\nb")
 
     async def test_grades_are_own_only_and_missing_is_not_zero(self):
@@ -44,9 +47,16 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.grades[1].feedback, "Example feedback")
         self.assertEqual(result.columns[0].possible_score, 10.0)
         self.assertNotIn(USER, result.model_dump_json())
-        self.assertTrue(any(call.args[0].endswith("/gradebook/users/" + USER) for call in get.await_args_list))
+        self.assertTrue(
+            any(
+                call.args[0].endswith("/gradebook/users/" + USER)
+                for call in get.await_args_list
+            )
+        )
 
-    async def test_gradebook_user_lookup_is_shared_and_resets_with_auth_generation(self):
+    async def test_gradebook_user_lookup_is_shared_and_resets_with_auth_generation(
+        self,
+    ):
         user_reads = 0
         original_get = self.session.get
 
@@ -68,12 +78,22 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(user_reads, 2)
 
     async def test_calendar_windows_and_partial_errors(self):
-        result = await self.client.get_calendar(since=NOW, until=NOW + timedelta(days=14))
+        result = await self.client.get_calendar(
+            since=NOW, until=NOW + timedelta(days=14)
+        )
         self.assertEqual(result.items[0].course_id, COURSE)
-        for start, end in [(datetime(2026, 1, 1), NOW), (NOW, NOW), (NOW, NOW + timedelta(days=113))]:
+        for start, end in [
+            (datetime(2026, 1, 1), NOW),
+            (NOW, NOW),
+            (NOW, NOW + timedelta(days=113)),
+        ]:
             with self.assertRaises(LearnError):
                 await self.client.get_calendar(since=start, until=end)
-        with patch.object(self.session, "get", return_value=({"results": [], "courseErrors": [{}]}, {})):
+        with patch.object(
+            self.session,
+            "get",
+            return_value=({"results": [], "courseErrors": [{}]}, {}),
+        ):
             with self.assertRaisesRegex(LearnError, "part of this request"):
                 await self.client.get_calendar()
 
@@ -89,15 +109,37 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_unexpected_json_and_unsafe_pagination_fail_closed(self):
         path = PREFIX + "/users/me/courses"
-        for value in [{}, {"results": {}}, {"results": ["changed"]}, {"results": [], "paging": {"nextPage": "https://other.invalid/steal?offset=2"}},
-                      {"results": [], "paging": {"nextPage": "/learn/api/public/v1/users/me?offset=2"}},
-                      {"results": [], "paging": {"nextPage": path + "?offset=no"}}]:
+        for value in [
+            {},
+            {"results": {}},
+            {"results": ["changed"]},
+            {
+                "results": [],
+                "paging": {"nextPage": "https://other.invalid/steal?offset=2"},
+            },
+            {
+                "results": [],
+                "paging": {"nextPage": "/learn/api/public/v1/users/me?offset=2"},
+            },
+            {"results": [], "paging": {"nextPage": path + "?offset=no"}},
+        ]:
             with self.subTest(value=value), self.assertRaises(LearnError):
                 records(value, path)
-        with patch.object(self.session, "get", return_value=({"results": [{"course": {"id": COURSE}}]}, {})):
+        with patch.object(
+            self.session,
+            "get",
+            return_value=({"results": [{"course": {"id": COURSE}}]}, {}),
+        ):
             with self.assertRaises(LearnError):
                 await self.client.list_courses()
-        with patch.object(self.session, "get", return_value=({"results": [], "paging": {"nextPage": path + "?offset=0"}}, {})):
+        with patch.object(
+            self.session,
+            "get",
+            return_value=(
+                {"results": [], "paging": {"nextPage": path + "?offset=0"}},
+                {},
+            ),
+        ):
             with self.assertRaisesRegex(LearnError, "pagination loop"):
                 await self.client.list_courses()
 

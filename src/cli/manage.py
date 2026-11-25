@@ -19,11 +19,11 @@ from .common import fail
 from .config import (
     SETTINGS,
     ConfigError,
-    apply_config_env,
     load_config,
     save_config,
     service_environment,
     setting_entry,
+    visible_settings,
 )
 from .helpers import Profile
 from .output import render
@@ -107,7 +107,7 @@ def mcp_main(
     if profile not in (None, "public", "personal"):
         raise typer.BadParameter("Choose public or personal.")
     try:
-        apply_config_env(load_config())
+        ctx.with_resource(service_environment(load_config()))
     except ConfigError as error:
         fail(error)
     ctx.obj = profile
@@ -205,10 +205,19 @@ def save_auth():
 
 
 @auth.command("status")
-def auth_status():
+def auth_status(
+    json_output: Annotated[
+        bool, typer.Option("--json", "-j", help="Write JSON to stdout.")
+    ] = False,
+):
     """Check the local keyring without signing in to an NTU service."""
     try:
         status = credential_status()
+        if json_output:
+            render(status, json_output=True)
+            if status["credential_error"]:
+                raise typer.Exit(1)
+            return
         if status["credential_error"]:
             raise CredentialError(status["credential_error"])
         print(
@@ -235,7 +244,9 @@ def auth_delete():
 def config_list():
     """Show saved service settings as JSON."""
     try:
-        render(load_config(validate_mcp=False)["env"], json_output=True)
+        render(
+            visible_settings(load_config(validate_mcp=False)["env"]), json_output=True
+        )
     except ConfigError as error:
         fail(error)
 

@@ -6,9 +6,9 @@ from urllib.request import Request
 
 import httpx
 
-from stars.client import http
-from stars.client.courses import BASE_URL
-from stars.client.http import NTURequestError
+from services.stars.client import http
+from services.stars.client.courses import BASE_URL
+from services.stars.client.http import NTURequestError
 
 
 class StarsHTTPTests(unittest.TestCase):

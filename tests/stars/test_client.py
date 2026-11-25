@@ -4,7 +4,7 @@ from unittest.mock import call, patch
 
 import httpx
 
-from stars.client import (
+from services.stars.client import (
     NTURequestError,
     courses,
     get_course,
@@ -38,7 +38,7 @@ class ClientTests(unittest.TestCase):
 
     def test_undergraduate_fetch_uses_public_schedule_form(self) -> None:
         with patch(
-            "stars.client.courses._fetch_html_request", return_value="page"
+            "services.stars.client.courses._fetch_html_request", return_value="page"
         ) as fetch:
             html, source_url = courses._fetch_html("2026;1", "ZZ0001")
         request = fetch.call_args.args[0]
@@ -56,7 +56,7 @@ class ClientTests(unittest.TestCase):
         with (
             patch.object(http, "MAX_RETRIES", 0),
             patch(
-                "stars.client.http._request_html",
+                "services.stars.client.http._request_html",
                 side_effect=httpx.ConnectError(
                     "offline", request=httpx.Request("GET", courses.BASE_URL)
                 ),
@@ -67,7 +67,7 @@ class ClientTests(unittest.TestCase):
 
     def test_graduate_schedule_is_cached_and_normalized(self) -> None:
         with patch(
-            "stars.client.graduate._fetch_html_request",
+            "services.stars.client.graduate._fetch_html_request",
             return_value=GRADUATE_HTML,
         ) as fetch:
             course = get_graduate_course_schedule("ee6102")
@@ -79,13 +79,13 @@ class ClientTests(unittest.TestCase):
         self.assertEqual(cached, course)
 
     def test_graduate_schedule_invalid_code_and_network_error(self) -> None:
-        with patch("stars.client.graduate._fetch_html_request") as fetch:
+        with patch("services.stars.client.graduate._fetch_html_request") as fetch:
             with self.assertRaisesRegex(ValueError, "Course code"):
                 get_graduate_course_schedule("EE6102?x=1")
             fetch.assert_not_called()
 
         with patch(
-            "stars.client.graduate._fetch_html_request",
+            "services.stars.client.graduate._fetch_html_request",
             side_effect=NTURequestError("offline"),
         ):
             with self.assertRaisesRegex(NTURequestError, "offline"):
@@ -94,11 +94,11 @@ class ClientTests(unittest.TestCase):
     def test_successful_parses_are_cached(self) -> None:
         with (
             patch(
-                "stars.client.courses._fetch_html",
+                "services.stars.client.courses._fetch_html",
                 return_value=(HTML, "https://ntu.example/course"),
             ) as fetch,
             patch(
-                "stars.client.courses._fetch_course_content_html",
+                "services.stars.client.courses._fetch_course_content_html",
                 return_value=(CONTENT_HTML, "https://ntu.example/content"),
             ) as fetch_content,
         ):
@@ -141,11 +141,11 @@ class ClientTests(unittest.TestCase):
     def test_description_request_failure_does_not_hide_schedule(self) -> None:
         with (
             patch(
-                "stars.client.courses._fetch_html",
+                "services.stars.client.courses._fetch_html",
                 return_value=(HTML, "https://ntu.example/course"),
             ),
             patch(
-                "stars.client.courses._fetch_course_content_html",
+                "services.stars.client.courses._fetch_course_content_html",
                 side_effect=NTURequestError("content page unavailable"),
             ),
         ):
@@ -161,11 +161,11 @@ class ClientTests(unittest.TestCase):
         with (
             patch.object(courses, "MAX_CACHE_ENTRIES", 2),
             patch(
-                "stars.client.courses._fetch_html",
+                "services.stars.client.courses._fetch_html",
                 side_effect=lambda _term, code: html_for(code),
             ),
             patch(
-                "stars.client.courses._fetch_course_content_html",
+                "services.stars.client.courses._fetch_course_content_html",
                 return_value=(CONTENT_HTML, "https://ntu.example/content"),
             ),
         ):

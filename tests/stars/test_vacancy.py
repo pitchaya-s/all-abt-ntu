@@ -9,8 +9,12 @@ from mcp import Client
 
 from server import create_server
 
-from stars.client import NTURequestError, vacancy
-from stars.parser import NTUPageError, parse_course_page, parse_course_vacancies
+from services.stars.client import NTURequestError, vacancy
+from services.stars.parser import (
+    NTUPageError,
+    parse_course_page,
+    parse_course_vacancies,
+)
 
 mcp = create_server()
 
@@ -178,8 +182,8 @@ class VacancyMCPTests(unittest.IsolatedAsyncioTestCase):
             "ZZ0001",
         )
         with (
-            patch("stars.tools.academic.fetch_course", return_value=course),
-            patch("stars.tools.academic.fetch_course_vacancies") as fetch,
+            patch("services.stars.tools.academic.fetch_course", return_value=course),
+            patch("services.stars.tools.academic.fetch_course_vacancies") as fetch,
         ):
             async with Client(mcp) as client:
                 result = await client.call_tool(
@@ -224,7 +228,7 @@ class VacancyMCPTests(unittest.IsolatedAsyncioTestCase):
             "status": "available",
             "retrieved_at": "2026-10-21T04:00:00+00:00",
         }
-        with patch("stars.tools.academic.fetch_course", return_value=course):
+        with patch("services.stars.tools.academic.fetch_course", return_value=course):
             async with Client(mcp) as client:
                 names = {tool.name for tool in (await client.list_tools()).tools}
                 self.assertIn("stars_get_index", names)
@@ -238,7 +242,7 @@ class VacancyMCPTests(unittest.IsolatedAsyncioTestCase):
                     if tool == "stars_get_index":
                         args["index"] = "00037"
                     with patch(
-                        "stars.tools.academic.fetch_course_vacancies",
+                        "services.stars.tools.academic.fetch_course_vacancies",
                         return_value=snapshot,
                     ):
                         result = await client.call_tool(tool, args)
@@ -257,7 +261,7 @@ class VacancyMCPTests(unittest.IsolatedAsyncioTestCase):
                         self.assertIsNone(data["indexes"][1]["vacancies_available"])
                     for status in ["closed", "term_mismatch"]:
                         with patch(
-                            "stars.tools.academic.fetch_course_vacancies",
+                            "services.stars.tools.academic.fetch_course_vacancies",
                             return_value={**snapshot, "status": status, "indexes": {}},
                         ):
                             result = await client.call_tool(tool, args)
@@ -269,7 +273,7 @@ class VacancyMCPTests(unittest.IsolatedAsyncioTestCase):
                         self.assertEqual(index["vacancy_status"], status)
                         self.assertIsNone(index["vacancies_available"])
                     with patch(
-                        "stars.tools.academic.fetch_course_vacancies",
+                        "services.stars.tools.academic.fetch_course_vacancies",
                         side_effect=NTURequestError("unavailable"),
                     ):
                         result = await client.call_tool(tool, args)

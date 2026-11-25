@@ -3,11 +3,11 @@
 import unittest
 from unittest.mock import AsyncMock, Mock, patch
 
-from careeraxis.browser.session import CareerAxisSession, SEARCH_PATH
-from ntulearn.client.session import Session
-from onestop.models import OneStopError
-from onestop.session import OneStopSession
-from stars.wish.session import WishSessionManager
+from services.careeraxis.browser.session import CareerAxisSession, SEARCH_PATH
+from services.ntulearn.client.session import Session
+from services.onestop.models import OneStopError
+from services.onestop.session import OneStopSession
+from services.stars.wish.session import WishSessionManager
 
 
 class ServiceAuthTests(unittest.TestCase):

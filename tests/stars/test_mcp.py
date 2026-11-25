@@ -5,9 +5,9 @@ from mcp import Client
 
 from server import create_server
 
-mcp = create_server("personal", check_dependencies=False)
-from stars.client.teaching import TeachingSnapshot
-from stars.domain import Course
+mcp = create_server("personal")
+from services.stars.client.teaching import TeachingSnapshot
+from services.stars.domain import Course
 
 from .mcp_fixtures import COURSE, EXAM_COURSE, GRADUATE_COURSE
 
@@ -15,9 +15,11 @@ from .mcp_fixtures import COURSE, EXAM_COURSE, GRADUATE_COURSE
 class MCPClientTests(unittest.IsolatedAsyncioTestCase):
     async def test_tools_discover_and_call_over_mcp_client(self) -> None:
         with (
-            patch("stars.tools.academic.fetch_course", return_value=COURSE) as fetch,
             patch(
-                "stars.tools.academic.fetch_course_vacancies",
+                "services.stars.tools.academic.fetch_course", return_value=COURSE
+            ) as fetch,
+            patch(
+                "services.stars.tools.academic.fetch_course_vacancies",
                 return_value={
                     "status": "term_mismatch",
                     "academic_year": 2026,
@@ -119,7 +121,7 @@ class MCPClientTests(unittest.IsolatedAsyncioTestCase):
                 )
 
                 with patch(
-                    "stars.tools.academic.fetch_graduate_course_schedule",
+                    "services.stars.tools.academic.fetch_graduate_course_schedule",
                     return_value=GRADUATE_COURSE,
                 ):
                     graduate_result = await client.call_tool(
@@ -138,7 +140,7 @@ class MCPClientTests(unittest.IsolatedAsyncioTestCase):
                 )
 
                 with patch(
-                    "stars.tools.academic.fetch_undergraduate_exam_schedule",
+                    "services.stars.tools.academic.fetch_undergraduate_exam_schedule",
                     return_value=EXAM_COURSE,
                 ):
                     exam_result = await client.call_tool(
@@ -200,7 +202,7 @@ class MCPClientTests(unittest.IsolatedAsyncioTestCase):
                 self.assertIn("credentials_configured", status.structured_content)
 
                 with patch(
-                    "stars.wish.session.WishSessionManager.get_stars_planner",
+                    "services.stars.wish.session.WishSessionManager.get_stars_planner",
                     return_value={
                         "service": "stars_planner",
                         "page_title": "STARS Planner",
@@ -224,7 +226,7 @@ class MCPClientTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(planner.structured_content["service"], "stars_planner")
 
                 with patch(
-                    "stars.wish.session.WishSessionManager.get_degree_audit",
+                    "services.stars.wish.session.WishSessionManager.get_degree_audit",
                     return_value={
                         "service": "degree_audit",
                         "page_title": "Degree Audit",
@@ -276,10 +278,11 @@ class MCPClientTests(unittest.IsolatedAsyncioTestCase):
 
         with (
             patch(
-                "stars.tools.academic.fetch_teaching_snapshot", side_effect=snapshots
+                "services.stars.tools.academic.fetch_teaching_snapshot",
+                side_effect=snapshots,
             ),
             patch(
-                "stars.tools.academic.fetch_course_prerequisite_metadata",
+                "services.stars.tools.academic.fetch_course_prerequisite_metadata",
                 return_value={"course_name": "Requested course", "prerequisite": None},
             ),
         ):

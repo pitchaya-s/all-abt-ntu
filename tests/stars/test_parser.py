@@ -1,8 +1,8 @@
 import unittest
 from pathlib import Path
 
-from stars.domain import session_signature
-from stars.parser import (
+from services.stars.domain import session_signature
+from services.stars.parser import (
     CourseUnavailable,
     NTUPageError,
     parse_course_description,
@@ -22,8 +22,10 @@ class CoursePageTests(unittest.TestCase):
     def test_public_graduate_course_timetable(self) -> None:
         graduate_html = load_fixture("ee6102-graduate-2026-1.html")
         course = parse_graduate_course_page(graduate_html, "EE6102")
-        self.assertEqual((course["course_code"], course["course_name"], course["au"]),
-                         ("EE6102", "Cyber Security & Blockchain Technology", 3.0))
+        self.assertEqual(
+            (course["course_code"], course["course_name"], course["au"]),
+            ("EE6102", "Cyber Security & Blockchain Technology", 3.0),
+        )
         self.assertEqual((course["academic_year"], course["term"]), (2026, "1"))
         groups = course["class_groups"]
         self.assertEqual([group["class_group"] for group in groups], ["A", "B"])
@@ -33,7 +35,15 @@ class CoursePageTests(unittest.TestCase):
         self.assertTrue(course["schedule_complete"])
         self.assertEqual(
             set(course),
-            {"course_code", "course_name", "au", "academic_year", "term", "schedule_complete", "class_groups"},
+            {
+                "course_code",
+                "course_name",
+                "au",
+                "academic_year",
+                "term",
+                "schedule_complete",
+                "class_groups",
+            },
         )
 
     def test_graduate_page_with_no_matching_course(self) -> None:
@@ -41,10 +51,14 @@ class CoursePageTests(unittest.TestCase):
         with self.assertRaises(CourseUnavailable):
             parse_graduate_course_page(graduate_html, "ZZ9999")
         with self.assertRaises(NTUPageError):
-            parse_graduate_course_page("<html><body>maintenance</body></html>", "EE6102")
+            parse_graduate_course_page(
+                "<html><body>maintenance</body></html>", "EE6102"
+            )
 
     def test_official_course_description(self) -> None:
-        description = parse_course_description(load_fixture("zz0001-content-2026-1.html"), "ZZ0001")
+        description = parse_course_description(
+            load_fixture("zz0001-content-2026-1.html"), "ZZ0001"
+        )
         self.assertIsNotNone(description)
         self.assertIn("example course one", description)
 
@@ -58,14 +72,21 @@ class CoursePageTests(unittest.TestCase):
         course = parse_course_page(load_fixture("zz0001-2026-1.html"), "ZZ0001")
         self.assertEqual(course.course_name, "EXAMPLE COURSE ONE~")
         self.assertEqual(course.au, 3.0)
-        self.assertEqual(course.details["prerequisite"], "MH1812 & SC1007 OR SC1007 & SC1124")
+        self.assertEqual(
+            course.details["prerequisite"], "MH1812 & SC1007 OR SC1007 & SC1124"
+        )
         self.assertEqual(len(course.indexes), 36)
-        self.assertEqual((next(iter(course.indexes)), list(course.indexes)[-1]), ("00001", "00036"))
+        self.assertEqual(
+            (next(iter(course.indexes)), list(course.indexes)[-1]), ("00001", "00036")
+        )
 
         sessions = course.indexes["00001"]
         tutorial = next(session for session in sessions if session.lesson_type == "TUT")
         lab = next(session for session in sessions if session.lesson_type == "LAB")
-        self.assertEqual((tutorial.group, tutorial.day, tutorial.start_time, tutorial.end_time), ("SCEA", "TUE", "16:30", "17:20"))
+        self.assertEqual(
+            (tutorial.group, tutorial.day, tutorial.start_time, tutorial.end_time),
+            ("SCEA", "TUE", "16:30", "17:20"),
+        )
         self.assertEqual(tutorial.teaching_weeks, tuple(range(2, 14)))
         self.assertEqual(lab.teaching_weeks, (1, 3, 5, 7, 9, 11, 13))
         self.assertEqual(lab.venue, "HWLAB2")
@@ -78,8 +99,14 @@ class CoursePageTests(unittest.TestCase):
         second_lecture = course.indexes["00051"][0]
         self.assertEqual(first_lecture.lesson_type, "LEC/STUDIO")
         self.assertEqual(first_lecture.day, "THU")
-        self.assertEqual(session_signature(first_lecture), session_signature(second_lecture))
-        lab = next(session for session in course.indexes["00050"] if session.lesson_type == "LAB")
+        self.assertEqual(
+            session_signature(first_lecture), session_signature(second_lecture)
+        )
+        lab = next(
+            session
+            for session in course.indexes["00050"]
+            if session.lesson_type == "LAB"
+        )
         self.assertEqual(lab.teaching_weeks, (2, 4, 6, 8, 10, 12))
 
     def test_zx0001_remark_is_not_misreported_as_prerequisite(self) -> None:
@@ -87,7 +114,13 @@ class CoursePageTests(unittest.TestCase):
         self.assertEqual(len(course.indexes), 12)
         self.assertIsNone(course.details.get("prerequisite"))
         self.assertEqual(course.details.get("remark"), "H2 Maths or equivalent")
-        self.assertTrue(all(session.lesson_type in {"LEC/STUDIO", "TUT"} for rows in course.indexes.values() for session in rows))
+        self.assertTrue(
+            all(
+                session.lesson_type in {"LEC/STUDIO", "TUT"}
+                for rows in course.indexes.values()
+                for session in rows
+            )
+        )
 
     def test_a_second_semester_response(self) -> None:
         course = parse_course_page(load_fixture("zz0001-2025-2.html"), "ZZ0001")
@@ -97,7 +130,9 @@ class CoursePageTests(unittest.TestCase):
 
     def test_explicit_weeks_and_unrecognized_remarks(self) -> None:
         self.assertEqual(parse_teaching_weeks("Teaching Wk2-13"), tuple(range(2, 14)))
-        self.assertEqual(parse_teaching_weeks("Teaching Wk1,3,5,7,9,11,13"), (1, 3, 5, 7, 9, 11, 13))
+        self.assertEqual(
+            parse_teaching_weeks("Teaching Wk1,3,5,7,9,11,13"), (1, 3, 5, 7, 9, 11, 13)
+        )
         self.assertIsNone(parse_teaching_weeks("Teaching Wk2-13 except recess"))
 
     def test_teaching_week_ranges_are_bounded_before_expansion(self) -> None:

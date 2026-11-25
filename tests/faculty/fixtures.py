@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import json
 from urllib.parse import parse_qs, urlsplit
 
-from faculty.client import DIRECTORY
+from services.faculty.client import DIRECTORY
 
 
 INTEREST_ID = "11111111-1111-4111-8111-111111111111"
@@ -19,17 +19,24 @@ OPTIONS = f"""<html><body>
 <label for="mobile">Artificial &amp; Augmented Intelligence</label>
 </body></html>""".encode()
 PROFILE = {
-    "title": "Assoc Prof Example Éclair", "url": "https://dr.ntu.edu.sg/entities/person/Example-Faculty",
-    "tag": "School of Example &amp; Testing", "email": "faculty@example.org",
+    "title": "Assoc Prof Example Éclair",
+    "url": "https://dr.ntu.edu.sg/entities/person/Example-Faculty",
+    "tag": "School of Example &amp; Testing",
+    "email": "faculty@example.org",
     "appointments": "Associate Professor, Example School<br/>Director, <em>Example Centre</em>",
     "interests": "Artificial &amp; Augmented Intelligence | Testing",
     "description": "<p>A fictional profile &amp; biography ...</p>",
-    "image": None, "unusedProviderField": "not needed",
+    "image": None,
+    "unusedProviderField": "not needed",
 }
 
 
 def fake_get(url, refresh=False):
-    snapshot = dict(retrieved_at=datetime(2026, 1, 1, tzinfo=timezone.utc), source_url=url, cached=False)
+    snapshot = dict(
+        retrieved_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        source_url=url,
+        cached=False,
+    )
     if url == DIRECTORY:
         return OPTIONS, snapshot
     parsed = urlsplit(url)
@@ -43,6 +50,9 @@ def fake_get(url, refresh=False):
     elif params["interests"][0] != "all":
         values = values[:1]
     total = len(values)
-    data = {"totalItems": total, "totalPages": (total + 9) // 10,
-            "items": values[(page - 1) * 10:page * 10]}
+    data = {
+        "totalItems": total,
+        "totalPages": (total + 9) // 10,
+        "items": values[(page - 1) * 10 : page * 10],
+    }
     return json.dumps(data).encode(), snapshot

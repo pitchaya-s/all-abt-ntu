@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from urllib.parse import urlsplit
 
-from library.models import FacilitySchedule
+from services.library.models import FacilitySchedule
 
 DIRECTORY = b"""<h1>Example Library</h1><a href="/map/abcdef123456">Floor 1</a>
 <a href="/space/100">Example Room</a><a href="/spaces?lid=10&amp;gid=20">Study Rooms</a>
@@ -65,8 +65,8 @@ def fake_facility_get(url, refresh=False):
 
 
 def fake_schedule(date, space_id=None, location_id=None, group_id=None, refresh=False):
-    from library.facilities import BASE
-    from library.facilities.schedule import parse_slots, schedule_path
+    from services.library.facilities import BASE
+    from services.library.facilities.schedule import parse_slots, schedule_path
 
     path = schedule_path(space_id, location_id, group_id)
     return FacilitySchedule(

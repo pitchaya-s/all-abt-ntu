@@ -5,6 +5,22 @@ class OperationError(RuntimeError):
     """A safe, user-facing operation failure."""
 
 
+def invalid_arguments(error, known_fields) -> str:
+    """Report schema fields without exposing submitted values or user-supplied keys."""
+    fields = sorted(
+        {
+            location[0]
+            for issue in error.errors(include_input=False, include_context=False)
+            if (location := issue["loc"]) and location[0] in known_fields
+        }
+    )
+    return (
+        "Invalid arguments. Check: " + ", ".join(fields) + "."
+        if fields
+        else "Invalid arguments. Check the accepted fields and types."
+    )
+
+
 def unexpected_error(
     name: str, error: Exception, *, message: str | None = None
 ) -> OperationError:

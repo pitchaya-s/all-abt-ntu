@@ -19,4 +19,4 @@ if __name__ == "__main__":
             side_effect=lambda path, date, refresh: fake_schedule(date, space_id=100),
         ),
     ):
-        main("personal", check_dependencies=False, application=application)
+        main("personal", application=application)

@@ -9,7 +9,7 @@ import click
 import typer
 from pydantic import ValidationError, validate_call
 
-from shared.errors import OperationError, unexpected_error
+from shared.errors import OperationError, invalid_arguments, unexpected_error
 
 from .common import fail
 from .config import ConfigError, service_environment
@@ -37,7 +37,8 @@ def application_scope():
         app_token = SESSION_APPLICATION.set(application)
         loop_token = SESSION_LOOP.set(loop)
         try:
-            yield application
+            with application.operation():
+                yield application
         except (
             click.ClickException,
             click.exceptions.Exit,
@@ -62,16 +63,20 @@ def application_scope():
 
 
 async def execute(function, arguments, *, side_effect=False):
+    from shared.http import request_budget
+
     try:
-        result = validate_call(function)(**arguments)
-        if inspect.isawaitable(result):
-            result = await result
-        return result
+        with request_budget():
+            result = validate_call(function)(**arguments)
+            if inspect.isawaitable(result):
+                result = await result
+            return result
     except OperationError:
         raise
     except ValidationError as error:
         if error.title == getattr(function, "__qualname__", None):
-            raise
+            fields = inspect.signature(function).parameters
+            raise OperationError(invalid_arguments(error, fields)) from None
         raise unexpected_error("CLI operation", error) from None
     except Exception as error:
         message = (

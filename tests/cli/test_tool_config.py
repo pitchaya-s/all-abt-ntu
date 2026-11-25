@@ -439,7 +439,7 @@ class ToolConfigTests(unittest.TestCase):
         self.assertEqual(config["tools"]["families"]["disabled"], [])
         self.assertEqual(config["env"]["stars"]["cache_ttl_seconds"], 120)
 
-    def test_settings_apply_before_import_and_process_environment_wins(self):
+    def test_settings_apply_after_import_and_process_environment_wins(self):
         import subprocess
         import sys
 
@@ -451,10 +451,12 @@ class ToolConfigTests(unittest.TestCase):
             "-c",
             "from unittest.mock import patch\n"
             "from cli.cli import create_app\n"
-            "with patch('cli.commands.stars.invoke'):\n"
-            "    create_app()(standalone_mode=False)\n"
-            "from stars.client.cache import CACHE_TTL_SECONDS\n"
-            "print('TTL:', CACHE_TTL_SECONDS)\n",
+            "from services.stars.client.cache import cache_ttl_seconds\n"
+            "def show(*args, **kwargs): print('TTL:', cache_ttl_seconds())\n"
+            "with patch('cli.commands.stars.invoke', side_effect=show),\\\n"
+            "     patch('cli.tools.commands.tool_names', side_effect=lambda *_: show() or []),\\\n"
+            "     patch('cli.tools.commands.registered_tools', side_effect=lambda *_: show() or []):\n"
+            "    create_app()(standalone_mode=False)\n",
         ]
         env = {**os.environ}
         env.pop("NTU_CACHE_TTL_SECONDS", None)

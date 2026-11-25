@@ -1,22 +1,31 @@
 """Synthetic term-wide HTML with shared indexes, aliases and uncertain sessions."""
 
-from stars.client.teaching import TeachingSnapshot
-from stars.parser.schedule import parse_teaching_schedule
+from services.stars.client.teaching import TeachingSnapshot
+from services.stars.parser.schedule import parse_teaching_schedule
 
 
 def block(code, rows, au="3 AU"):
-    header = f"<table><tr><td>{code}</td><td>Fictional course</td><td>{au}</td></tr></table>"
+    header = (
+        f"<table><tr><td>{code}</td><td>Fictional course</td><td>{au}</td></tr></table>"
+    )
     labels = ["INDEX", "TYPE", "GROUP", "DAY", "TIME", "VENUE", "REMARK"]
     table = (
         "<table>"
-        + "".join("<tr>" + "".join(f"<td>{value}</td>" for value in row) + "</tr>" for row in [labels, *rows])
+        + "".join(
+            "<tr>" + "".join(f"<td>{value}</td>" for value in row) + "</tr>"
+            for row in [labels, *rows]
+        )
         + "</table>"
     )
     return header + table
 
 
 def page(blocks, year=2030, semester=1):
-    return f"<html><body>Class Schedule {year} Semester {semester}" + "".join(blocks) + "</body></html>"
+    return (
+        f"<html><body>Class Schedule {year} Semester {semester}"
+        + "".join(blocks)
+        + "</body></html>"
+    )
 
 
 FULL_TIME = page(
@@ -41,7 +50,15 @@ FULL_TIME = page(
         block(
             "ZX0001",
             [
-                ["00004", "SEM", "A", "MON", "1100-1200", "LHN-TR+01", "Teaching Wk1-13"],
+                [
+                    "00004",
+                    "SEM",
+                    "A",
+                    "MON",
+                    "1100-1200",
+                    "LHN-TR+01",
+                    "Teaching Wk1-13",
+                ],
                 ["", "SEM", "B", "MON", "1400-1500", "LHN-TR-1", "Teaching Wk1-13"],
             ],
             au=".5 AU",
@@ -65,6 +82,7 @@ def snapshot(year=2030, semester=1, refresh=False):
     return TeachingSnapshot(
         year,
         term,
-        parse_teaching_schedule(FULL_TIME, 2030, "1") + parse_teaching_schedule(PART_TIME, 2030, "1"),
+        parse_teaching_schedule(FULL_TIME, 2030, "1")
+        + parse_teaching_schedule(PART_TIME, 2030, "1"),
         "2030-08-01T00:00:00+00:00",
     )

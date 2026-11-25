@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from careeraxis.models import AuthStatus
+from services.careeraxis.models import AuthStatus
 
 
 BASE = "https://careeraxis.ntu.edu.sg"

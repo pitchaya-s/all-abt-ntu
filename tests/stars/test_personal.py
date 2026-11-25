@@ -6,11 +6,15 @@ from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 
 from shared.credentials import delete_credentials
-from stars.client import NTURequestError
-from stars.parser import NTUPageError, parse_degree_audit_page, parse_stars_planner_page
-from stars.wish.forms import _is_login_page
-from stars.wish.models import NTUAuthError
-from stars.wish.session import (
+from services.stars.client import NTURequestError
+from services.stars.parser import (
+    NTUPageError,
+    parse_degree_audit_page,
+    parse_stars_planner_page,
+)
+from services.stars.wish.forms import _is_login_page
+from services.stars.wish.models import NTUAuthError
+from services.stars.wish.session import (
     DEGREE_AUDIT_URL,
     LOGIN_URL,
     PLANNER_URL,
@@ -26,7 +30,9 @@ PASSWORD_FORM = '<form action="/pls/webexe/ldap_login.login" method="post"><inpu
 
 
 class PersonalParserTests(unittest.TestCase):
-    def test_stars_planner_extracts_registered_courses_and_timetable_tables(self) -> None:
+    def test_stars_planner_extracts_registered_courses_and_timetable_tables(
+        self,
+    ) -> None:
         result = parse_stars_planner_page(PLANNER_HTML)
         self.assertEqual(result["service"], "stars_planner")
         self.assertEqual(result["registered_courses"][0]["course_code"], "ZZ0001")
@@ -44,19 +50,25 @@ class PersonalParserTests(unittest.TestCase):
         self.assertEqual(result["registered_courses_status"], "parsed")
         self.assertEqual(result["registered_courses"][0]["course_code"], "AB1234")
 
-    def test_course_selection_landing_is_not_reported_as_registered_courses(self) -> None:
+    def test_course_selection_landing_is_not_reported_as_registered_courses(
+        self,
+    ) -> None:
         html = """<html><head><title>STARS Planner</title></head><body><h1>Course Selection</h1>
         <table><tr><th>Course</th><th>Course Title</th><th>Index No</th></tr>
         <tr><td>AB1234</td><td>Available Course</td><td>00001</td></tr></table></body></html>"""
         with self.assertRaisesRegex(NTUPageError, "registered-course view was missing"):
             parse_stars_planner_page(html)
 
-    def test_degree_audit_extracts_academic_tables_and_excludes_identity_tables(self) -> None:
+    def test_degree_audit_extracts_academic_tables_and_excludes_identity_tables(
+        self,
+    ) -> None:
         result = parse_degree_audit_page(AUDIT_HTML)
         self.assertEqual(result["requirements"][0]["records"][0]["Balance AU"], "15")
         self.assertEqual(result["requirements_status"], "parsed")
         self.assertEqual(result["examination_results"][0]["records"][0]["Grade"], "A")
-        self.assertEqual(result["courses_registered"][0]["records"][0]["Index No"], "00002")
+        self.assertEqual(
+            result["courses_registered"][0]["records"][0]["Index No"], "00002"
+        )
         self.assertEqual(len(result["requirements"]), 1)
         self.assertEqual(len(result["examination_results"]), 1)
         self.assertEqual(len(result["courses_registered"]), 1)
@@ -64,9 +76,13 @@ class PersonalParserTests(unittest.TestCase):
 
     def test_unrecognized_personal_pages_are_rejected(self) -> None:
         with self.assertRaisesRegex(NTUPageError, "not recognizable"):
-            parse_stars_planner_page("<html><title>Unexpected</title><body>Changed</body></html>")
+            parse_stars_planner_page(
+                "<html><title>Unexpected</title><body>Changed</body></html>"
+            )
         with self.assertRaisesRegex(NTUPageError, "not recognizable"):
-            parse_degree_audit_page("<html><title>Unexpected</title><body>Changed</body></html>")
+            parse_degree_audit_page(
+                "<html><title>Unexpected</title><body>Changed</body></html>"
+            )
 
 
 class _FakeResponse:
@@ -93,17 +109,25 @@ class _FakeLocator:
             return
         self.page.submit_count += 1
         if "UID" in self.page.filled and "PW" not in self.page.filled:
-            self.page.html = "<p>MFA verification code</p>" if self.page.challenge else PASSWORD_FORM
+            self.page.html = (
+                "<p>MFA verification code</p>" if self.page.challenge else PASSWORD_FORM
+            )
         elif self.page.invalid:
-            self.page.html = '<p>Invalid username or password</p><form><input name="UID"></form>'
+            self.page.html = (
+                '<p>Invalid username or password</p><form><input name="UID"></form>'
+            )
         else:
             self.page.authenticated = True
-            self.page.html = "<html><title>STARS Login</title><body>Login successful</body></html>"
+            self.page.html = (
+                "<html><title>STARS Login</title><body>Login successful</body></html>"
+            )
         self.page.emit(200)
 
 
 class _FakePage:
-    def __init__(self, *, invalid: bool = False, challenge: bool = False, status: int = 200) -> None:
+    def __init__(
+        self, *, invalid: bool = False, challenge: bool = False, status: int = 200
+    ) -> None:
         self.invalid = invalid
         self.challenge = challenge
         self.status = status
@@ -134,7 +158,9 @@ class _FakePage:
             return _FakeResponse(self.status)
         self.destination = parse_qs(urlsplit(url).query).get("w_url", [url])[0]
         if not self.authenticated or self.expired:
-            self.html = USER_FORM.replace('/pls/webexe/ldap_login.login', self.form_action).replace('method="post"', f'method="{self.form_method}"')
+            self.html = USER_FORM.replace(
+                "/pls/webexe/ldap_login.login", self.form_action
+            ).replace('method="post"', f'method="{self.form_method}"')
             self.url = LOGIN_URL
             self.expired = False
         else:
@@ -175,14 +201,23 @@ class WishSessionTests(unittest.TestCase):
         if page is not None:
             page.on("response", manager._record_browser_response)
             manager._page = page
-        parser = patch("stars.wish.session.read_stars_planner", side_effect=lambda page: parse_stars_planner_page(page.content()))
+        parser = patch(
+            "services.stars.wish.session.read_stars_planner",
+            side_effect=lambda page: parse_stars_planner_page(page.content()),
+        )
         parser.start()
         self.addCleanup(parser.stop)
         return manager
 
     def test_stars_login_success_landing_is_not_mistaken_for_login_form(self) -> None:
-        self.assertFalse(_is_login_page("<html><title>STARS Login</title><body>Login successful</body></html>"))
-        self.assertTrue(_is_login_page("<html><body>Session expired. Please log in.</body></html>"))
+        self.assertFalse(
+            _is_login_page(
+                "<html><title>STARS Login</title><body>Login successful</body></html>"
+            )
+        )
+        self.assertTrue(
+            _is_login_page("<html><body>Session expired. Please log in.</body></html>")
+        )
 
     def test_browser_login_reuses_session_and_personal_cache(self) -> None:
         page = _FakePage()
@@ -219,11 +254,14 @@ class WishSessionTests(unittest.TestCase):
     def test_planner_expiry_during_load_reopens_authenticated_flow_once(self) -> None:
         page = _FakePage()
         manager = self._manager(page)
-        with patch("stars.wish.session.read_stars_planner", side_effect=[None, parse_stars_planner_page(PLANNER_HTML)]):
+        with patch(
+            "services.stars.wish.session.read_stars_planner",
+            side_effect=[None, parse_stars_planner_page(PLANNER_HTML)],
+        ):
             result = manager.get_stars_planner()
         self.assertEqual(result["registered_courses_status"], "parsed")
         self.assertEqual(page.goto_count, 2)
-        with patch("stars.wish.session.read_stars_planner", return_value=None):
+        with patch("services.stars.wish.session.read_stars_planner", return_value=None):
             with self.assertRaisesRegex(NTUAuthError, "expired again"):
                 manager.get_stars_planner(refresh=True)
 
@@ -272,9 +310,14 @@ class WishSessionTests(unittest.TestCase):
 
         with patch.object(manager, "_fetch_authenticated", side_effect=fetch):
             with ThreadPoolExecutor(max_workers=2) as callers:
-                jobs = [callers.submit(call, method) for method in (manager.get_stars_planner, manager.get_degree_audit)]
+                jobs = [
+                    callers.submit(call, method)
+                    for method in (manager.get_stars_planner, manager.get_degree_audit)
+                ]
                 results = [job.result(timeout=10) for job in jobs]
-        self.assertEqual({r["service"] for r in results}, {"stars_planner", "degree_audit"})
+        self.assertEqual(
+            {r["service"] for r in results}, {"stars_planner", "degree_audit"}
+        )
         self.assertEqual(len(browser_threads), 2)
         self.assertEqual(len(set(browser_threads)), 1)
         self.assertNotEqual(browser_threads[0], get_ident())
@@ -292,6 +335,7 @@ class WishSessionTests(unittest.TestCase):
         self.addCleanup(empty.close)
         with self.assertRaisesRegex(NTUAuthError, "auth save"):
             empty.get_degree_audit()
+
 
 if __name__ == "__main__":
     unittest.main()

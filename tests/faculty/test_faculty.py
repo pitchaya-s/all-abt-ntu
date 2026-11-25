@@ -7,11 +7,11 @@ from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 
 from mcp.server.mcpserver.exceptions import ToolError
-from shared.mcp import translate_errors
+from mcp_adapters.tools import translate_errors
 
-from faculty import parser
-from faculty.client import API, DIRECTORY, FacultyClient
-from faculty.models import FacultyError
+from services.faculty import parser
+from services.faculty.client import API, DIRECTORY, FacultyClient
+from services.faculty.models import FacultyError
 from public_http_client import PublicRequestError
 
 from .fixtures import INTEREST_ID, OPTIONS, OTHER_ID, PROFILE, fake_get

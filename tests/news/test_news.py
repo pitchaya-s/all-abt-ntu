@@ -5,11 +5,11 @@ from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 
 from mcp.server.mcpserver.exceptions import ToolError
-from shared.mcp import translate_errors
+from mcp_adapters.tools import translate_errors
 
-from news import parser
-from news.client import NewsClient
-from news.models import NewsError
+from services.news import parser
+from services.news.client import NewsClient
+from services.news.models import NewsError
 from public_http_client import PublicRequestError
 
 from .fixtures import ARTICLE, ARTICLE_URL, CATEGORY_ID, FORM, fake_get

@@ -31,23 +31,16 @@ def tool_families(names: list[str]) -> dict[str, set[str]]:
 
 
 def registered_tools(profile: str):
-    try:
-        from server import create_server
+    from server import create_server
 
-        async def discover():
-            server = create_server(profile, check_dependencies=False)
-            try:
-                return await server.list_tools()
-            finally:
-                await server.ntu_application.close()
+    async def discover():
+        server = create_server(profile)
+        try:
+            return await server.list_tools()
+        finally:
+            await server.ntu_application.close()
 
-        return asyncio.run(discover())
-    except ModuleNotFoundError as error:
-        if profile != "public" and error.name and error.name.startswith("playwright"):
-            raise ConfigError(
-                "Personal tools require Playwright. Install all-abt-ntu[cli,mcp,personal] and run setup again."
-            ) from error
-        raise
+    return asyncio.run(discover())
 
 
 def tool_names(profile: str) -> list[str]:
@@ -121,8 +114,8 @@ def effective_disabled(config: dict, profile: str, registered=None) -> set[str]:
 
 
 def prepare_upload_directory() -> None:
-    from onestop.attachments import upload_directory
-    from onestop.models import OneStopError
+    from services.onestop.attachments import upload_directory
+    from services.onestop.models import OneStopError
 
     try:
         directory = upload_directory()

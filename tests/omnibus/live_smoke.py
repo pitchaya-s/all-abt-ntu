@@ -5,7 +5,7 @@ import asyncio
 from jsonschema import Draft202012Validator
 from mcp import Client
 
-from omnibus.contracts import LTA_SERVICES
+from services.omnibus.contracts import LTA_SERVICES
 from server import create_server
 
 

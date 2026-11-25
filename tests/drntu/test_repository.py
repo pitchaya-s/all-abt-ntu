@@ -4,12 +4,12 @@ import unittest
 from unittest.mock import patch
 
 from mcp.server.mcpserver.exceptions import ToolError
-from shared.mcp import translate_errors
+from mcp_adapters.tools import translate_errors
 from application import Application
 
-from drntu.rest import datasets, parser, repository
-from drntu.models import RepositoryError
-from drntu.rest.models import SearchFilter
+from services.drntu.rest import datasets, parser, repository
+from services.drntu.models import RepositoryError
+from services.drntu.rest.models import SearchFilter
 from .fixtures import CONTAINER_ID, DOI, ITEM, ITEM_ID, VERSION, fake_get, hal
 
 

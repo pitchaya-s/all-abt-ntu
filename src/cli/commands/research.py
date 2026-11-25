@@ -54,7 +54,7 @@ def cmd_search(
 ):
     """Search DR-NTU publications by keywords or Solr query."""
     with application_scope() as application:
-        from drntu.rest import repository
+        from services.drntu.rest import repository
 
         return invoke(
             partial(repository.search, application.research),
@@ -89,7 +89,7 @@ def cmd_item_default(
 ):
     """Read a repository item's published metadata, including abstracts, citations, DOI, subjects and rights where supplied."""
     with application_scope() as application:
-        from drntu.rest import repository
+        from services.drntu.rest import repository
 
         return invoke(
             partial(repository.get_item, application.research),
@@ -119,7 +119,7 @@ def cmd_browse_communities(
 ):
     """Browse repository communities or collections."""
     with application_scope() as application:
-        from drntu.rest import repository
+        from services.drntu.rest import repository
 
         return invoke(
             partial(repository.browse, application.research),
@@ -155,7 +155,7 @@ def cmd_browse_collections(
 ):
     """Browse repository communities or collections."""
     with application_scope() as application:
-        from drntu.rest import repository
+        from services.drntu.rest import repository
 
         return invoke(
             partial(repository.browse, application.research),
@@ -210,7 +210,7 @@ def cmd_facets(
 ):
     """Discover search facet names, or supply a facet name to list its values and counts for the query/scope/filters."""
     with application_scope() as application:
-        from drntu.rest import repository
+        from services.drntu.rest import repository
 
         return invoke(
             partial(repository.get_facets, application.research),
@@ -250,7 +250,7 @@ def cmd_item_bundles(
 ):
     """List an item's file groups."""
     with application_scope() as application:
-        from drntu.rest import repository
+        from services.drntu.rest import repository
 
         return invoke(
             partial(repository.list_bundles, application.research),
@@ -286,7 +286,7 @@ def cmd_bundle_files(
 ):
     """List a bundle's file metadata: names, byte sizes, checksums, published rights and content URLs."""
     with application_scope() as application:
-        from drntu.rest import repository
+        from services.drntu.rest import repository
 
         return invoke(
             partial(repository.list_files, application.research),
@@ -323,7 +323,7 @@ def cmd_dataset(
 ):
     """Read a published DR-NTU Data dataset by doi: identifier: title, authors, descriptions, subjects, license and paginated file inventory."""
     with application_scope() as application:
-        from drntu.rest import datasets
+        from services.drntu.rest import datasets
 
         return invoke(
             partial(datasets.get_dataset, application.research),
@@ -350,7 +350,7 @@ def cmd_oai_info(
 ):
     """Describe DR-NTU's OAI-PMH repository, modification-date precision, deletion policy and earliest datestamp."""
     with application_scope() as application:
-        from drntu import oai
+        from services.drntu import oai
 
         return invoke(
             partial(oai.identify, application.research_oai),
@@ -374,7 +374,7 @@ def cmd_oai_formats(
 ):
     """List OAI metadata prefixes, namespaces and schemas."""
     with application_scope() as application:
-        from drntu import oai
+        from services.drntu import oai
 
         return invoke(
             partial(oai.formats, application.research_oai),
@@ -400,7 +400,7 @@ def cmd_oai_sets(
 ):
     """List OAI collection/community sets."""
     with application_scope() as application:
-        from drntu import oai
+        from services.drntu import oai
 
         return invoke(
             partial(oai.sets, application.research_oai),
@@ -450,7 +450,7 @@ def cmd_oai_records(
 ):
     """Read one bounded OAI records page, defaulting to oai_dc."""
     with application_scope() as application:
-        from drntu import oai
+        from services.drntu import oai
 
         return invoke(
             partial(oai.records, application.research_oai),
@@ -489,7 +489,7 @@ def cmd_oai_record(
 ):
     """Get one record by its OAI identifier, not a REST UUID."""
     with application_scope() as application:
-        from drntu import oai
+        from services.drntu import oai
 
         return invoke(
             partial(oai.get_record, application.research_oai),

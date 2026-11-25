@@ -5,7 +5,7 @@ from functools import partial
 
 import typer
 
-from omnibus.contracts import RouteFilter
+from services.omnibus.contracts import RouteFilter
 
 from ..execution import application_scope
 from ..output import render

@@ -8,8 +8,8 @@ from mcp_fixtures import COURSE, EXAM_COURSE, GRADUATE_COURSE
 from room_fixtures import snapshot as room_snapshot
 
 from server import main
-from stars.client import NTURequestError, validate_course_code
-from stars.client.validation import _academic_term
+from services.stars.client import NTURequestError, validate_course_code
+from services.stars.client.validation import _academic_term
 
 
 def course_fixture(course_code, academic_year, semester):
@@ -23,14 +23,19 @@ def course_fixture(course_code, academic_year, semester):
 if __name__ == "__main__":
     with ExitStack() as stack:
         stack.enter_context(
-            patch("stars.tools.rooms.get_teaching_snapshot", side_effect=room_snapshot)
-        )
-        stack.enter_context(
-            patch("stars.tools.academic.fetch_course", side_effect=course_fixture)
+            patch(
+                "services.stars.tools.rooms.get_teaching_snapshot",
+                side_effect=room_snapshot,
+            )
         )
         stack.enter_context(
             patch(
-                "stars.client.search._fetch_html",
+                "services.stars.tools.academic.fetch_course", side_effect=course_fixture
+            )
+        )
+        stack.enter_context(
+            patch(
+                "services.stars.client.search._fetch_html",
                 return_value=(
                     (
                         Path(__file__).parent / "fixtures" / "search-zz00-2026-1.html"
@@ -41,7 +46,7 @@ if __name__ == "__main__":
         )
         stack.enter_context(
             patch(
-                "stars.tools.academic.fetch_course_vacancies",
+                "services.stars.tools.academic.fetch_course_vacancies",
                 return_value={
                     "status": "term_mismatch",
                     "academic_year": 2026,
@@ -53,13 +58,13 @@ if __name__ == "__main__":
         )
         stack.enter_context(
             patch(
-                "stars.tools.academic.fetch_graduate_course_schedule",
+                "services.stars.tools.academic.fetch_graduate_course_schedule",
                 return_value=GRADUATE_COURSE,
             )
         )
         stack.enter_context(
             patch(
-                "stars.tools.academic.fetch_undergraduate_exam_schedule",
+                "services.stars.tools.academic.fetch_undergraduate_exam_schedule",
                 return_value=EXAM_COURSE,
             )
         )
@@ -70,7 +75,7 @@ if __name__ == "__main__":
         ):
             stack.enter_context(
                 patch(
-                    f"stars.wish.session.WishSessionManager.{target}",
+                    f"services.stars.wish.session.WishSessionManager.{target}",
                     side_effect=NTURequestError(
                         "Personal actions are disabled in protocol fixtures."
                     ),
@@ -84,8 +89,8 @@ if __name__ == "__main__":
         )
         stack.enter_context(
             patch(
-                "stars.client.http._request_html",
+                "services.stars.client.http._request_html",
                 side_effect=AssertionError("Offline test attempted HTTP"),
             )
         )
-        main("personal", check_dependencies=False)
+        main("personal")

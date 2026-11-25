@@ -10,15 +10,15 @@ from jsonschema import Draft202012Validator
 from mcp import Client
 from mcp.server import MCPServer
 
-from omnibus import mcp as mcp_server, parser
-from omnibus.client import (
+from services.omnibus import mcp as mcp_server, parser
+from services.omnibus.client import (
     _ASSETS,
     _BASE,
     _STOP_CACHE_TTL_SECONDS,
     OmnibusClient,
 )
-from omnibus.client.lta import ARRIVAL_URL, SERVICES_URL, STOPS_URL
-from omnibus.models import OmnibusError
+from services.omnibus.client.lta import ARRIVAL_URL, SERVICES_URL, STOPS_URL
+from services.omnibus.models import OmnibusError
 from tests.omnibus.fixtures import LTA_PREDICTIONS, RESPONSES, FixtureClient
 
 
@@ -42,19 +42,19 @@ class ClientTests(unittest.TestCase):
         c = FixtureClient()
         now = datetime(2026, 10, 26, tzinfo=timezone.utc)
         with (
-            patch("omnibus.client.stops.monotonic", return_value=100),
+            patch("services.omnibus.client.stops.monotonic", return_value=100),
             patch.object(c, "_now", return_value=now),
         ):
             first = c.list_stops("", "Blue", 20, 0)
         with (
-            patch("omnibus.client.stops.monotonic", return_value=101),
+            patch("services.omnibus.client.stops.monotonic", return_value=101),
             patch.object(c, "_now", return_value=now + timedelta(seconds=1)),
         ):
             mixed = c.list_stops("", None, 20, 0)
         self.assertFalse(mixed.cached)
         self.assertEqual(mixed.retrieved_at, first.retrieved_at)
         with patch(
-            "omnibus.client.stops.monotonic",
+            "services.omnibus.client.stops.monotonic",
             return_value=100 + _STOP_CACHE_TTL_SECONDS - 1,
         ):
             repeated = c.list_stops("", "Blue", 20, 0)
@@ -63,7 +63,7 @@ class ClientTests(unittest.TestCase):
         later = now + timedelta(seconds=_STOP_CACHE_TTL_SECONDS)
         with (
             patch(
-                "omnibus.client.stops.monotonic",
+                "services.omnibus.client.stops.monotonic",
                 return_value=100 + _STOP_CACHE_TTL_SECONDS,
             ),
             patch.object(c, "_now", return_value=later),
@@ -132,10 +132,10 @@ class ClientTests(unittest.TestCase):
                 with self.assertRaises(OmnibusError):
                     c.list_stops("", "Blue", 20, 0)
             self.assertFalse(c._stop_cache)
-        with patch("omnibus.client.stops.monotonic", return_value=100):
+        with patch("services.omnibus.client.stops.monotonic", return_value=100):
             c.list_stops("", "Blue", 20, 0)
         with patch(
-            "omnibus.client.stops.monotonic",
+            "services.omnibus.client.stops.monotonic",
             return_value=100 + _STOP_CACHE_TTL_SECONDS,
         ):
             with patch.object(c, "_post", side_effect=OmnibusError("offline")):
@@ -428,7 +428,7 @@ class ClientTests(unittest.TestCase):
 class ProtocolTests(unittest.IsolatedAsyncioTestCase):
     async def test_five_public_tools_schemas_calls_and_validation(self):
         server = MCPServer("omnibus-offline")
-        from shared.mcp import MCPAdapter
+        from mcp_adapters.tools import MCPAdapter
         from application import Application
         from unittest.mock import PropertyMock
 

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from contextlib import asynccontextmanager
 from types import SimpleNamespace
 
-from ntulearn.services.overview import whats_new
+from services.ntulearn.services.overview import whats_new
 
 
 class ConcurrentWorkflowTests(unittest.IsolatedAsyncioTestCase):

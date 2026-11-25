@@ -6,10 +6,10 @@ from jsonschema import Draft202012Validator
 from mcp import Client
 from mcp.server import MCPServer
 
-from onestop import mcp as mcp_server
-from onestop.client import OneStopClient
-from onestop.models import OneStopError
-from onestop.session import OneStopSession, page_url
+from services.onestop import mcp as mcp_server
+from services.onestop.client import OneStopClient
+from services.onestop.models import OneStopError
+from services.onestop.session import OneStopSession, page_url
 from shared.credentials import delete_credentials, read_credentials, save_credentials
 from tests.shared.credential_fixtures import stored_credentials
 from tests.onestop.fixtures import (
@@ -322,7 +322,7 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
     async def test_tool_schemas_read_calls_and_sanitized_errors(self):
         fixture = FixtureSession()
         server = MCPServer("onestop-offline")
-        from shared.mcp import MCPAdapter
+        from mcp_adapters.tools import MCPAdapter
         from application import Application
         from unittest.mock import PropertyMock
 

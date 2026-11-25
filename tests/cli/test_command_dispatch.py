@@ -3,6 +3,7 @@
 from contextlib import ExitStack, nullcontext
 from importlib import import_module
 from pathlib import Path
+from pkgutil import iter_modules
 import tempfile
 from typing import Literal, get_args, get_origin
 import unittest
@@ -77,12 +78,19 @@ class CommandDispatchTests(unittest.TestCase):
             courses_file.write_text("[]")
             for service in SERVICES:
                 module = import_module(f"cli.commands.{service}")
-                stack.enter_context(patch.object(module, "invoke", reached))
-                stack.enter_context(
-                    patch.object(
-                        module, "application_scope", lambda: nullcontext(Mock())
+                child_modules = [
+                    import_module(child.name)
+                    for child in iter_modules(
+                        getattr(module, "__path__", []), module.__name__ + "."
                     )
-                )
+                ]
+                for dispatcher in (module, *child_modules):
+                    stack.enter_context(patch.object(dispatcher, "invoke", reached))
+                    stack.enter_context(
+                        patch.object(
+                            dispatcher, "application_scope", lambda: nullcontext(Mock())
+                        )
+                    )
             stack.enter_context(
                 patch("cli.session.session_scope", lambda: nullcontext())
             )

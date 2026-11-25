@@ -4,9 +4,9 @@ import unittest
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 
-from library import parser
-from library.client import LibraryClient
-from library.models import LibraryError
+from services.library import parser
+from services.library.client import LibraryClient
+from services.library.models import LibraryError
 from .fixtures import LOCAL, fake_get
 
 
@@ -24,7 +24,10 @@ class LibraryTests(unittest.TestCase):
             client.http,
             "get",
             side_effect=[
-                (json.dumps(electronic).encode(), fake_get("https://example.org/pnxs?q=x")[1]),
+                (
+                    json.dumps(electronic).encode(),
+                    fake_get("https://example.org/pnxs?q=x")[1],
+                ),
                 fake_get("https://example.org/edelivery/x"),
             ],
         ):
@@ -32,7 +35,9 @@ class LibraryTests(unittest.TestCase):
         self.assertEqual(result.holdings, [])
         self.assertEqual(result.electronic_services[0].notes, "Current students only.")
         self.assertTrue(
-            result.electronic_services[0].url.startswith("https://ntu-sp.primo.exlibrisgroup.com/")
+            result.electronic_services[0].url.startswith(
+                "https://ntu-sp.primo.exlibrisgroup.com/"
+            )
         )
 
     def test_record_normalization_keeps_source_signals_separate(self):
@@ -64,15 +69,25 @@ class LibraryTests(unittest.TestCase):
     def test_canonical_record_lookup_and_central_adaptor(self):
         client = LibraryClient()
         with patch.object(client.http, "get", side_effect=fake_get):
-            self.assertEqual(client.get_record("almaExample001").record.record_id, "almaExample001")
-            self.assertEqual(client.get_record("cdi_example_article", "PC").record.context, "PC")
+            self.assertEqual(
+                client.get_record("almaExample001").record.record_id, "almaExample001"
+            )
+            self.assertEqual(
+                client.get_record("cdi_example_article", "PC").record.context, "PC"
+            )
             with self.assertRaisesRegex(LibraryError, "could not find"):
                 client.get_record("missing")
 
     def test_invalid_queries_fail_before_network_access(self):
         client = LibraryClient()
         with patch.object(client.http, "get") as get:
-            for query in [" ", "term;other", "term\nother", "term\0other", "term\tother"]:
+            for query in [
+                " ",
+                "term;other",
+                "term\nother",
+                "term\0other",
+                "term\tother",
+            ]:
                 with self.assertRaises(LibraryError):
                     client.search(query)
             get.assert_not_called()
@@ -90,10 +105,14 @@ class LibraryTests(unittest.TestCase):
         client = LibraryClient()
         snapshot = fake_get("https://example.org/pnxs?q=x")[1]
         data = {"info": {"total": 2, "first": 1, "last": 1}, "docs": [LOCAL]}
-        with patch.object(client.http, "get", return_value=(json.dumps(data).encode(), snapshot)):
+        with patch.object(
+            client.http, "get", return_value=(json.dumps(data).encode(), snapshot)
+        ):
             with self.assertRaises(LibraryError):
                 client.search("algorithms", offset=1)
-        with patch.object(client.http, "get", return_value=(json.dumps(LOCAL).encode(), snapshot)):
+        with patch.object(
+            client.http, "get", return_value=(json.dumps(LOCAL).encode(), snapshot)
+        ):
             with self.assertRaises(LibraryError):
                 client.get_record("different")
 
@@ -103,6 +122,8 @@ class LibraryTests(unittest.TestCase):
         with self.assertRaises(LibraryError):
             parser.summary(value)
         value = deepcopy(LOCAL)
-        value["delivery"]["link"] = [{"linkURL": "javascript:alert(1)", "linkType": "viewit"}]
+        value["delivery"]["link"] = [
+            {"linkURL": "javascript:alert(1)", "linkType": "viewit"}
+        ]
         with self.assertRaises(LibraryError):
             parser.record(value)

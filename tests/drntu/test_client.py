@@ -5,8 +5,8 @@ from urllib.parse import parse_qs
 
 import httpx
 
-from drntu.models import RepositoryError
-from drntu.rest.client import RepositoryClient
+from services.drntu.models import RepositoryError
+from services.drntu.rest.client import RepositoryClient
 
 
 class ClientTests(unittest.TestCase):

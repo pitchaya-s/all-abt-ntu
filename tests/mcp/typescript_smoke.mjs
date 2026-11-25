@@ -19,7 +19,7 @@ for (const profile of ["public", "personal"]) {
   try {
     await profileClient.connect(new StdioClientTransport({
       command: "python",
-      args: ["-c", `from cli.tools.commands import effective_disabled; from server import main; main('${profile}', check_dependencies=False, disabled_tools=effective_disabled({'tools': {'enabled': [], 'disabled': [], 'families': {'enabled': [], 'disabled': []}}}, '${profile}'))`],
+      args: ["-c", `from cli.tools.commands import effective_disabled; from server import main; main('${profile}', disabled_tools=effective_disabled({'tools': {'enabled': [], 'disabled': [], 'families': {'enabled': [], 'disabled': []}}}, '${profile}'))`],
       cwd: profileCwd,
       env: { PYTHONPATH: join(tests, "..", "src"), PYTHON_KEYRING_BACKEND: "keyring.backends.null.Keyring" },
     }));
@@ -45,7 +45,7 @@ const transport = new StdioClientTransport({
 const client = new Client({ name: "ntu-typescript-test", version: "1.0" }, { capabilities: { elicitation: { form: {} } } });
 let confirmations = 0;
 client.setRequestHandler(ElicitRequestSchema, async request => {
-  assert(request.params.message.includes("stars_save_stars_plan"));
+      assert(request.params.message.includes("stars save stars plan"));
   confirmations++;
   return { action: "accept", content: { confirm: true } };
 });

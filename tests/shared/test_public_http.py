@@ -12,6 +12,11 @@ URL = "https://example.org/feed"
 
 
 class PublicHTTPTests(unittest.TestCase):
+    def setUp(self):
+        schedulers = patch.dict("public_http_client._SCHEDULERS", clear=True)
+        schedulers.start()
+        self.addCleanup(schedulers.stop)
+
     def make_client(self, handler, *, content_types=("application/json",)):
         client = PublicHTTPClient(
             "Example service",
@@ -210,12 +215,10 @@ class PublicHTTPTests(unittest.TestCase):
         self.assertNotIn("private error detail", str(caught.exception))
 
     def test_rate_limits_honor_long_numeric_and_http_date_delays(self):
-        for value in [
-            "120",
-            (datetime.now(timezone.utc) + timedelta(minutes=5)).strftime(
-                "%a, %d %b %Y %H:%M:%S GMT"
-            ),
-        ]:
+        date = (datetime.now(timezone.utc) + timedelta(minutes=5)).strftime(
+            "%a, %d %b %Y %H:%M:%S GMT"
+        )
+        for url, value in ((URL, "120"), ("https://static.example.org/feed", date)):
             seen = []
 
             def handle(request, value=value, seen=seen):
@@ -229,7 +232,9 @@ class PublicHTTPTests(unittest.TestCase):
                 patch("public_http_client.time.sleep"),
                 self.assertRaises(PublicRequestError),
             ):
-                client.get(URL)
+                client.get(url)
+            with self.assertRaisesRegex(PublicRequestError, "cooldown"):
+                client.get(url + "?another=1")
             self.assertEqual(len(seen), 1)
 
     def test_redirected_rate_limit_applies_to_the_host_that_sent_it(self):

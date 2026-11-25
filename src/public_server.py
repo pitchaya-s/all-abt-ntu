@@ -2,8 +2,8 @@
 
 from mcp.server import MCPServer
 
-from shared.catalog import PUBLIC_INSTRUCTIONS, register_public
-from shared.mcp import MCPAdapter
+from mcp_adapters.catalog import PUBLIC_INSTRUCTIONS, register_public
+from mcp_adapters.tools import MCPAdapter
 
 
 INSTRUCTIONS = PUBLIC_INSTRUCTIONS

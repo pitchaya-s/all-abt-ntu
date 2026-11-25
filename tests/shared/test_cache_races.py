@@ -8,9 +8,9 @@ from unittest.mock import patch
 
 import httpx
 
-from drntu.models import RepositoryError
-from drntu.oai.client import BASE, OAIClient
-from drntu.rest.client import API, RepositoryClient
+from services.drntu.models import RepositoryError
+from services.drntu.oai.client import BASE, OAIClient
+from services.drntu.rest.client import API, RepositoryClient
 from public_http_client import PublicHTTPClient
 
 URL = "https://example.org/feed"
@@ -85,7 +85,7 @@ class CacheRaceTests(unittest.TestCase):
                 raise ValueError("invalid JSON")
 
             with (
-                patch("drntu.rest.client.json.loads", side_effect=parse),
+                patch("services.drntu.rest.client.json.loads", side_effect=parse),
                 self.assertRaises(RepositoryError),
             ):
                 client.get("/example")
@@ -109,7 +109,7 @@ class CacheRaceTests(unittest.TestCase):
                 raise RepositoryError("invalid OAI envelope")
 
             with (
-                patch("drntu.oai.client.envelope", side_effect=parse),
+                patch("services.drntu.oai.client.envelope", side_effect=parse),
                 self.assertRaises(RepositoryError),
             ):
                 client.request("Identify")

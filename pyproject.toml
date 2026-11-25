@@ -31,11 +31,15 @@ personal = ["playwright>=1.50,<2", "browser-cookie3>=0.20,<1"]
 browser-cookies = ["browser-cookie3>=0.20,<1"]
 
 [dependency-groups]
-dev = ["all-abt-ntu[cli]"]
+dev = ["all-abt-ntu[cli]", "httpx2>=2.10,<3", "jsonschema>=4.20,<5"]
 hosted = ["all-abt-ntu[mcp]"]
+docs = ["mkdocs==1.6.1", "mkdocs-material==9.8.2"]
 
 [tool.uv]
 default-groups = ["dev", "hosted"]
+
+[tool.uv.dependency-groups]
+docs = { requires-python = ">=3.11" }
 
 [project.urls]
 Homepage = "https://github.com/pitchaya-s/all-abt-ntu"
@@ -58,19 +62,10 @@ exclude = [
 
 [tool.hatch.build.targets.wheel]
 only-include = [
-    "src/careeraxis",
     "src/cli",
-    "src/drntu",
-    "src/faculty",
-    "src/library",
-    "src/mazemap",
-    "src/news",
-    "src/ntulearn",
-    "src/omnibus",
-    "src/onestop",
-    "src/service",
+    "src/mcp_adapters",
+    "src/services",
     "src/shared",
-    "src/stars",
     "src/application.py",
     "src/server.py",
     "src/public_server.py",

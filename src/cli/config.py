@@ -10,44 +10,15 @@ import tempfile
 from typing import Any
 
 from shared.paths import config_dir
+from shared.settings import SETTINGS, resolved_settings, settings_scope
 
 PROFILES = ("public", "personal")
 _ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
+_SECRET_NAME = re.compile(
+    r"(?:^|_)(?:password|passwd|secret|token|cookies?|credentials?|api_key|private_key)(?:_|$)",
+    re.IGNORECASE,
+)
 _CONFIG_LOCATION_VARS = {"XDG_CONFIG_HOME", "APPDATA", "HOME", "USERPROFILE"}
-# Each entry maps a friendly key to its existing environment variable, type and limits.
-SETTINGS: dict[
-    str, dict[str, tuple[str, type, int | float | None, int | float | None]]
-] = {
-    "stars": {
-        "cache_ttl_seconds": ("NTU_CACHE_TTL_SECONDS", int, 0, None),
-        "personal_cache_ttl_seconds": ("NTU_PERSONAL_CACHE_TTL_SECONDS", int, 0, 86400),
-    },
-    "ntulearn": {
-        "cache_ttl_seconds": ("NTULEARN_CACHE_TTL_SECONDS", int, 0, 86400),
-        "headless": ("NTULEARN_HEADLESS", bool, None, None),
-        "browser_cookies": ("NTULEARN_BROWSER_COOKIES", bool, None, None),
-        "request_concurrency": ("NTULEARN_REQUEST_CONCURRENCY", int, 1, 8),
-        "request_interval_seconds": ("NTULEARN_REQUEST_INTERVAL_SECONDS", float, 0, 5),
-        "timeout_seconds": ("NTULEARN_TIMEOUT_SECONDS", float, 1, 120),
-    },
-    "careeraxis": {
-        "cache_ttl_seconds": ("CAREERAXIS_CACHE_TTL_SECONDS", int, 0, 3600),
-        "headless": ("CAREERAXIS_HEADLESS", bool, None, None),
-    },
-    "onestop": {"upload_dir": ("NTU_ONESTOP_UPLOAD_DIR", str, None, None)},
-    "public_http": {
-        "concurrency": ("NTU_PUBLIC_HTTP_CONCURRENCY", int, 1, 8),
-        "interval_seconds": ("NTU_PUBLIC_HTTP_INTERVAL_SECONDS", float, 0, 10),
-        "timeout_seconds": ("NTU_PUBLIC_HTTP_TIMEOUT_SECONDS", float, 1, 120),
-        "max_retry_delay_seconds": (
-            "NTU_PUBLIC_HTTP_MAX_RETRY_DELAY_SECONDS",
-            float,
-            0,
-            30,
-        ),
-    },
-    "browser": {"browsers_path": ("PLAYWRIGHT_BROWSERS_PATH", str, None, None)},
-}
 
 
 class ConfigError(Exception):
@@ -58,11 +29,25 @@ def config_path() -> Path:
     return config_dir() / "tools.json"
 
 
+def secret_setting(name: str) -> bool:
+    return bool(_SECRET_NAME.search(name))
+
+
+def visible_settings(settings: dict) -> dict:
+    return {
+        section: {
+            name: "[hidden]" if section == "other" and secret_setting(name) else value
+            for name, value in values.items()
+        }
+        for section, values in settings.items()
+    }
+
+
 def setting_entry(section: str, name: str, value, *, parse: bool = False):
     if section == "other":
-        if name == "NTULEARN_SESSION_COOKIE":
+        if parse and secret_setting(name):
             raise ConfigError(
-                "Set NTULEARN_SESSION_COOKIE in the process environment. The configuration file is plain text."
+                "This setting can contain a secret. Use the keyring or the documented process environment option."
             )
         if (
             not _ENV_NAME.fullmatch(name)
@@ -175,26 +160,36 @@ def load_config(*, validate_mcp: bool = True) -> dict:
     return data
 
 
-def apply_config_env(config: dict) -> list[str]:
-    """Inherit explicit process environment values ahead of saved defaults."""
-    added = []
+def configured_environment(config: dict) -> dict[str, str]:
+    values = {}
     for section, settings in config["env"].items():
         for name, value in settings.items():
+            if section == "other" and secret_setting(name):
+                continue
             variable, rendered = setting_entry(section, name, value)
-            if variable not in os.environ:
-                os.environ[variable] = rendered
-                added.append(variable)
-    return added
+            values[variable] = rendered
+    return values
 
 
 @contextmanager
-def service_environment():
-    """Apply service settings for a CLI command independently of MCP policy."""
-    added = apply_config_env(load_config(validate_mcp=False))
+def service_environment(config: dict | None = None):
+    """Resolve once, forwarding environment-only settings to child processes."""
+    if config is None:
+        config = load_config(validate_mcp=False)
+    defaults = configured_environment(config)
+    settings = resolved_settings(defaults)
+    forwarded = {
+        name: value
+        for name, value in defaults.items()
+        if name not in os.environ
+        and (name not in settings or name == "PLAYWRIGHT_BROWSERS_PATH")
+    }
+    os.environ.update(forwarded)
     try:
-        yield
+        with settings_scope(settings):
+            yield settings
     finally:
-        for variable in added:
+        for variable in forwarded:
             os.environ.pop(variable, None)
 
 

@@ -9,13 +9,14 @@ from unittest.mock import patch
 from mcp import Client
 from mcp.types import ElicitResult
 
-from onestop.browser import action_result
+from services.onestop.browser import action_result
 from server import create_server
+from shared.action_review import ActionReview
 
 
 class ProfileBoundaryTests(unittest.IsolatedAsyncioTestCase):
     async def test_public_tools_retain_agent_guidance(self):
-        server = create_server("public", check_dependencies=False)
+        server = create_server("public")
         tools = {tool.name: tool for tool in await server.list_tools()}
         self.assertIn(
             "not room availability", tools["mazemap_search_places"].description
@@ -25,9 +26,7 @@ class ProfileBoundaryTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_read_profiles_only_advertise_read_only_tools(self):
         for profile in ("public",):
-            async with Client(
-                create_server(profile, check_dependencies=False)
-            ) as client:
+            async with Client(create_server(profile)) as client:
                 tools = (await client.list_tools()).tools
                 self.assertTrue(tools)
                 self.assertEqual(
@@ -49,10 +48,10 @@ class ProfileBoundaryTests(unittest.IsolatedAsyncioTestCase):
                     self.assertNotIn(name, names)
 
     async def test_one_stop_submission_requires_host_confirmation(self):
-        server = create_server("personal", check_dependencies=False)
+        server = create_server("personal")
         args = {"draft_id": "a" * 16, "action": "submit"}
         result_value = action_result(
-            "submit_request", "https://example.org", verified=True
+            "submit_request", "https://example.org", verified=True, outcome="completed"
         )
         requests = []
 
@@ -64,11 +63,16 @@ class ProfileBoundaryTests(unittest.IsolatedAsyncioTestCase):
             requests.append(request.message)
             return ElicitResult(action="accept", content={"confirm": True})
 
-        with patch.object(
-            server.ntu_application.onestop_session,
-            "workflow",
-            return_value=result_value,
-        ) as submit:
+        session = server.ntu_application.onestop_session
+        self.addAsyncCleanup(server.ntu_application.close)
+        with (
+            patch.object(
+                session,
+                "inspect_workflow",
+                return_value=ActionReview("Submit Example request"),
+            ),
+            patch.object(session, "workflow", return_value=result_value) as submit,
+        ):
             async with Client(server, elicitation_callback=decline) as client:
                 self.assertTrue(
                     (await client.call_tool("onestop_submit_request", args)).is_error
@@ -91,17 +95,26 @@ class ProfileBoundaryTests(unittest.IsolatedAsyncioTestCase):
                 )
         self.assertEqual(len(requests), 3)
         self.assertTrue(
-            all("onestop_submit_request" in message for message in requests)
+            all("Submit Example request" in message for message in requests)
         )
-        self.assertTrue(all(args["draft_id"] in message for message in requests))
+        self.assertTrue(all(args["draft_id"] not in message for message in requests))
 
     async def test_confirmation_rejects_non_boolean_values(self):
-        server = create_server("personal", check_dependencies=False)
+        server = create_server("personal")
 
         async def malformed(context, request):
             return ElicitResult(action="accept", content={"confirm": "yes"})
 
-        with patch.object(server.ntu_application.onestop_session, "workflow") as submit:
+        session = server.ntu_application.onestop_session
+        self.addAsyncCleanup(server.ntu_application.close)
+        with (
+            patch.object(
+                session,
+                "inspect_workflow",
+                return_value=ActionReview("Submit Example request"),
+            ),
+            patch.object(session, "workflow") as submit,
+        ):
             async with Client(server, elicitation_callback=malformed) as client:
                 result = await client.call_tool(
                     "onestop_submit_request", {"draft_id": "a" * 16}
@@ -114,8 +127,8 @@ class ProfileBoundaryTests(unittest.IsolatedAsyncioTestCase):
         program = (
             "import sys; import server; "
             "assert not any(name in sys.modules for name in "
-            "('ntulearn', 'onestop', 'careeraxis', 'playwright', "
-            "'stars.tools.personal', 'library.personal_tools'))"
+            "('services.ntulearn', 'services.onestop', 'services.careeraxis', 'playwright', "
+            "'services.stars.tools.personal', 'services.library.personal_tools'))"
         )
         completed = subprocess.run(
             [sys.executable, "-c", program], cwd=root, capture_output=True, text=True

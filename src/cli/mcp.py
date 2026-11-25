@@ -2,20 +2,20 @@
 
 from functools import partial
 
-from .config import ConfigError, apply_config_env, load_config
+from .config import ConfigError, load_config, service_environment
 
 
 def run_server(profile=None):
     try:
         current = load_config()
-        apply_config_env(current)
         from .tools.commands import effective_disabled
         from server import main
 
         selected = profile or current["profile"]
-        main(
-            selected,
-            select_disabled_tools=partial(effective_disabled, current, selected),
-        )
+        with service_environment(current):
+            main(
+                selected,
+                select_disabled_tools=partial(effective_disabled, current, selected),
+            )
     except ConfigError as error:
         raise ValueError(str(error)) from None

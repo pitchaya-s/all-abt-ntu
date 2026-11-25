@@ -7,11 +7,11 @@ from jsonschema import Draft202012Validator
 from mcp import Client
 from mcp.server import MCPServer
 
-from careeraxis import mcp as mcp_server, parser
-from careeraxis.client import CareerAxisClient
-from careeraxis.models import CareerAxisError
-from careeraxis.browser.session import CareerAxisSession
-from careeraxis.browser.snapshots import _PORTAL_SNAPSHOT, _SEARCH_SNAPSHOT
+from services.careeraxis import mcp as mcp_server, parser
+from services.careeraxis.client import CareerAxisClient
+from services.careeraxis.models import CareerAxisError
+from services.careeraxis.browser.session import CareerAxisSession
+from services.careeraxis.browser.snapshots import _PORTAL_SNAPSHOT, _SEARCH_SNAPSHOT
 from shared.credentials import read_credentials, delete_credentials, save_credentials
 from tests.shared.credential_fixtures import stored_credentials
 from tests.careeraxis.fixtures import BASE, SNAPSHOT, FixtureSession, records
@@ -298,7 +298,7 @@ class BrowserTests(unittest.TestCase):
 class ProtocolTests(unittest.IsolatedAsyncioTestCase):
     async def test_nine_read_tools_schemas_calls_and_sanitized_errors(self):
         server = MCPServer("careeraxis-offline")
-        from shared.mcp import MCPAdapter
+        from mcp_adapters.tools import MCPAdapter
         from application import Application
         from unittest.mock import PropertyMock
 
