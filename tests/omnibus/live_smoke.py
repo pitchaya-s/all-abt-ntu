@@ -13,10 +13,8 @@ async def main():
     try:
         async with Client(server) as client:
             tools = {tool.name: tool for tool in (await client.list_tools()).tools}
-            for name, arguments in (
-                ("omnibus_list_routes", {}),
-                ("omnibus_get_service_status", {"route_code": "Blue"}),
-            ):
+
+            async def call(name, **arguments):
                 result = await client.call_tool(name, arguments)
                 if result.is_error:
                     raise RuntimeError(
@@ -28,6 +26,46 @@ async def main():
                 assert result.structured_content["source_urls"]
                 assert result.structured_content["retrieved_at"]
                 print(name + ": OK", flush=True)
+                return result.structured_content
+
+            assert any(
+                route["route_code"] == "Blue"
+                for route in (await call("omnibus_list_routes"))["routes"]
+            )
+            assert (await call("omnibus_get_service_status", route_code="Blue"))[
+                "schedules"
+            ]
+            await call("omnibus_get_live_buses", route_code="Blue")
+            stops = await call("omnibus_list_stops", route_code="Blue", limit=1)
+            stop = stops["stops"][0]
+            arrivals = await call(
+                "omnibus_get_arrivals",
+                route_filter="Blue",
+                stop_query=stop["stop_code"],
+                source="shuttle",
+            )
+            assert any(
+                row["stop_code"] == stop["stop_code"]
+                for row in arrivals["shuttle_arrivals"]
+            )
+            for route in ("179", "179A", "199"):
+                stops = await call("omnibus_list_stops", route_code=route, limit=1)
+                if stops["routes_without_stop_data"]:
+                    print(
+                        f"LTA {route}: upstream provided no stops. Arrivals unverified."
+                    )
+                    continue
+                stop = stops["stops"][0]
+                arrivals = await call(
+                    "omnibus_get_arrivals",
+                    route_filter=route,
+                    stop_query=stop["stop_code"],
+                    source="lta",
+                )
+                assert any(
+                    row["stop_code"] == stop["stop_code"]
+                    for row in arrivals["lta_arrivals"]
+                )
     finally:
         await server.ntu_application.close()
 

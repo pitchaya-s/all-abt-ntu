@@ -19,7 +19,7 @@ class StopMethods:
             raise OmnibusError(
                 "Choose a campus shuttle route or service 179, 179A, or 199."
             )
-        records, urls, retrieved_times = [], [], []
+        records, urls, retrieved_times, uncovered = [], [], [], []
         all_cached = True
         for code in codes:
             # Share stop metadata across lookups without caching live estimates.
@@ -46,10 +46,18 @@ class StopMethods:
                     self._stop_cache[code] = entry
                     all_cached = False
                 _, retrieved_at, stops, url = entry
+                if not stops:
+                    uncovered.append(code)
                 records.extend(stop.model_copy(deep=True) for stop in stops)
                 urls.append(url)
                 retrieved_times.append(retrieved_at)
-        return records, list(dict.fromkeys(urls)), min(retrieved_times), all_cached
+        return (
+            records,
+            list(dict.fromkeys(urls)),
+            min(retrieved_times),
+            all_cached,
+            uncovered,
+        )
 
     def list_stops(
         self,
@@ -67,7 +75,7 @@ class StopMethods:
             or offset < 0
         ):
             raise OmnibusError("Use a limit from 1 to 100 and a nonnegative offset.")
-        records, urls, retrieved_at, cached = self._stop_records(
+        records, urls, retrieved_at, cached, uncovered = self._stop_records(
             [route_code] if route_code else None
         )
         folded_query = query.casefold().strip()
@@ -87,6 +95,7 @@ class StopMethods:
             stops=page,
             total_count=len(filtered),
             next_offset=next_offset,
+            routes_without_stop_data=uncovered,
         )
 
     @staticmethod

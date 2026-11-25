@@ -83,6 +83,19 @@ class ClientTests(unittest.TestCase):
             c.list_stops("hall", "Blue", 20, 0).stops[0].name, "Example Hall"
         )
 
+    def test_missing_upstream_stop_data_is_distinct_from_a_filter_miss(self):
+        c = FixtureClient()
+        self.assertEqual(c.list_stops("unknown", "Blue").routes_without_stop_data, [])
+        stops = c.list_stops(route_code="179A")
+        self.assertEqual(stops.stops, [])
+        self.assertEqual(stops.routes_without_stop_data, ["179A"])
+        arrivals = c.get_arrivals(route_filter="179A", source="lta")
+        self.assertEqual(arrivals.lta_arrivals, [])
+        self.assertEqual(arrivals.routes_without_stop_data, ["179A"])
+        self.assertTrue(
+            all(call[0] == "DataActionGetPickupCheckPoints" for call in c.calls)
+        )
+
     def test_arrivals_reuse_stop_metadata_but_fetch_each_estimate_live(self):
         c = FixtureClient()
         first = c.get_arrivals("Blue", "hall", "shuttle")
@@ -205,7 +218,7 @@ class ClientTests(unittest.TestCase):
         self.assertIsNone(missing.eta_minutes)
         self.assertIsNone(missing.next_eta_minutes)
         with patch.object(
-            c, "_stop_records", return_value=([stop] * 21, [], c._now(), False)
+            c, "_stop_records", return_value=([stop] * 21, [], c._now(), False, [])
         ):
             with self.assertRaisesRegex(OmnibusError, "More than 20"):
                 c.get_arrivals(None, "", "all")
@@ -309,6 +322,12 @@ class ClientTests(unittest.TestCase):
                 json.loads(args["body"])["versionInfo"],
                 {"moduleVersion": "module-version", "apiVersion": "api-version"},
             )
+        with (
+            patch.object(c, "_metadata", return_value=metadata),
+            patch.object(c, "_read", return_value=b"[]"),
+            self.assertRaisesRegex(OmnibusError, "unexpected response for Read"),
+        ):
+            c._post("Read", "MainFlow.BusStop", inputs={})
 
     def test_network_is_bounded_and_refuses_external_hosts(self):
         c = OmnibusClient(

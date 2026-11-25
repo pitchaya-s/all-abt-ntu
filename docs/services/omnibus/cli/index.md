@@ -73,7 +73,7 @@ Use `ntu bus stops --help` for the current interface.
 
 #### Result
 
-The result may include: `retrieved_at`, `source_urls`, `cached`, `stops`, `total_count`, `next_offset`.
+The result may include: `retrieved_at`, `source_urls`, `cached`, `stops`, `total_count`, `next_offset`, `routes_without_stop_data`.
 
 For the corresponding MCP operation and its field types, see the [MCP schema](../mcp/index.md#omnibus_list_stops).
 
@@ -99,7 +99,7 @@ Use `ntu bus arrivals --help` for the current interface.
 
 #### Result
 
-The result may include: `retrieved_at`, `source_urls`, `cached`, `route_filter`, `stop_query`, `shuttle_arrivals`, `lta_arrivals`.
+The result may include: `retrieved_at`, `source_urls`, `cached`, `route_filter`, `stop_query`, `shuttle_arrivals`, `lta_arrivals`, `routes_without_stop_data`.
 
 For the corresponding MCP operation and its field types, see the [MCP schema](../mcp/index.md#omnibus_get_arrivals).
 

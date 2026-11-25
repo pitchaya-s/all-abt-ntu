@@ -5,6 +5,12 @@ from .common import listing, table
 routes = listing("Routes", "routes", ("route_code", "description", "long_name"))
 
 
+def _stop_coverage(console, data):
+    uncovered = data.get("routes_without_stop_data")
+    if uncovered:
+        console.print("Omnibus supplied no stop data for: " + ", ".join(uncovered))
+
+
 def stops(console, data, *, related_stops=None):
     page = data.get("stops") or []
     selected = {(stop.get("name"), stop.get("stop_code")) for stop in page}
@@ -25,6 +31,7 @@ def stops(console, data, *, related_stops=None):
         if route and route not in grouped[key]["routes"]:
             grouped[key]["routes"].append(route)
     table(console, "Stops", grouped.values(), ("name", "stop_code", "routes"))
+    _stop_coverage(console, data)
     if data.get("total_count") is not None:
         console.print(f"Total stop-route entries: {data['total_count']}")
     if data.get("next_offset") is not None:
@@ -61,6 +68,7 @@ def arrivals(console, data):
         )
     if not shuttle and not lta:
         console.print("Arrivals: No estimates available.")
+    _stop_coverage(console, data)
 
 
 def live(console, data):

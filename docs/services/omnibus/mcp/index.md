@@ -83,6 +83,7 @@ Returns matching route-stop associations, with `total_count` and `next_offset`. 
 | `stops` | array of [`Stop`](types.md#mcp-type-stop) | Yes | — |
 | `total_count` | `integer` | Yes | minimum: `0` |
 | `next_offset` | `integer` or `null` | No | default: `null`; minimum: `0` |
+| `routes_without_stop_data` | array of `string` | No | Queried routes with no stop associations in the upstream response. |
 
 Unknown fields are not accepted.
 
@@ -113,6 +114,7 @@ Returns `shuttle_arrivals` and `lta_arrivals` separately. LTA minute estimates a
 | `stop_query` | `string` | Yes | — |
 | `shuttle_arrivals` | array of [`ShuttleArrival`](types.md#mcp-type-shuttlearrival) | Yes | — |
 | `lta_arrivals` | array of [`LtaArrival`](types.md#mcp-type-ltaarrival) | Yes | — |
+| `routes_without_stop_data` | array of `string` | No | Queried routes with no stop associations in the upstream response. |
 
 Unknown fields are not accepted.
 

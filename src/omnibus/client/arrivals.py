@@ -35,7 +35,7 @@ class ArrivalMethods:
                     "The selected route does not match the arrival source; choose the matching shuttle or lta source."
                 )
             codes = [route_filter]
-        stops, source_urls, _, _ = self._stop_records(codes)
+        stops, source_urls, _, _, uncovered = self._stop_records(codes)
         query = stop_query.strip().casefold()
         stops = [
             stop
@@ -71,6 +71,7 @@ class ArrivalMethods:
             stop_query=stop_query,
             shuttle_arrivals=shuttle_rows,
             lta_arrivals=lta_rows,
+            routes_without_stop_data=uncovered,
         )
 
     def get_service_status(

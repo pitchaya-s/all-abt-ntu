@@ -28,7 +28,11 @@ class MetadataMethods:
             manifest = json.loads(raw)["manifest"]
             module_version = manifest["versionToken"]
             versions = manifest["urlVersions"]
-            if not isinstance(versions, dict):
+            if (
+                not isinstance(versions, dict)
+                or not isinstance(module_version, str)
+                or not module_version
+            ):
                 raise TypeError
         except (ValueError, KeyError, TypeError):
             raise OmnibusError(
@@ -137,6 +141,10 @@ class MetadataMethods:
                     raise OmnibusError(
                         f"NTU Omnibus returned invalid JSON for {name}."
                     ) from None
+                if not isinstance(envelope, dict):
+                    raise OmnibusError(
+                        f"NTU Omnibus returned an unexpected response for {name}."
+                    )
                 exception = envelope.get("exception")
                 if exception:
                     message = (

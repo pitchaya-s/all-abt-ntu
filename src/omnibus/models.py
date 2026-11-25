@@ -73,6 +73,10 @@ class Stops(Snapshot):
     stops: list[Stop]
     total_count: int = Field(ge=0)
     next_offset: int | None = Field(default=None, ge=0)
+    routes_without_stop_data: list[str] = Field(
+        default_factory=list,
+        description="Queried routes for which Omnibus supplied no stops.",
+    )
 
 
 class ShuttleArrival(Model):
@@ -100,6 +104,10 @@ class Arrivals(Snapshot):
     stop_query: str
     shuttle_arrivals: list[ShuttleArrival]
     lta_arrivals: list[LtaArrival]
+    routes_without_stop_data: list[str] = Field(
+        default_factory=list,
+        description="Queried routes for which Omnibus supplied no stops.",
+    )
 
 
 class RouteSchedule(Model):

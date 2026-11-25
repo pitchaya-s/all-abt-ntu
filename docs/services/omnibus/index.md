@@ -23,13 +23,15 @@ The app is hosted at [apps.ntu.edu.sg/NTUOmnibus](https://apps.ntu.edu.sg/NTUOmn
 
 Route path geometry is outside the current tool outputs. A missing vehicle or arrival in a snapshot does not establish that a route is not operating.
 
+Stop and arrival results include `routes_without_stop_data` when a queried route's stop feed is empty.
+
 For public bus arrivals, [LTA DataMall's dynamic datasets](https://datamall.lta.gov.sg/content/datamall/en/dynamic-data.html) are an official alternative to evaluate if an API key and its terms are acceptable. They do not establish a replacement for NTU's campus shuttle data; this integration continues to use the NTU app.
 
 ### Checks
 
-Synthetic tests cover native route IDs and input flags, stop-cache reuse and expiry, cache isolation and concurrent reads, fresh arrival estimates, per-source arrival lookups, missing estimates, result limits, endpoint discovery, CSRF recovery, bounded HTTP reads, schemas and public HTTP integration. On 6 November 2026, the bounded smoke check verified route listing and one service-status lookup; arrival tools were not reverified. Live results can change at any time.
+Synthetic tests cover native route IDs and input flags, stop-cache reuse and expiry, cache isolation and concurrent reads, fresh arrival estimates, per-source arrival lookups, missing estimates, result limits, endpoint discovery, CSRF recovery, bounded HTTP reads, schemas and public HTTP integration. Live results can change at any time.
 
-To run a bounded live check of routes and one service status:
+To run a bounded live check of routes, service status, and sample stops and arrivals:
 
 ```sh
 uv run python -m tests.omnibus.live_smoke
