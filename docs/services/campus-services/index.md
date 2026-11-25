@@ -18,7 +18,7 @@ The shared public HTTP client pools connections, bounds responses to 8 MB, uses 
 ### Sources
 
 - [NTU general directory](https://www.ntu.edu.sg/life-at-ntu/leisure-and-dining/general-directory/) supplies filter labels and IDs.
-- [GetLocations](https://www.ntu.edu.sg/life-at-ntu/leisure-and-dining/general-directory/GetLocations/) returns location cards, twelve per page. Verified parameters: `page`, `locationTypes`, and `locationCategories`. The tested `listingKeyword` parameter was ignored; keyword and address matching are therefore local.
+- [GetLocations](https://www.ntu.edu.sg/life-at-ntu/leisure-and-dining/general-directory/GetLocations/) supplies the directory entries used for keyword and address searches.
 
 ### Tests
 

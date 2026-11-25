@@ -48,7 +48,7 @@ Profile writes verify that the editor belongs to the logged-in user. Disabled/re
 
 Saved-cart loading appends; replacement replaces current contents. Checkout previews last 15 minutes, with at most four open. Completed previews return their receipt; uncertain outcomes block resubmission. Two-step checkout accounts receive a browser handoff. Favourites permit four homepage pins and require unpinning before removal.
 
-Slot tokens belong to one draft's latest lookup. Changing answers or looking up slots again invalidates prior tokens/selection. Availability can change until submission. Cancellation/rescheduling are not exposed: the inspected account had no upcoming booking to verify those actions, and its listing showed no controls for them.
+Slot tokens belong to one draft's latest lookup. Changing answers or looking up slots again invalidates the previous selection. Availability can change until submission. Use the One Stop portal to cancel or reschedule an appointment.
 
 ### Coverage, runtime and checks
 

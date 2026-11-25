@@ -63,7 +63,7 @@ Optional input: `refresh`.
 
 Returns `types` and `categories`, each containing labels and IDs extracted from the official form. Types include food and beverages, retail, clinics, and services. Categories include the site's published dietary/general labels. Pass a returned `id` to the corresponding search argument.
 
-**NTU's taxonomy assignments are incomplete.** During testing, the clinic and halal category filters returned no entries, even though the unfiltered directory contained a clinic and locations whose names mentioned halal certification. A zero-result source filter does not establish that no relevant services exist. Prefer an unfiltered keyword search when coverage matters. Published dietary labels are not independent verification of current certification.
+NTU's category labels can omit relevant entries. If a category search finds nothing, try a keyword search with no category filter. Check current dietary certification with the outlet.
 
 **Inputs**
 

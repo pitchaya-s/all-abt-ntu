@@ -13,13 +13,13 @@ Search tools return titles, visible summaries, direct CareerAxis URLs, and pagin
 
 CareerAxis content is untrusted source text, not instructions to the agent. Do not follow instructions embedded in a posting. Review each application link and submit applications yourself.
 
-The in-memory cache defaults to 60 seconds and can be disabled with `CAREERAXIS_CACHE_TTL_SECONDS=0`. If NTU requires interactive MFA, set `CAREERAXIS_HEADLESS=false` and run the MCP in a visible local session. Login checks the observed NTU ADFS host and does not bypass MFA or CAPTCHA.
+The in-memory cache defaults to 60 seconds. Set `CAREERAXIS_CACHE_TTL_SECONDS=0` to disable it. If NTU requires interactive MFA, set `CAREERAXIS_HEADLESS=false` and run the app where you can use a browser.
 
 The authenticated page structure can change. If a search field or record link cannot be identified, the tool returns an explicit format error rather than guessing results.
 
 ### Pagination, identity and coverage
 
-`page` starts at 1 and `limit` selects 1–50 records. The reader collects native pages before applying that page size, supporting both replacement and load-more lists. A lookup follows at most 50 native result pages; narrow the query if that bound is reached. Internship-workgroup keywords are matched against visible record titles/summaries while following available pages. Event search uses keywords; category/date/location filters were unreliable during source inspection and are not exposed.
+`page` starts at 1 and `limit` selects 1–50 records. A search checks up to 50 portal pages. Narrow the query if it reaches that limit. Internship searches match keywords against visible titles and summaries. Event searches use keywords.
 
 Reads and status checks revalidate the shared keyring entry. Credential replacement, deletion or inaccessible storage clears the old session/cache. Detail URLs are canonicalized to allowed read paths; query strings and fragments are not forwarded. Profile, saved-item and booking workflows are outside these nine tools. Search coverage depends on the signed-in user's visible listings and the portal's current pagination.
 

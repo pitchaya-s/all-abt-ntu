@@ -21,12 +21,6 @@ All tools return typed structured results with `retrieved_at`, `source_url`, and
 | `https://api.mazemap.com/api/pois/{poi_id}/?srid=4326` | Place details and routing endpoint validation |
 | `https://routing.mazemap.com/routing/v2/a-to-b/` | Walking routes with `campusCollectionTag=ntu-sg`, English text, and metric units |
 
-The supplied campus information, single-building, POI-type, floor-outline, and web configuration endpoints were also inspected. Their useful metadata is already supplied by collection/building/place responses, while polygon data and web application settings are unnecessary for these tools.
-
-The bulk campus POI endpoint returned 2,000 entries and a limit of 2,000. Its `zlevel=1` response included rooms on other levels. The integration uses the dedicated search service instead of treating that bulk response as complete or correctly floor-filtered.
-
-Provider documentation: [search](https://mazemap.atlassian.net/wiki/spaces/MCSH/pages/3761668097/Developers+Guide+Search+-+JS+SDK), [v2 routing](https://mazemap.atlassian.net/wiki/spaces/MCSH/pages/3304685834/Supplementary+Guide+for+Version+2+Routing+in+MazeMap+JS+API). The [older Data API reference](https://github.com/MazeMap/Data-API) is deprecated.
-
 ### Tests
 
 Offline parser, request, cache, failure, and stdio schema tests use synthetic map fixtures:
