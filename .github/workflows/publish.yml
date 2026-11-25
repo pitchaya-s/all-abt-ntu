@@ -35,7 +35,15 @@ jobs:
               raise SystemExit(f"Release tag {tag!r} does not match package version {version!r}.")
           PY
       - run: uv sync --locked --extra cli --extra mcp --extra personal
-      - run: uv run --no-sync python -m unittest discover -s tests -t . -q
+      - run: uv run --no-sync playwright install --with-deps chromium
+      - name: Run offline tests
+        env:
+          NTU_TEST_REQUIRE_CHROMIUM: '1'
+          HTTP_PROXY: http://127.0.0.1:1
+          HTTPS_PROXY: http://127.0.0.1:1
+          ALL_PROXY: http://127.0.0.1:1
+          NO_PROXY: localhost,127.0.0.1
+        run: uv run --no-sync python -m unittest discover -s tests -t . -q
       - run: uv build --no-sources
       - run: uvx --from twine==7.0.0 twine check --strict dist/*
       - name: Check installed wheel

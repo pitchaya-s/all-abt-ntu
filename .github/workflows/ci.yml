@@ -37,6 +37,7 @@ jobs:
         run: uv run --no-sync --with mypy==2.4.1 python tools/check_mypy_baseline.py
       - name: Run offline tests
         env:
+          NTU_TEST_REQUIRE_CHROMIUM: '1'
           HTTP_PROXY: http://127.0.0.1:1
           HTTPS_PROXY: http://127.0.0.1:1
           ALL_PROXY: http://127.0.0.1:1
