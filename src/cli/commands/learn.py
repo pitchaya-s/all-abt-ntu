@@ -40,8 +40,10 @@ def is_content_url(value: str) -> bool:
     return "://" in value or value.lower().startswith("ntulearn.ntu.edu.sg/")
 
 
-def content_reference(course_or_url: str, content_id: Optional[str]) -> tuple[str, str]:
-    """Resolve an NTULearn content URL or an explicit course and content ID."""
+def content_reference(
+    course_or_url: str, content_id: Optional[str], *, refresh: bool = False
+) -> tuple[str, str]:
+    """Resolve a content URL or a course reference and content ID."""
     candidate = (
         content_id if content_id and is_content_url(content_id) else course_or_url
     )
@@ -97,9 +99,21 @@ def content_reference(course_or_url: str, content_id: Optional[str]) -> tuple[st
             if not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", item):
                 raise ValueError
         if candidate == content_id and course_or_url != course:
-            raise typer.BadParameter(
-                "The URL's course ID does not match the supplied course ID."
-            )
+            from services.ntulearn.client.client import is_course_code
+
+            supplied = course_or_url
+            if is_course_code(supplied):
+                with application_scope() as application:
+                    supplied = invoke(
+                        application.learn.resolve_course_id,
+                        {"course_id": supplied, "refresh": refresh},
+                        False,
+                        show_result=False,
+                    )
+            if supplied != course:
+                raise typer.BadParameter(
+                    "The URL's course ID does not match the supplied course."
+                )
         return course, item
     except ValueError:
         raise typer.BadParameter(
@@ -148,7 +162,9 @@ def cmd_courses_default(
 def cmd_content_default(
     course_id: Annotated[
         str,
-        typer.Argument(help="The NTULearn course ID returned by ntu learn courses."),
+        typer.Argument(
+            help="Course code or Blackboard course ID from ntu learn courses."
+        ),
     ],
     parent_id: Optional[str] = typer.Option(
         None,
@@ -165,9 +181,11 @@ def cmd_content_default(
     ),
 ):
     """Read one level of course content."""
-    if parent_id and is_content_url(parent_id):
-        _, parent_id = content_reference(course_id, parent_id)
     with application_scope() as application:
+        if parent_id and is_content_url(parent_id):
+            course_id, parent_id = content_reference(
+                course_id, parent_id, refresh=refresh
+            )
         return invoke(
             application.learn.get_course_contents,
             {
@@ -186,7 +204,9 @@ def cmd_content_default(
 def cmd_content_tree(
     course_id: Annotated[
         str,
-        typer.Argument(help="The NTULearn course ID returned by ntu learn courses."),
+        typer.Argument(
+            help="Course code or Blackboard course ID from ntu learn courses."
+        ),
     ],
     max_depth: Annotated[
         int, typer.Option(help="Maximum nesting depth to traverse. Default: 5.")
@@ -230,8 +250,8 @@ def cmd_content_tree(
 def cmd_attachments(
     course_id: str = typer.Argument(
         ...,
-        metavar="COURSE_ID_OR_URL",
-        help="The NTULearn course ID, or a supported document or lecture URL.",
+        metavar="COURSE_OR_URL",
+        help="Course code, Blackboard course ID, or supported document or lecture URL.",
     ),
     content_id: Optional[str] = typer.Argument(
         None,
@@ -247,8 +267,10 @@ def cmd_attachments(
     ),
 ):
     """List attachments using a course and content ID, or an NTULearn content URL."""
-    course_id, content_id = content_reference(course_id, content_id)
     with application_scope() as application:
+        course_id, content_id = content_reference(
+            course_id, content_id, refresh=refresh
+        )
         return invoke(
             application.learn.get_content_attachments,
             {
@@ -267,8 +289,8 @@ def cmd_attachments(
 def cmd_files_read(
     course_id: str = typer.Argument(
         ...,
-        metavar="COURSE_ID_OR_URL",
-        help="The NTULearn course ID, or a supported document or lecture URL.",
+        metavar="COURSE_OR_URL",
+        help="Course code, Blackboard course ID, or supported document or lecture URL.",
     ),
     content_id: str = typer.Argument(
         ...,
@@ -292,14 +314,14 @@ def cmd_files_read(
     ),
 ):
     """Read an attachment as text. Supply course and content IDs, or a content URL, plus the attachment ID."""
-    if attachment_id is None:
-        attachment_id = content_id
-        course_id, content_id = content_reference(course_id, None)
-    else:
-        course_id, content_id = content_reference(course_id, content_id)
     with application_scope() as application:
         from services.ntulearn.services import files
 
+        if attachment_id is None:
+            attachment_id = content_id
+            course_id, content_id = content_reference(course_id, None)
+        else:
+            course_id, content_id = content_reference(course_id, content_id)
         return invoke(
             partial(files.read_file_content, application.learn),
             {
@@ -318,8 +340,8 @@ def cmd_files_read(
 def cmd_files_download(
     course_id: str = typer.Argument(
         ...,
-        metavar="COURSE_ID_OR_URL",
-        help="The NTULearn course ID, or a supported document or lecture URL.",
+        metavar="COURSE_OR_URL",
+        help="Course code, Blackboard course ID, or supported document or lecture URL.",
     ),
     content_id: str = typer.Argument(
         ...,
@@ -343,12 +365,12 @@ def cmd_files_download(
     ),
 ):
     """Download an attachment using course and content IDs, or a content URL, plus the attachment ID."""
-    if attachment_id is None:
-        attachment_id = content_id
-        course_id, content_id = content_reference(course_id, None)
-    else:
-        course_id, content_id = content_reference(course_id, content_id)
     with application_scope() as application:
+        if attachment_id is None:
+            attachment_id = content_id
+            course_id, content_id = content_reference(course_id, None)
+        else:
+            course_id, content_id = content_reference(course_id, content_id)
         return invoke(
             application.learn.download_file,
             {
@@ -368,8 +390,8 @@ def cmd_files_download(
 def cmd_videos_download(
     course_id: str = typer.Argument(
         ...,
-        metavar="COURSE_ID_OR_URL",
-        help="The NTULearn course ID, or a supported document or lecture URL.",
+        metavar="COURSE_OR_URL",
+        help="Course code, Blackboard course ID, or supported document or lecture URL.",
     ),
     content_id: Optional[str] = typer.Argument(
         None,
@@ -389,10 +411,10 @@ def cmd_videos_download(
     ),
 ):
     """Download a Kaltura video using course and content IDs, or an NTULearn content URL."""
-    course_id, content_id = content_reference(course_id, content_id)
     with application_scope() as application:
         from services.ntulearn.services import videos
 
+        course_id, content_id = content_reference(course_id, content_id)
         return invoke(
             partial(videos.download_video, application.learn),
             {
@@ -411,7 +433,9 @@ def cmd_videos_download(
 def cmd_courses_download(
     course_id: Annotated[
         str,
-        typer.Argument(help="The NTULearn course ID returned by ntu learn courses."),
+        typer.Argument(
+            help="Course code or Blackboard course ID from ntu learn courses."
+        ),
     ],
     destination: str = typer.Option(
         ...,
@@ -472,7 +496,9 @@ def cmd_courses_download(
 def cmd_announcements(
     course_id: Annotated[
         str,
-        typer.Argument(help="The NTULearn course ID returned by ntu learn courses."),
+        typer.Argument(
+            help="Course code or Blackboard course ID from ntu learn courses."
+        ),
     ],
     limit: int = typer.Option(50, "--limit", "-l", help="Maximum number of results."),
     offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
@@ -502,7 +528,9 @@ def cmd_announcements(
 def cmd_grades(
     course_id: Annotated[
         str,
-        typer.Argument(help="The NTULearn course ID returned by ntu learn courses."),
+        typer.Argument(
+            help="Course code or Blackboard course ID from ntu learn courses."
+        ),
     ],
     limit: int = typer.Option(50, "--limit", "-l", help="Maximum number of results."),
     offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
@@ -542,7 +570,9 @@ def cmd_calendar(
         Optional[str], typer.Option(help="End of the date or time range in ISO format.")
     ] = None,
     course_id: Optional[str] = typer.Option(
-        None, "--course", help="The NTULearn course ID returned by ntu learn courses."
+        None,
+        "--course",
+        help="Course code or Blackboard course ID from ntu learn courses.",
     ),
     limit: int = typer.Option(50, "--limit", "-l", help="Maximum number of results."),
     offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
@@ -579,7 +609,9 @@ def cmd_upcoming(
     until: Annotated[
         Optional[str], typer.Option(help="End of the date or time range in ISO format.")
     ] = None,
-    course_ids: Optional[str] = typer.Option(None, "--course-ids", help="JSON value."),
+    course_ids: Optional[str] = typer.Option(
+        None, "--course-ids", help="JSON array of course codes or Blackboard IDs."
+    ),
     item_type: Annotated[
         Optional[str],
         typer.Option(help="Restrict calendar results to the selected item type."),
@@ -627,7 +659,9 @@ def cmd_digest(
     until: Annotated[
         Optional[str], typer.Option(help="End of the date or time range in ISO format.")
     ] = None,
-    course_ids: Optional[str] = typer.Option(None, "--course-ids", help="JSON value."),
+    course_ids: Optional[str] = typer.Option(
+        None, "--course-ids", help="JSON array of course codes or Blackboard IDs."
+    ),
     max_items: Annotated[
         int, typer.Option(help="Maximum number of items to include. Default: 200.")
     ] = 200,
@@ -674,7 +708,9 @@ def cmd_messages_list(
         ),
     ] = "inbox",
     course_id: Optional[str] = typer.Option(
-        None, "--course", help="The NTULearn course ID returned by ntu learn courses."
+        None,
+        "--course",
+        help="Course code or Blackboard course ID from ntu learn courses.",
     ),
     since: Annotated[
         Optional[str],
@@ -728,7 +764,9 @@ def cmd_messages_read(
         ),
     ],
     course_id: Optional[str] = typer.Option(
-        None, "--course", help="The NTULearn course ID returned by ntu learn courses."
+        None,
+        "--course",
+        help="Course code or Blackboard course ID from ntu learn courses.",
     ),
     conversation_id: Annotated[
         Optional[str],
@@ -771,7 +809,9 @@ def cmd_messages_read(
 def cmd_users(
     course_id: Annotated[
         str,
-        typer.Argument(help="The NTULearn course ID returned by ntu learn courses."),
+        typer.Argument(
+            help="Course code or Blackboard course ID from ntu learn courses."
+        ),
     ],
     limit: int = typer.Option(50, "--limit", "-l", help="Maximum number of results."),
     offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
@@ -803,7 +843,9 @@ def cmd_users(
 def cmd_groups_default(
     course_id: Annotated[
         str,
-        typer.Argument(help="The NTULearn course ID returned by ntu learn courses."),
+        typer.Argument(
+            help="Course code or Blackboard course ID from ntu learn courses."
+        ),
     ],
     limit: int = typer.Option(50, "--limit", "-l", help="Maximum number of results."),
     offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
@@ -835,7 +877,9 @@ def cmd_groups_default(
 def cmd_groups_members(
     course_id: Annotated[
         str,
-        typer.Argument(help="The NTULearn course ID returned by ntu learn courses."),
+        typer.Argument(
+            help="Course code or Blackboard course ID from ntu learn courses."
+        ),
     ],
     group_id: Annotated[
         str,
@@ -874,7 +918,9 @@ def cmd_groups_members(
 def cmd_search_default(
     course_id: Annotated[
         str,
-        typer.Argument(help="The NTULearn course ID returned by ntu learn courses."),
+        typer.Argument(
+            help="Course code or Blackboard course ID from ntu learn courses."
+        ),
     ],
     query: str = typer.Argument(..., help="Search text or keywords."),
     max_depth: Annotated[
@@ -926,7 +972,9 @@ def cmd_search_default(
 @g_search.command("all")
 def cmd_search_all(
     query: str = typer.Argument(..., help="Search text or keywords."),
-    course_ids: Optional[str] = typer.Option(None, "--course-ids", help="JSON value."),
+    course_ids: Optional[str] = typer.Option(
+        None, "--course-ids", help="JSON array of course codes or Blackboard IDs."
+    ),
     max_depth: Annotated[
         int, typer.Option(help="Maximum nesting depth to traverse. Default: 5.")
     ] = 5,

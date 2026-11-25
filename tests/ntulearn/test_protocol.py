@@ -59,7 +59,7 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
                 for name, arguments in [
                     ("ntulearn_auth_status", {}),
                     ("ntulearn_list_courses", {"limit": 1}),
-                    ("ntulearn_get_course_contents", {"course_id": COURSE}),
+                    ("ntulearn_get_course_contents", {"course_id": "sc0001"}),
                     (
                         "ntulearn_get_course_contents",
                         {"course_id": COURSE, "parent_id": CONTENT},
@@ -130,6 +130,8 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
                 ]:
                     result = await client.call_tool(name, arguments)
                     self.assertFalse(result.is_error, name)
+                    if arguments.get("course_id") == "sc0001":
+                        self.assertEqual(result.structured_content["course_id"], COURSE)
                     Draft202012Validator(by_name[name].output_schema).validate(
                         result.structured_content
                     )

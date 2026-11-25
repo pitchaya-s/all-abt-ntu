@@ -25,7 +25,7 @@ ntu learn users ZZ0001
 
 #### Arguments and options
 
-- `COURSE_ID`: **Required.** The NTULearn course ID returned by `ntu learn courses`.
+- `COURSE_ID`: **Required.** A course code or Blackboard course ID from `ntu learn courses`.
 - `--limit`, `-l`: Maximum number of results to return in this page. Default: `50`.
 - `--offset`: Number of results to skip before this page. Default: `0`.
 - `--refresh`, `-r`: Fetch fresh data instead of using an available cached result.
@@ -52,7 +52,7 @@ Replace the uppercase placeholders with values returned by the relevant listing 
 
 #### Arguments and options
 
-- `COURSE_ID`: **Required.** The NTULearn course ID returned by `ntu learn courses`.
+- `COURSE_ID`: **Required.** A course code or Blackboard course ID from `ntu learn courses`.
 - `GROUP_ID`: **Required.** The group ID returned by the relevant listing or details command.
 - `--limit`, `-l`: Maximum number of results to return in this page. Default: `50`.
 - `--offset`: Number of results to skip before this page. Default: `0`.
@@ -80,7 +80,7 @@ ntu learn groups list ZZ0001
 
 #### Arguments and options
 
-- `COURSE_ID`: **Required.** The NTULearn course ID returned by `ntu learn courses`.
+- `COURSE_ID`: **Required.** A course code or Blackboard course ID from `ntu learn courses`.
 - `--limit`, `-l`: Maximum number of results to return in this page. Default: `50`.
 - `--offset`: Number of results to skip before this page. Default: `0`.
 - `--refresh`, `-r`: Fetch fresh data instead of using an available cached result.
@@ -108,7 +108,7 @@ Use `ntu learn messages list --help` for the current interface.
 #### Arguments and options
 
 - `--folder`: Choose the inbox or sent message folder. Choices: `inbox`, `sent`. Default: `inbox`.
-- `--course`: The NTULearn course ID returned by `ntu learn courses`.
+- `--course`: A course code or Blackboard course ID from `ntu learn courses`.
 - `--since`: Start of the date or time range in ISO format.
 - `--unread-only`: Restrict messages to unread items.
 - `--limit`, `-l`: Maximum number of results to return in this page. Default: `50`.
@@ -139,7 +139,7 @@ Replace the uppercase placeholders with values returned by the relevant listing 
 #### Arguments and options
 
 - `MESSAGE_ID`: **Required.** The message ID returned by the relevant listing or details command.
-- `--course`: The NTULearn course ID returned by `ntu learn courses`.
+- `--course`: A course code or Blackboard course ID from `ntu learn courses`.
 - `--conversation-id`: The conversation ID returned by the relevant listing or details command.
 - `--max-requests`: Maximum number of upstream requests the operation may make. Default: `100`.
 - `--refresh`, `-r`: Fetch fresh data instead of using an available cached result.

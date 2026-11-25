@@ -49,6 +49,20 @@ class ContentTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(LearnError):
                 await content.search_all_courses(self.client, query, [COURSE])
 
+    async def test_course_codes_share_a_lookup_and_count_toward_the_scan_budget(self):
+        result = await content.search_all_courses(
+            self.client, "slides", ["sc0001", COURSE, "SC0001"], max_requests=3
+        )
+        self.assertTrue(result.complete)
+        self.assertEqual(result.courses_searched, [COURSE])
+        self.assertEqual(result.matches[0].course_id, COURSE)
+        self.assertEqual(result.requests_used, 3)
+        partial = await content.search_course_content(
+            self.client, "SC0001", "slides", max_requests=1
+        )
+        self.assertFalse(partial.complete)
+        self.assertEqual(partial.requests_used, 1)
+
     async def test_denied_child_retains_other_content_and_reports_partial(self):
         original = self.client.get_course_contents
 

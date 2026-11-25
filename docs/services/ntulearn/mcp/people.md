@@ -18,7 +18,7 @@ List visible members of a course group through Blackboard's browser membership A
 
 | Field | Type | Required | Details |
 | --- | --- | --- | --- |
-| `course_id` | `string` | Yes | NTULearn ID returned by another tool; pattern: `^[A-Za-z0-9_-]{1,80}$` |
+| `course_id` | `string` | Yes | Blackboard course ID or enrolled course code; pattern: `^[A-Za-z0-9_-]{1,80}$` |
 | `group_id` | `string` | Yes | NTULearn ID returned by another tool; pattern: `^[A-Za-z0-9_-]{1,80}$` |
 | `limit` | `integer` | No | minimum: `1`; maximum: `100`; default: `50` |
 | `offset` | `integer` | No | minimum: `0`; default: `0` |
@@ -49,7 +49,7 @@ List groups and group sets defined in a course. Use a group's ID with ntulearn_g
 
 | Field | Type | Required | Details |
 | --- | --- | --- | --- |
-| `course_id` | `string` | Yes | NTULearn ID returned by another tool; pattern: `^[A-Za-z0-9_-]{1,80}$` |
+| `course_id` | `string` | Yes | Blackboard course ID or enrolled course code; pattern: `^[A-Za-z0-9_-]{1,80}$` |
 | `limit` | `integer` | No | minimum: `1`; maximum: `100`; default: `50` |
 | `offset` | `integer` | No | minimum: `0`; default: `0` |
 | `refresh` | `boolean` | No | default: `false` |
@@ -78,7 +78,7 @@ List course users visible to your account, with their published names and roles.
 
 | Field | Type | Required | Details |
 | --- | --- | --- | --- |
-| `course_id` | `string` | Yes | NTULearn ID returned by another tool; pattern: `^[A-Za-z0-9_-]{1,80}$` |
+| `course_id` | `string` | Yes | Blackboard course ID or enrolled course code; pattern: `^[A-Za-z0-9_-]{1,80}$` |
 | `limit` | `integer` | No | minimum: `1`; maximum: `100`; default: `50` |
 | `offset` | `integer` | No | minimum: `0`; default: `0` |
 | `refresh` | `boolean` | No | default: `false` |
@@ -109,7 +109,7 @@ List Blackboard inbox/sent messages through readable course conversations, witho
 | Field | Type | Required | Details |
 | --- | --- | --- | --- |
 | `folder` | `"inbox"`, `"sent"` | No | default: `"inbox"` |
-| `course_id` | `string` or `null` | No | default: `null`; NTULearn ID returned by another tool; pattern: `^[A-Za-z0-9_-]{1,80}$` |
+| `course_id` | `string` or `null` | No | default: `null`; Blackboard course ID or enrolled course code; pattern: `^[A-Za-z0-9_-]{1,80}$` |
 | `since` | `string` or `null` | No | default: `null`; format: `date-time` |
 | `unread_only` | `boolean` | No | default: `false` |
 | `limit` | `integer` | No | minimum: `1`; maximum: `100`; default: `50` |
@@ -145,7 +145,7 @@ Read a message's full body and published conversation recipients. Supply course_
 | Field | Type | Required | Details |
 | --- | --- | --- | --- |
 | `message_id` | `string` | Yes | NTULearn ID returned by another tool; pattern: `^[A-Za-z0-9_-]{1,80}$` |
-| `course_id` | `string` or `null` | No | default: `null`; NTULearn ID returned by another tool; pattern: `^[A-Za-z0-9_-]{1,80}$` |
+| `course_id` | `string` or `null` | No | default: `null`; Blackboard course ID or enrolled course code; pattern: `^[A-Za-z0-9_-]{1,80}$` |
 | `conversation_id` | `string` or `null` | No | default: `null`; NTULearn ID returned by another tool; pattern: `^[A-Za-z0-9_-]{1,80}$` |
 | `max_requests` | `integer` | No | minimum: `1`; maximum: `200`; default: `100` |
 | `refresh` | `boolean` | No | default: `false` |

@@ -7,7 +7,16 @@ from services.ntulearn.client.client import LearnClient
 from services.ntulearn.models import LearnError
 from services.ntulearn.parser.response import records, text
 
-from .fixtures import CONTENT, COURSE, NOW, PREFIX, SECRET, USER, FixtureSession
+from .fixtures import (
+    CONTENT,
+    COURSE,
+    NOW,
+    PREFIX,
+    RESPONSES,
+    SECRET,
+    USER,
+    FixtureSession,
+)
 
 
 class ClientTests(unittest.IsolatedAsyncioTestCase):
@@ -38,6 +47,66 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
             "Bring your laptop.",
         )
         self.assertEqual(text("<style>secret</style><p>a</p><p>b</p>"), "a\nb")
+
+    async def test_course_codes_resolve_using_paginated_enrollments(self):
+        enrollment = PREFIX + "/users/me/courses"
+        filler = [{"course": {"id": f"_{i}_1", "name": "Other"}} for i in range(100)]
+        course = {
+            "course": {
+                "id": COURSE,
+                "name": "Example",
+                "courseId": "2026_S1_SC0001-LEC",
+            }
+        }
+        with (
+            patch.dict(RESPONSES, {enrollment: {"results": [*filler, course]}}),
+            patch.object(self.session, "get", wraps=self.session.get) as get,
+        ):
+            result = await self.client.get_course_contents("sc0001", refresh=True)
+            self.assertEqual(result.course_id, COURSE)
+            calls = get.await_args_list
+            self.assertEqual(
+                [call.args[0] for call in calls],
+                [enrollment, enrollment, f"{PREFIX}/courses/{COURSE}/contents"],
+            )
+            self.assertEqual([call.args[1]["offset"] for call in calls[:2]], [0, 100])
+            self.assertTrue(all(call.args[2] for call in calls))
+            self.assertEqual(
+                await self.client.resolve_course_id("2026_s1_sc0001-lec"), COURSE
+            )
+            get.reset_mock()
+            self.assertEqual(
+                (await self.client.get_gradebook(COURSE)).course_id, COURSE
+            )
+            self.assertNotIn(enrollment, [call.args[0] for call in get.await_args_list])
+
+    async def test_ambiguous_and_unknown_course_codes_do_not_request_course_data(self):
+        enrollment = PREFIX + "/users/me/courses"
+        first = {"course": {"id": COURSE, "name": "First", "courseId": "SC0001"}}
+        second = {
+            "course": {
+                "id": "_102_1",
+                "name": "Second",
+                "courseId": "SC0001-SEM2",
+                "availability": {"available": "No"},
+            }
+        }
+        filler = [{"course": {"id": f"_{i}_1", "name": "Other"}} for i in range(1, 100)]
+        with (
+            patch.dict(RESPONSES, {enrollment: {"results": [first, *filler, second]}}),
+            patch.object(self.session, "get", wraps=self.session.get) as get,
+        ):
+            with self.assertRaisesRegex(
+                LearnError, "More than one.*Blackboard course ID"
+            ):
+                await self.client.get_announcements("SC0001")
+            with self.assertRaisesRegex(
+                LearnError, "No enrolled NTULearn course matches"
+            ):
+                await self.client.get_announcements("SC9999")
+            self.assertEqual(
+                [call.args[0] for call in get.await_args_list], [enrollment] * 4
+            )
 
     async def test_grades_are_own_only_and_missing_is_not_zero(self):
         with patch.object(self.session, "get", wraps=self.session.get) as get:

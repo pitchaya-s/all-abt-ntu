@@ -49,7 +49,7 @@ ntu learn content tree ZZ0001
 
 #### Arguments and options
 
-- `COURSE_ID`: **Required.** The NTULearn course ID returned by `ntu learn courses`.
+- `COURSE_ID`: **Required.** A course code or Blackboard course ID from `ntu learn courses`.
 - `--max-depth`: Maximum nesting depth to traverse. Default: `5`.
 - `--max-nodes`: Maximum number of content nodes to examine. Default: `1000`.
 - `--max-requests`: Maximum number of upstream requests the operation may make. Default: `100`.
@@ -77,7 +77,7 @@ ntu learn content show ZZ0001
 
 #### Arguments and options
 
-- `COURSE_ID`: **Required.** The NTULearn course ID returned by `ntu learn courses`.
+- `COURSE_ID`: **Required.** A course code or Blackboard course ID from `ntu learn courses`.
 - `--parent`: The ID of a parent folder. Omit it to browse the top level.
 - `--limit`, `-l`: Maximum number of results to return in this page. Default: `50`.
 - `--offset`: Number of results to skip before this page. Default: `0`.
@@ -132,7 +132,7 @@ Use `ntu learn search all --help` for the current interface.
 #### Arguments and options
 
 - `QUERY`: **Required.** The search terms. Quote multiword text so the shell passes it as one argument.
-- `--course-ids`: A JSON array of course IDs.
+- `--course-ids`: A JSON array of course codes or Blackboard course IDs.
 - `--max-depth`: Maximum nesting depth to traverse. Default: `5`.
 - `--max-nodes`: Maximum number of content nodes to examine. Default: `1000`.
 - `--max-results`: Maximum number of matching results to collect. Default: `50`.
@@ -161,7 +161,7 @@ ntu learn search course ZZ0001 example
 
 #### Arguments and options
 
-- `COURSE_ID`: **Required.** The NTULearn course ID returned by `ntu learn courses`.
+- `COURSE_ID`: **Required.** A course code or Blackboard course ID from `ntu learn courses`.
 - `QUERY`: **Required.** The search terms. Quote multiword text so the shell passes it as one argument.
 - `--max-depth`: Maximum nesting depth to traverse. Default: `5`.
 - `--max-nodes`: Maximum number of content nodes to examine. Default: `1000`.

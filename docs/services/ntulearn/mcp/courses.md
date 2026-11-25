@@ -18,7 +18,7 @@ Recursively search one course's content titles, body and description for a case-
 
 | Field | Type | Required | Details |
 | --- | --- | --- | --- |
-| `course_id` | `string` | Yes | NTULearn ID returned by another tool; pattern: `^[A-Za-z0-9_-]{1,80}$` |
+| `course_id` | `string` | Yes | Blackboard course ID or enrolled course code; pattern: `^[A-Za-z0-9_-]{1,80}$` |
 | `query` | `string` | Yes | minimum length: `1`; maximum length: `200` |
 | `max_depth` | `integer` | No | minimum: `1`; maximum: `10`; default: `5` |
 | `max_nodes` | `integer` | No | minimum: `1`; maximum: `5000`; default: `1000` |
@@ -148,7 +148,7 @@ Read one level of course content. Omit parent_id for the root; use an item's ID 
 
 | Field | Type | Required | Details |
 | --- | --- | --- | --- |
-| `course_id` | `string` | Yes | NTULearn ID returned by another tool; pattern: `^[A-Za-z0-9_-]{1,80}$` |
+| `course_id` | `string` | Yes | Blackboard course ID or enrolled course code; pattern: `^[A-Za-z0-9_-]{1,80}$` |
 | `parent_id` | `string` or `null` | No | default: `null`; NTULearn ID returned by another tool; pattern: `^[A-Za-z0-9_-]{1,80}$` |
 | `limit` | `integer` | No | minimum: `1`; maximum: `100`; default: `50` |
 | `offset` | `integer` | No | minimum: `0`; default: `0` |
@@ -178,7 +178,7 @@ Read a course's nested content tree. Root items are depth 1; max_depth is at mos
 
 | Field | Type | Required | Details |
 | --- | --- | --- | --- |
-| `course_id` | `string` | Yes | NTULearn ID returned by another tool; pattern: `^[A-Za-z0-9_-]{1,80}$` |
+| `course_id` | `string` | Yes | Blackboard course ID or enrolled course code; pattern: `^[A-Za-z0-9_-]{1,80}$` |
 | `max_depth` | `integer` | No | minimum: `1`; maximum: `10`; default: `5` |
 | `max_nodes` | `integer` | No | minimum: `1`; maximum: `5000`; default: `1000` |
 | `max_requests` | `integer` | No | minimum: `1`; maximum: `200`; default: `100` |

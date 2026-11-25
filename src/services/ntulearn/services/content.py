@@ -1,6 +1,14 @@
 """Bounded content traversal and substring search; attachment bytes are not searched."""
 
-from ..contracts import CourseIDs, Depth, LearnID, Nodes, Query, RequestBudget, Results
+from ..contracts import (
+    CourseIDs,
+    CourseReference,
+    Depth,
+    Nodes,
+    Query,
+    RequestBudget,
+    Results,
+)
 
 
 from ..client.client import identifier, model
@@ -79,7 +87,7 @@ async def tree(client, scan, course_id, max_depth, max_nodes, refresh):
 
 async def get_content_tree(
     client,
-    course_id: LearnID,
+    course_id: CourseReference,
     max_depth: Depth = 5,
     max_nodes: Nodes = 1000,
     max_requests: RequestBudget = 100,
@@ -88,10 +96,12 @@ async def get_content_tree(
     "Read a course's nested content tree. Root items are depth 1; max_depth is at most 10. Unopened, denied or cyclic branches are explicit; complete=false means the tree is partial."
     async with client.session.operation():
         scan = Scan(max_requests)
+        bounds(max_depth, max_nodes)
+        course_id = (await resolve_course_ids(client, scan, [course_id], refresh))[0]
         contents = await tree(client, scan, course_id, max_depth, max_nodes, refresh)
         return model(
             ContentTree,
-            course_id=identifier(course_id),
+            course_id=course_id,
             contents=contents,
             max_depth=max_depth,
             **scan.metadata(),
@@ -178,7 +188,7 @@ async def search_all_courses(
 
 async def search_course_content(
     client,
-    course_id: LearnID,
+    course_id: CourseReference,
     query: Query,
     max_depth: Depth = 5,
     max_nodes: Nodes = 1000,

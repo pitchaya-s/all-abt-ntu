@@ -10,7 +10,7 @@ from contextlib import nullcontext
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, PropertyMock, patch
 
 import click
 from typer.main import get_command
@@ -19,6 +19,7 @@ from typer.testing import CliRunner
 from cli.cli import create_app
 from cli.config import load_config, save_config
 from services.omnibus.models import Stops
+from tests.ntulearn.fixtures import CONTENT, COURSE, FixtureSession
 
 
 class UnifiedCLITests(unittest.TestCase):
@@ -283,6 +284,29 @@ class UnifiedCLITests(unittest.TestCase):
         )
         self.assertNotEqual(result.exit_code, 0)
         self.assertIn("Action was not confirmed", result.stderr)
+
+    def test_ntulearn_cli_accepts_course_codes_and_checks_content_url_course(self):
+        document = (
+            f"https://ntulearn.ntu.edu.sg/ultra/courses/{COURSE}/document/{CONTENT}"
+        )
+        with patch(
+            "application.Application.learn_session",
+            new_callable=PropertyMock,
+            return_value=FixtureSession(),
+        ):
+            for args in (
+                ["content", "sc0001"],
+                ["content", "SC0001", "--parent", document],
+            ):
+                result = self.runner.invoke(self.app, ["learn", *args, "--json"])
+                self.assertEqual(result.exit_code, 0, result.output)
+                self.assertEqual(json.loads(result.stdout)["course_id"], COURSE)
+            wrong_document = document.replace(COURSE, "_101_1")
+            result = self.runner.invoke(
+                self.app, ["learn", "attachments", "SC0001", wrong_document]
+            )
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("does not match", result.output)
 
     def test_completion_for_group_commands_and_fixed_choices(self):
         executable = str(Path(sys.executable).parent / "ntu")

@@ -2,7 +2,7 @@
 
 from typing import Annotated
 from pydantic import Field
-from ..contracts import Depth, LearnID, Nodes, RequestBudget
+from ..contracts import CourseReference, Depth, LearnID, Nodes, RequestBudget
 
 
 import asyncio
@@ -14,12 +14,12 @@ from ..client.client import identifier, model
 from ..models import CourseDownload, CourseDownloadFile, FileContent, LearnError
 from ..parser.documents import SUPPORTED_EXTENSIONS, extract
 from .content import bounds, walk
-from .scan import LimitReached, Scan, pages
+from .scan import LimitReached, Scan, pages, resolve_course_ids
 
 
 async def read_file_content(
     client,
-    course_id: LearnID,
+    course_id: CourseReference,
     content_id: LearnID,
     attachment_id: LearnID,
     max_chars: Annotated[int, Field(ge=1, le=100000, strict=True)] = 20000,
@@ -27,9 +27,7 @@ async def read_file_content(
 ) -> FileContent:
     "Read an attachment inline as text: PDF, DOCX, PPTX, XLSX and UTF text/code. Get attachment_id from ntulearn_get_content_attachments. Reports truncation; no OCR, image interpretation or external LTI downloads. Temporary files are removed."
     async with client.session.operation():
-        course_id, content_id, attachment_id = map(
-            identifier, (course_id, content_id, attachment_id)
-        )
+        content_id, attachment_id = identifier(content_id), identifier(attachment_id)
         if (
             type(max_chars) is not int
             or not 1 <= max_chars <= 100000
@@ -38,6 +36,7 @@ async def read_file_content(
         ):
             raise LearnError("max_chars must be 1–100000 and max_pages must be 1–50.")
         scan = Scan(20)
+        course_id = (await resolve_course_ids(client, scan, [course_id]))[0]
         attachment = None
         async for item in pages(
             scan, client.get_content_attachments, "attachments", course_id, content_id
@@ -90,7 +89,7 @@ def _directory(path):
 
 async def download_course(
     client,
-    course_id: LearnID,
+    course_id: CourseReference,
     destination: str,
     max_depth: Depth = 5,
     max_nodes: Nodes = 1000,
@@ -101,7 +100,6 @@ async def download_course(
 ) -> CourseDownload:
     "Recursively save readable Blackboard attachments under destination/course_id with content folder names and stable file IDs. Creates local directories, skips existing regular files, rejects symlinks and never overwrites. Per-file limit 20 MB; batch limits and denied/external content are reported in issues. NTULearn is never modified."
     async with client.session.operation():
-        course_id = identifier(course_id)
         bounds(max_depth, max_nodes)
         if (
             type(max_files) is not int
@@ -110,6 +108,8 @@ async def download_course(
             or not 1 <= max_total_mb <= 500
         ):
             raise LearnError("max_files and max_total_mb must be between 1 and 500.")
+        scan = Scan(max_requests)
+        course_id = (await resolve_course_ids(client, scan, [course_id], refresh))[0]
         root = Path(destination).expanduser().absolute() / course_id
         try:
             _directory(root)
@@ -117,7 +117,6 @@ async def download_course(
             raise LearnError(
                 "Could not create the course download directory."
             ) from None
-        scan = Scan(max_requests)
         files: list[CourseDownloadFile] = []
         written = 0
         try:

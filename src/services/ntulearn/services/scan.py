@@ -3,7 +3,7 @@
 import asyncio
 from datetime import datetime, timezone
 
-from ..client.client import identifier
+from ..client.client import resolve_course_references
 from ..models import Issue, LearnError
 
 
@@ -96,8 +96,12 @@ async def pages(scan, function, field, *args, refresh=False, **kwargs):
 async def resolve_course_ids(client, scan, selected, refresh=False):
     if selected is not None:
         if not selected or len(selected) > 100:
-            raise LearnError("Select between 1 and 100 course IDs, or omit course_ids.")
-        return list(dict.fromkeys(identifier(value) for value in selected))
+            raise LearnError(
+                "Select between 1 and 100 course IDs or codes, or omit course_ids."
+            )
+        return await resolve_course_references(
+            client, selected, refresh=refresh, call=scan.call
+        )
     result = []
     async for course in pages(scan, client.list_courses, "courses", refresh=refresh):
         if course.available != "No" and course.organization is not True:

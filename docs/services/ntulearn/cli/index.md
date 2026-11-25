@@ -4,24 +4,24 @@
 
 ## Example
 
-List your enrolled courses, then use a returned course ID to browse its content. The ID below is fictional.
+Use a course code such as `ZZ0001` or a Blackboard course ID such as `_100_1` for course arguments, `--course`, and each entry in `--course-ids`. Codes are case-insensitive. If a code matches multiple enrolled course sites, use the Blackboard ID shown by `ntu learn courses` to pick one.
 
 ```sh
 ntu learn courses --limit 20
-ntu learn content _100_1 --limit 20
+ntu learn content ZZ0001 --limit 20
 ```
 
 ## Commands
 
 Choose a command for its arguments, examples and result fields. Use `ntu learn --help` and append `--help` to a command for option details. Each command page identifies required arguments and any defaults. See the [complete CLI reference](../../../cli/commands.md) for shared settings and all services.
 
-For `learn attachments`, `learn files read`, `learn files download`, and `learn videos download`, a quoted NTULearn document or lecture launch URL can replace the course and content IDs. File commands still require an attachment ID, which can be found with `learn attachments`. A URL can also replace the content ID when the course ID is supplied separately; their course IDs must match. Content browsing accepts a document URL in `--parent`.
+For `learn attachments`, `learn files read`, `learn files download`, and `learn videos download`, a quoted NTULearn document or lecture launch URL can supply the course and content IDs. When a separate course is also supplied, it must identify the same course as the URL. File commands still require an attachment ID, which can be found with `learn attachments`. Content browsing accepts a document URL in `--parent`.
 
 For videos, recognizing a URL only extracts its IDs. The downloader still requires a supported Kaltura player or wrapper in the content item; it does not open arbitrary LTI tools. See [known issues](../../../known-issues.md#ntulearn-lecture-launch-urls).
 
 ### Find a content or attachment ID
 
-1. Run `ntu learn courses` and copy the course ID from the result.
+1. Use your course code or run `ntu learn courses` and copy the Blackboard course ID.
 2. Run `ntu learn content COURSE_ID` to list the top level. The displayed items include their content IDs.
 3. If the item is inside a folder, run `ntu learn content COURSE_ID --parent FOLDER_ID` until you find it. Alternatively, use `ntu learn content tree COURSE_ID` for a nested view.
 4. For a file, run `ntu learn attachments COURSE_ID CONTENT_ID` and copy the attachment ID. For a video, use the content ID with `ntu learn videos download`.
@@ -30,7 +30,7 @@ The normal terminal output includes these IDs; `--json` is optional. A supported
 
 ### Courses, folders and search
 
-List your courses first, then use a returned course ID to browse content or search. `content tree` walks nested folders within the configured limits.
+Use a course code or Blackboard ID to browse content or search. `content tree` walks nested folders within the configured limits.
 
 | Command | What it does |
 | --- | --- |

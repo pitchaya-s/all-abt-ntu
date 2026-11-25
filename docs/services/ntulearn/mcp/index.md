@@ -4,6 +4,8 @@
 
 Choose a topic to see its tools, inputs, outputs and limits.
 
+`course_id` and each entry in `course_ids` accept a unique enrolled course code or the Blackboard ID returned by `ntulearn_list_courses`. If a code matches multiple courses, use the Blackboard ID.
+
 - [Courses, content and search](courses.md) — 6 tools
 - [Attachments and downloads](files.md) — 5 tools
 - [Announcements, calendar and grades](activity.md) — 5 tools

@@ -25,7 +25,7 @@ ntu learn announcements ZZ0001
 
 #### Arguments and options
 
-- `COURSE_ID`: **Required.** The NTULearn course ID returned by `ntu learn courses`.
+- `COURSE_ID`: **Required.** A course code or Blackboard course ID from `ntu learn courses`.
 - `--limit`, `-l`: Maximum number of results to return in this page. Default: `50`.
 - `--offset`: Number of results to skip before this page. Default: `0`.
 - `--refresh`, `-r`: Fetch fresh data instead of using an available cached result.
@@ -52,7 +52,7 @@ ntu learn grades ZZ0001
 
 #### Arguments and options
 
-- `COURSE_ID`: **Required.** The NTULearn course ID returned by `ntu learn courses`.
+- `COURSE_ID`: **Required.** A course code or Blackboard course ID from `ntu learn courses`.
 - `--limit`, `-l`: Maximum number of results to return in this page. Default: `50`.
 - `--offset`: Number of results to skip before this page. Default: `0`.
 - `--grades-offset`: Offset into the grade entries, independent of the column offset. Default: `0`.
@@ -82,7 +82,7 @@ Use `ntu learn calendar --help` for the current interface.
 
 - `--since`: Start of the date or time range in ISO format.
 - `--until`: End of the date or time range in ISO format.
-- `--course`: The NTULearn course ID returned by `ntu learn courses`.
+- `--course`: A course code or Blackboard course ID from `ntu learn courses`.
 - `--limit`, `-l`: Maximum number of results to return in this page. Default: `50`.
 - `--offset`: Number of results to skip before this page. Default: `0`.
 - `--refresh`, `-r`: Fetch fresh data instead of using an available cached result.
@@ -111,7 +111,7 @@ Use `ntu learn upcoming --help` for the current interface.
 
 - `--since`: Start of the date or time range in ISO format.
 - `--until`: End of the date or time range in ISO format.
-- `--course-ids`: A JSON array of course IDs.
+- `--course-ids`: A JSON array of course codes or Blackboard course IDs.
 - `--item-type`: Restrict calendar results to the selected item type.
 - `--max-requests`: Maximum number of upstream requests the operation may make. Default: `100`.
 - `--refresh`, `-r`: Fetch fresh data instead of using an available cached result.
@@ -140,7 +140,7 @@ Use `ntu learn digest --help` for the current interface.
 
 - `--since`: Start of the date or time range in ISO format.
 - `--until`: End of the date or time range in ISO format.
-- `--course-ids`: A JSON array of course IDs.
+- `--course-ids`: A JSON array of course codes or Blackboard course IDs.
 - `--max-items`: Maximum number of items to include. Default: `200`.
 - `--max-requests`: Maximum number of upstream requests the operation may make. Default: `100`.
 - `--refresh`, `-r`: Fetch fresh data instead of using an available cached result.

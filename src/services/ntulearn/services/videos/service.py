@@ -2,7 +2,7 @@
 
 from typing import Annotated
 from pydantic import Field
-from ...contracts import LearnID
+from ...contracts import CourseReference, LearnID
 
 
 from pathlib import Path
@@ -21,14 +21,14 @@ from .kaltura import (
 
 async def download_video(
     client,
-    course_id: LearnID,
+    course_id: CourseReference,
     content_id: LearnID,
     destination: str,
     max_mb: Annotated[int, Field(ge=1, le=2000, strict=True)] = 1000,
 ) -> Download:
     "Download a Kaltura video embedded in an NTULearn content item to a new local file. Uses your normal course access and a short-lived viewer session; max_mb is 1–2000, existing files are never overwritten, and NTULearn is not modified."
     async with client.session.operation():
-        course_id, content_id = identifier(course_id), identifier(content_id)
+        content_id = identifier(content_id)
         if type(max_mb) is not int or not 1 <= max_mb <= 2000:
             raise LearnError("max_mb must be an integer from 1 to 2000.")
         target = Path(destination).expanduser().absolute()
@@ -41,6 +41,7 @@ async def download_video(
                 "Choose a new video file path in an existing directory; existing files are never overwritten."
             )
 
+        course_id = await client.resolve_course_id(course_id)
         record = await client.get_content_record(course_id, content_id)
         fragments = [
             value

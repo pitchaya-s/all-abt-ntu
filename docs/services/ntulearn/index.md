@@ -2,7 +2,7 @@
 
 [Service overview](index.md) · [CLI reference](cli/index.md) · [MCP reference](mcp/index.md)
 
-Access your enrolled courses, content, attachments, videos, announcements, calendar and grades. Start with `ntu learn courses`; the returned course IDs can be used to browse content. An NTU account and access to the course are required.
+Access your enrolled courses, content, attachments, videos, announcements, calendar and grades. Use a course code or find its Blackboard ID with `ntu learn courses`. Use the Blackboard ID when a code matches multiple enrolled courses. An NTU account and access to the course are required.
 
 ## Service notes
 
@@ -48,7 +48,7 @@ Academic results returned through MCP are visible to the AI client. Raw profiles
 
 ### Common inputs and results
 
-Start with `ntulearn_list_courses`. Use its course IDs, content IDs from content tools, group IDs from group tools, and attachment IDs from attachment tools. IDs in examples below are fictional.
+Course inputs accept a unique enrolled course code or a Blackboard course ID from `ntulearn_list_courses`. Use content, group, and attachment IDs returned by their respective tools. IDs in examples below are fictional.
 
 Paginated tools accept `limit` from 1–100 with default 50, nonnegative `offset` with default 0, and `refresh` with default `false`. Follow `next_offset` until it is `null`. `refresh: true` bypasses cached JSON reads where that parameter is available. Responses include `retrieved_at`, `from_cache`, and `cache_age_seconds`.
 

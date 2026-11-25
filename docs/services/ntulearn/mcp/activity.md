@@ -18,7 +18,7 @@ Read published announcements for one enrolled course. An empty list is distinct 
 
 | Field | Type | Required | Details |
 | --- | --- | --- | --- |
-| `course_id` | `string` | Yes | NTULearn ID returned by another tool; pattern: `^[A-Za-z0-9_-]{1,80}$` |
+| `course_id` | `string` | Yes | Blackboard course ID or enrolled course code; pattern: `^[A-Za-z0-9_-]{1,80}$` |
 | `limit` | `integer` | No | minimum: `1`; maximum: `100`; default: `50` |
 | `offset` | `integer` | No | minimum: `0`; default: `0` |
 | `refresh` | `boolean` | No | default: `false` |
@@ -49,7 +49,7 @@ Read calendar entries and published deadlines, across your courses or for one co
 | --- | --- | --- | --- |
 | `since` | `string` or `null` | No | default: `null`; format: `date-time` |
 | `until` | `string` or `null` | No | default: `null`; format: `date-time` |
-| `course_id` | `string` or `null` | No | default: `null`; NTULearn ID returned by another tool; pattern: `^[A-Za-z0-9_-]{1,80}$` |
+| `course_id` | `string` or `null` | No | default: `null`; Blackboard course ID or enrolled course code; pattern: `^[A-Za-z0-9_-]{1,80}$` |
 | `limit` | `integer` | No | minimum: `1`; maximum: `100`; default: `50` |
 | `offset` | `integer` | No | minimum: `0`; default: `0` |
 | `refresh` | `boolean` | No | default: `false` |
@@ -81,7 +81,7 @@ Columns and grades paginate independently. Follow `next_offset` for columns and 
 
 | Field | Type | Required | Details |
 | --- | --- | --- | --- |
-| `course_id` | `string` | Yes | NTULearn ID returned by another tool; pattern: `^[A-Za-z0-9_-]{1,80}$` |
+| `course_id` | `string` | Yes | Blackboard course ID or enrolled course code; pattern: `^[A-Za-z0-9_-]{1,80}$` |
 | `limit` | `integer` | No | minimum: `1`; maximum: `100`; default: `50` |
 | `offset` | `integer` | No | minimum: `0`; default: `0` |
 | `grades_offset` | `integer` | No | minimum: `0`; default: `0` |

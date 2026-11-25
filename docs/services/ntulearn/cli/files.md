@@ -27,7 +27,7 @@ Replace the uppercase placeholders with values returned by the relevant listing 
 
 #### Arguments and options
 
-- `COURSE_ID`: **Required.** The NTULearn course ID returned by `ntu learn courses`.
+- `COURSE_ID`: **Required.** A course code or Blackboard course ID from `ntu learn courses`.
 - `CONTENT_ID`: The content ID returned when you browse the course. Where supported, a content URL can supply the course and content IDs.
 - `--limit`, `-l`: Maximum number of results to return in this page. Default: `50`.
 - `--offset`: Number of results to skip before this page. Default: `0`.
@@ -57,7 +57,7 @@ ntu learn courses download ZZ0001 --output ./course-materials
 
 #### Arguments and options
 
-- `COURSE_ID`: **Required.** The NTULearn course ID returned by `ntu learn courses`.
+- `COURSE_ID`: **Required.** A course code or Blackboard course ID from `ntu learn courses`.
 - `--output`, `-o`: **Required.** The local destination path. Follow the command description for file or directory requirements.
 - `--max-depth`: Maximum nesting depth to traverse. Default: `5`.
 - `--max-nodes`: Maximum number of content nodes to examine. Default: `1000`.
@@ -90,7 +90,7 @@ Replace the uppercase placeholders with values returned by the relevant listing 
 
 #### Arguments and options
 
-- `COURSE_ID`: **Required.** The NTULearn course ID returned by `ntu learn courses`.
+- `COURSE_ID`: **Required.** A course code or Blackboard course ID from `ntu learn courses`.
 - `CONTENT_ID`: **Required.** The content ID returned when you browse the course. Where supported, a content URL can supply the course and content IDs.
 - `ATTACHMENT_ID`: The attachment ID returned by the attachment listing.
 - `--max-chars`: Maximum number of text characters to return. Default: `20000`.
@@ -122,7 +122,7 @@ Replace the uppercase placeholders with values returned by the relevant listing 
 
 #### Arguments and options
 
-- `COURSE_ID`: **Required.** The NTULearn course ID returned by `ntu learn courses`.
+- `COURSE_ID`: **Required.** A course code or Blackboard course ID from `ntu learn courses`.
 - `CONTENT_ID`: **Required.** The content ID returned when you browse the course. Where supported, a content URL can supply the course and content IDs.
 - `ATTACHMENT_ID`: The attachment ID returned by the attachment listing.
 - `--output`, `-o`: **Required.** The local destination path. Follow the command description for file or directory requirements.
@@ -154,7 +154,7 @@ Replace the uppercase placeholders with values returned by the relevant listing 
 
 #### Arguments and options
 
-- `COURSE_ID`: **Required.** The NTULearn course ID returned by `ntu learn courses`.
+- `COURSE_ID`: **Required.** A course code or Blackboard course ID from `ntu learn courses`.
 - `CONTENT_ID`: The content ID returned when you browse the course. Where supported, a content URL can supply the course and content IDs.
 - `--output`, `-o`: **Required.** The local destination path. Follow the command description for file or directory requirements.
 - `--max-mb`: Maximum video size in megabytes. Default: `1000`.

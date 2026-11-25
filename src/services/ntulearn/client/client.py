@@ -3,11 +3,12 @@
 import asyncio
 import re
 from datetime import datetime, timedelta, timezone
+from functools import partial
 from typing import Annotated
 
 from pydantic import Field
 
-from ..contracts import ID, LearnID, Offset, PageSize
+from ..contracts import CourseReference, ID, LearnID, Offset, PageSize
 
 from ..models import (
     Announcement,
@@ -30,6 +31,10 @@ from ..parser.response import records, required, text
 from .session import Session
 
 PREFIX = "/learn/api/public/v1"
+_COURSE_CODE = re.compile(
+    r"(?<![A-Za-z0-9])[A-Za-z]{2,4}[0-9]{4}[A-Za-z]?(?![A-Za-z0-9])"
+)
+_MAX_COURSE_PAGES = 20
 
 
 def identifier(value):
@@ -38,6 +43,71 @@ def identifier(value):
             "Use an NTULearn ID returned by another tool; slashes, URLs, and query strings are not allowed."
         )
     return value
+
+
+def is_course_code(value: str) -> bool:
+    return _COURSE_CODE.search(value) is not None
+
+
+async def resolve_course_references(client, references, *, refresh=False, call=None):
+    """Resolve codes against all pages of the authenticated enrollment list."""
+    references = dict.fromkeys(identifier(value) for value in references)
+    codes = {value: value.casefold() for value in references if is_course_code(value)}
+    if not codes:
+        return list(references)
+
+    read_page = (
+        client.list_courses if call is None else partial(call, client.list_courses)
+    )
+    matches: dict[str, set[str]] = {code: set() for code in codes.values()}
+    exact_ids = set()
+    offset = 0
+    async with client.session.operation():
+        generation = None
+        for _ in range(_MAX_COURSE_PAGES):
+            page = await read_page(limit=100, offset=offset, refresh=refresh)
+            current_generation = client.session.auth.generation
+            if generation is not None and generation != current_generation:
+                raise LearnError(
+                    "NTULearn authentication changed during course lookup. Retry the request."
+                )
+            generation = current_generation
+            for course in page.courses:
+                if course.id in references:
+                    exact_ids.add(course.id)
+                if course.organization is True or not course.course_code:
+                    continue
+                published = course.course_code.strip()
+                aliases = {published.casefold()}
+                aliases.update(
+                    code.casefold() for code in _COURSE_CODE.findall(published)
+                )
+                for code in matches.keys() & aliases:
+                    matches[code].add(identifier(course.id))
+            if page.next_offset is None:
+                break
+            offset = page.next_offset
+        else:
+            raise LearnError(
+                "NTULearn course lookup reached its page limit. Use a Blackboard course ID from the course list."
+            )
+
+    resolved = []
+    for reference in references:
+        if reference in exact_ids or reference not in codes:
+            resolved.append(reference)
+            continue
+        candidates = matches[codes[reference]]
+        if not candidates:
+            raise LearnError(
+                f"No enrolled NTULearn course matches {reference}. Check the code in the course list or use its Blackboard course ID."
+            )
+        if len(candidates) != 1:
+            raise LearnError(
+                f"More than one enrolled NTULearn course matches {reference}. Choose its Blackboard course ID from the course list."
+            )
+        resolved.append(next(iter(candidates)))
+    return list(dict.fromkeys(resolved))
 
 
 def page_parameters(limit, offset):
@@ -143,19 +213,25 @@ class LearnClient:
             **freshness,
         )
 
+    async def resolve_course_id(
+        self, course_id: CourseReference, refresh: bool = False
+    ) -> str:
+        return (await resolve_course_references(self, [course_id], refresh=refresh))[0]
+
     async def get_course_contents(
         self,
-        course_id: LearnID,
+        course_id: CourseReference,
         parent_id: LearnID | None = None,
         limit: PageSize = 50,
         offset: Offset = 0,
         refresh: bool = False,
     ) -> Contents:
         "Read one level of course content. Omit parent_id for the root; use an item's ID to open a folder. HTML body/description are returned as text."
-        course_id = identifier(course_id)
+        parent_id = identifier(parent_id) if parent_id is not None else None
+        course_id = await self.resolve_course_id(course_id, refresh)
         path = f"{PREFIX}/courses/{course_id}/contents"
         if parent_id is not None:
-            path += f"/{identifier(parent_id)}/children"
+            path += f"/{parent_id}/children"
         rows, next_offset, freshness = await self.list_records(
             path, limit, offset, refresh
         )
@@ -194,13 +270,13 @@ class LearnClient:
 
     async def get_announcements(
         self,
-        course_id: LearnID,
+        course_id: CourseReference,
         limit: PageSize = 50,
         offset: Offset = 0,
         refresh: bool = False,
     ) -> Announcements:
         "Read published announcements for one enrolled course. An empty list is distinct from denied access."
-        course_id = identifier(course_id)
+        course_id = await self.resolve_course_id(course_id, refresh)
         rows, next_offset, freshness = await self.list_records(
             f"{PREFIX}/courses/{course_id}/announcements", limit, offset, refresh
         )
@@ -228,7 +304,7 @@ class LearnClient:
         self,
         since: datetime | None = None,
         until: datetime | None = None,
-        course_id: LearnID | None = None,
+        course_id: CourseReference | None = None,
         limit: PageSize = 50,
         offset: Offset = 0,
         refresh: bool = False,
@@ -246,7 +322,7 @@ class LearnClient:
             )
         params = {"since": since.isoformat(), "until": until.isoformat()}
         if course_id is not None:
-            params["courseId"] = identifier(course_id)
+            params["courseId"] = await self.resolve_course_id(course_id, refresh)
         rows, next_offset, freshness = await self.list_records(
             PREFIX + "/calendars/items", limit, offset, refresh, **params
         )
@@ -277,7 +353,7 @@ class LearnClient:
 
     async def get_gradebook(
         self,
-        course_id: LearnID,
+        course_id: CourseReference,
         limit: PageSize = 50,
         offset: Offset = 0,
         grades_offset: Offset = 0,
@@ -285,7 +361,7 @@ class LearnClient:
     ) -> Gradebook:
         "Read visible gradebook columns and your own scores/status. Missing scores remain null. Columns and grades paginate independently with offset and grades_offset."
         async with self.session.operation():
-            course_id = identifier(course_id)
+            course_id = await self.resolve_course_id(course_id, refresh)
             columns_result, user_id_result = await asyncio.gather(
                 self.list_records(
                     f"{PREFIX}/courses/{course_id}/gradebook/columns",
@@ -351,14 +427,15 @@ class LearnClient:
 
     async def get_content_attachments(
         self,
-        course_id: LearnID,
+        course_id: CourseReference,
         content_id: LearnID,
         limit: PageSize = 50,
         offset: Offset = 0,
         refresh: bool = False,
     ) -> Attachments:
         "List files attached to a course content item. Use a leaf content ID rather than a folder. Some external/LTI content has no downloadable Blackboard attachment."
-        course_id, content_id = identifier(course_id), identifier(content_id)
+        content_id = identifier(content_id)
+        course_id = await self.resolve_course_id(course_id, refresh)
         rows, next_offset, freshness = await self.list_records(
             f"{PREFIX}/courses/{course_id}/contents/{content_id}/attachments",
             limit,
@@ -386,12 +463,14 @@ class LearnClient:
 
     async def download_file(
         self,
-        course_id: LearnID,
+        course_id: CourseReference,
         content_id: LearnID,
         attachment_id: LearnID,
         destination: str,
         max_bytes: Annotated[int, Field(ge=1, le=20000000, strict=True)] = 20000000,
     ) -> Download:
         "Download a Blackboard attachment to an explicit local file path, up to 20 MB. Never overwrites an existing file. Does not modify NTULearn or forward university cookies to file-delivery hosts."
-        path = f"{PREFIX}/courses/{identifier(course_id)}/contents/{identifier(content_id)}/attachments/{identifier(attachment_id)}/download"
+        content_id, attachment_id = identifier(content_id), identifier(attachment_id)
+        course_id = await self.resolve_course_id(course_id)
+        path = f"{PREFIX}/courses/{course_id}/contents/{content_id}/attachments/{attachment_id}/download"
         return await self.session.download(path, destination, max_bytes=max_bytes)

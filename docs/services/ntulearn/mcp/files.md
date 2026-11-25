@@ -18,7 +18,7 @@ List files attached to a course content item. Use a leaf content ID rather than 
 
 | Field | Type | Required | Details |
 | --- | --- | --- | --- |
-| `course_id` | `string` | Yes | NTULearn ID returned by another tool; pattern: `^[A-Za-z0-9_-]{1,80}$` |
+| `course_id` | `string` | Yes | Blackboard course ID or enrolled course code; pattern: `^[A-Za-z0-9_-]{1,80}$` |
 | `content_id` | `string` | Yes | NTULearn ID returned by another tool; pattern: `^[A-Za-z0-9_-]{1,80}$` |
 | `limit` | `integer` | No | minimum: `1`; maximum: `100`; default: `50` |
 | `offset` | `integer` | No | minimum: `0`; default: `0` |
@@ -55,7 +55,7 @@ Unsupported, encrypted, malformed, or oversized documents produce an actionable 
 
 | Field | Type | Required | Details |
 | --- | --- | --- | --- |
-| `course_id` | `string` | Yes | NTULearn ID returned by another tool; pattern: `^[A-Za-z0-9_-]{1,80}$` |
+| `course_id` | `string` | Yes | Blackboard course ID or enrolled course code; pattern: `^[A-Za-z0-9_-]{1,80}$` |
 | `content_id` | `string` | Yes | NTULearn ID returned by another tool; pattern: `^[A-Za-z0-9_-]{1,80}$` |
 | `attachment_id` | `string` | Yes | NTULearn ID returned by another tool; pattern: `^[A-Za-z0-9_-]{1,80}$` |
 | `max_chars` | `integer` | No | minimum: `1`; maximum: `100000`; default: `20000` |
@@ -89,7 +89,7 @@ MCP host confirmation is required before this action.
 
 | Field | Type | Required | Details |
 | --- | --- | --- | --- |
-| `course_id` | `string` | Yes | NTULearn ID returned by another tool; pattern: `^[A-Za-z0-9_-]{1,80}$` |
+| `course_id` | `string` | Yes | Blackboard course ID or enrolled course code; pattern: `^[A-Za-z0-9_-]{1,80}$` |
 | `content_id` | `string` | Yes | NTULearn ID returned by another tool; pattern: `^[A-Za-z0-9_-]{1,80}$` |
 | `attachment_id` | `string` | Yes | NTULearn ID returned by another tool; pattern: `^[A-Za-z0-9_-]{1,80}$` |
 | `destination` | `string` | Yes | — |
@@ -121,7 +121,7 @@ MCP host confirmation is required before this action.
 
 | Field | Type | Required | Details |
 | --- | --- | --- | --- |
-| `course_id` | `string` | Yes | NTULearn ID returned by another tool; pattern: `^[A-Za-z0-9_-]{1,80}$` |
+| `course_id` | `string` | Yes | Blackboard course ID or enrolled course code; pattern: `^[A-Za-z0-9_-]{1,80}$` |
 | `content_id` | `string` | Yes | NTULearn ID returned by another tool; pattern: `^[A-Za-z0-9_-]{1,80}$` |
 | `destination` | `string` | Yes | — |
 | `max_mb` | `integer` | No | minimum: `1`; maximum: `2000`; default: `1000` |
@@ -148,7 +148,7 @@ MCP host confirmation is required before this action.
 
 | Field | Type | Required | Details |
 | --- | --- | --- | --- |
-| `course_id` | `string` | Yes | NTULearn ID returned by another tool; pattern: `^[A-Za-z0-9_-]{1,80}$` |
+| `course_id` | `string` | Yes | Blackboard course ID or enrolled course code; pattern: `^[A-Za-z0-9_-]{1,80}$` |
 | `destination` | `string` | Yes | — |
 | `max_depth` | `integer` | No | minimum: `1`; maximum: `10`; default: `5` |
 | `max_nodes` | `integer` | No | minimum: `1`; maximum: `5000`; default: `1000` |

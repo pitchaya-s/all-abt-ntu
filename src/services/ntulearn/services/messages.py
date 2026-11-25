@@ -2,7 +2,7 @@
 
 from typing import Literal
 from datetime import datetime
-from ..contracts import LearnID, Offset, PageSize, RequestBudget
+from ..contracts import CourseReference, LearnID, Offset, PageSize, RequestBudget
 
 
 import asyncio
@@ -13,7 +13,7 @@ from ..client.client import PREFIX, identifier, mapping, model, page_parameters
 from ..models import LearnError, MessageDetail, Messages, MessageSummary, Person
 from ..parser.response import records, required, text
 from .people import person
-from .scan import Scan, aware
+from .scan import Scan, aware, resolve_course_ids
 
 
 async def _rows(client, scan, path, refresh):
@@ -75,11 +75,14 @@ def _messages(conversation):
 
 
 async def _mailbox(client, scan, course_id, refresh):
+    courses = (
+        await resolve_course_ids(client, scan, [course_id], refresh)
+        if course_id is not None
+        else None
+    )
     own = await scan.get(client, PREFIX + "/users/me", refresh=refresh)
     own_id = identifier(required(own, "id"))
-    if course_id:
-        courses = [identifier(course_id)]
-    else:
+    if courses is None:
         courses = [
             identifier(required(row, "courseId"))
             async for row in _rows(
@@ -133,7 +136,7 @@ async def _mailbox(client, scan, course_id, refresh):
 async def list_messages(
     client,
     folder: Literal["inbox", "sent"] = "inbox",
-    course_id: LearnID | None = None,
+    course_id: CourseReference | None = None,
     since: datetime | None = None,
     unread_only: bool = False,
     limit: PageSize = 50,
@@ -185,7 +188,7 @@ async def list_messages(
 async def read_message(
     client,
     message_id: LearnID,
-    course_id: LearnID | None = None,
+    course_id: CourseReference | None = None,
     conversation_id: LearnID | None = None,
     max_requests: RequestBudget = 100,
     refresh: bool = False,
@@ -199,10 +202,10 @@ async def read_message(
             )
         scan = Scan(max_requests)
         if course_id is not None:
-            course_id, conversation_id = (
-                identifier(course_id),
-                identifier(conversation_id),
-            )
+            conversation_id = identifier(conversation_id)
+            course_id = (await resolve_course_ids(client, scan, [course_id], refresh))[
+                0
+            ]
             own, conversation = await asyncio.gather(
                 scan.get(client, PREFIX + "/users/me", refresh=refresh),
                 scan.get(
