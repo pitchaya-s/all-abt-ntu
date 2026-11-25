@@ -133,13 +133,13 @@ The process uses MCP stdio, so it stays open while its MCP client is connected. 
 
 ## Chromium
 
-Authenticated CLI services that use a browser and the MCP personal profile need Playwright and its matching Chromium build. If you use the PyPI package, install Chromium from the same package environment:
+Browser-based services need Playwright and its matching Chromium build. You can list personal MCP tools and use public tools before installing Chromium. If you use the PyPI package, install Chromium from the same package environment:
 
 ```sh
 uvx --from 'all-abt-ntu[personal]@latest' playwright install chromium
 ```
 
-For a repository checkout, include `--extra personal` in the appropriate `uv sync` command above, then run `uv run --no-sync playwright install chromium`. Playwright versions can require different Chromium builds, so repeat the matching command after upgrading. NTULearn can optionally reuse an existing browser session without launching Chromium, although the shared personal profiles still require Chromium for their other tools.
+For a repository checkout, include `--extra personal` in the appropriate `uv sync` command above, then run `uv run --no-sync playwright install chromium`. Playwright versions can require different Chromium builds, so repeat the matching command after upgrading. NTULearn can reuse an existing validated browser session for reads without launching Chromium.
 
 ## Run an HTTP server on localhost
 

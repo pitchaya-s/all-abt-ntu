@@ -36,10 +36,12 @@ Check whether credentials are stored in the native keyring.
 
 ```sh
 ntu auth status
+ntu auth status --json
 ```
 
 #### Arguments and options
 
+- `--json`, `-j` writes the storage status as JSON.
 - `--help`, `-h`: Show help.
 
 #### Notes

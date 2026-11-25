@@ -28,11 +28,20 @@ jobs:
       - run: uv run --no-sync python tools/check_format_baseline.py
       - name: Build documentation
         if: matrix.python == '3.12'
-        run: uvx --from mkdocs-material mkdocs build --strict
+        run: UV_PROJECT_ENVIRONMENT="$RUNNER_TEMP/ntu-docs" uv run --locked --only-group docs mkdocs build --strict
+      - name: Check locked dependency advisories
+        if: matrix.python == '3.12'
+        run: uv run --no-sync python tools/check_dependency_advisories.py
       - name: Check repository types against existing diagnostics
         if: matrix.python == '3.12'
         run: uv run --no-sync --with mypy==2.4.1 python tools/check_mypy_baseline.py
-      - run: uv run --no-sync python -m unittest discover -s tests -t . -q
+      - name: Run offline tests
+        env:
+          HTTP_PROXY: http://127.0.0.1:1
+          HTTPS_PROXY: http://127.0.0.1:1
+          ALL_PROXY: http://127.0.0.1:1
+          NO_PROXY: localhost,127.0.0.1
+        run: uv run --no-sync python -m unittest discover -s tests -t . -q
       - name: Check isolated interface dependencies and hosted installation
         if: matrix.python == '3.12'
         run: |
