@@ -449,25 +449,31 @@ class ToolConfigTests(unittest.TestCase):
         command = [
             sys.executable,
             "-c",
-            "from cli.cli import create_app; create_app()(standalone_mode=False); from stars.client.cache import CACHE_TTL_SECONDS; print('TTL:', CACHE_TTL_SECONDS)",
-            "mcp",
-            "tools",
-            "list",
+            "from unittest.mock import patch\n"
+            "from cli.cli import create_app\n"
+            "with patch('cli.commands.stars.invoke'):\n"
+            "    create_app()(standalone_mode=False)\n"
+            "from stars.client.cache import CACHE_TTL_SECONDS\n"
+            "print('TTL:', CACHE_TTL_SECONDS)\n",
         ]
         env = {**os.environ}
         env.pop("NTU_CACHE_TTL_SECONDS", None)
-        result = subprocess.run(
-            command, env=env, text=True, capture_output=True, check=True
-        )
-        self.assertIn("TTL: 123", result.stdout)
-        result = subprocess.run(
-            command,
-            env={**env, "NTU_CACHE_TTL_SECONDS": "42"},
-            text=True,
-            capture_output=True,
-            check=True,
-        )
-        self.assertIn("TTL: 42", result.stdout)
+        for args in (
+            ["mcp", "tools", "list"],
+            ["stars", "course", "ZZ0001", "--year", "2026", "--semester", "1"],
+        ):
+            for override in ("", "42"):
+                with self.subTest(command=args, override=override):
+                    result = subprocess.run(
+                        command + args,
+                        env={**env, "NTU_CACHE_TTL_SECONDS": override}
+                        if override
+                        else env,
+                        text=True,
+                        capture_output=True,
+                        check=True,
+                    )
+                    self.assertIn(f"TTL: {override or '123'}", result.stdout)
 
     def test_duplicate_environment_setting_is_rejected_without_saving(self):
         self.call("config", "set", "ntulearn.headless", "false")

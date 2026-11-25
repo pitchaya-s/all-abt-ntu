@@ -2,7 +2,7 @@
 
 import asyncio
 import inspect
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from contextvars import ContextVar
 
 import click
@@ -12,6 +12,7 @@ from pydantic import ValidationError, validate_call
 from shared.errors import OperationError, unexpected_error
 
 from .common import fail
+from .config import ConfigError, service_environment
 
 SESSION_LOOP = ContextVar("session_loop", default=None)
 SESSION_APPLICATION = ContextVar("session_application", default=None)
@@ -23,35 +24,41 @@ def application_scope():
     if current is not None:
         yield current
         return
-    from application import Application
-
-    application = Application()
-    loop = asyncio.new_event_loop()
-    app_token = SESSION_APPLICATION.set(application)
-    loop_token = SESSION_LOOP.set(loop)
-    try:
-        yield application
-    except (
-        click.ClickException,
-        click.exceptions.Exit,
-        typer.BadParameter,
-        typer.Exit,
-        typer.Abort,
-    ):
-        raise
-    except OperationError as error:
-        fail(error)
-    except Exception as error:
-        fail(unexpected_error("CLI operation", error))
-    finally:
+    with ExitStack() as scope:
         try:
-            loop.run_until_complete(application.close())
-            loop.run_until_complete(loop.shutdown_asyncgens())
-            loop.run_until_complete(loop.shutdown_default_executor())
+            scope.enter_context(service_environment())
+        except ConfigError as error:
+            fail(error)
+
+        from application import Application
+
+        application = Application()
+        loop = asyncio.new_event_loop()
+        app_token = SESSION_APPLICATION.set(application)
+        loop_token = SESSION_LOOP.set(loop)
+        try:
+            yield application
+        except (
+            click.ClickException,
+            click.exceptions.Exit,
+            typer.BadParameter,
+            typer.Exit,
+            typer.Abort,
+        ):
+            raise
+        except OperationError as error:
+            fail(error)
+        except Exception as error:
+            fail(unexpected_error("CLI operation", error))
         finally:
-            loop.close()
-            SESSION_LOOP.reset(loop_token)
-            SESSION_APPLICATION.reset(app_token)
+            try:
+                loop.run_until_complete(application.close())
+                loop.run_until_complete(loop.shutdown_asyncgens())
+                loop.run_until_complete(loop.shutdown_default_executor())
+            finally:
+                loop.close()
+                SESSION_LOOP.reset(loop_token)
+                SESSION_APPLICATION.reset(app_token)
 
 
 async def execute(function, arguments, *, side_effect=False):

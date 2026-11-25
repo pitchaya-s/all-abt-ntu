@@ -13,7 +13,7 @@ These tools run in the shared `all-abt-ntu-mcp` server. See the [getting started
 
 NTULearn reuses a validated session for as long as it can. When it needs a session, it tries these sources in order:
 
-1. **Browser cookies.** By default, NTULearn looks for an existing `BbRouter` cookie in Edge, Chrome, Firefox, Brave, or Safari. Each browser's cookie set is tried separately. To disable discovery for MCP, run `ntu config set ntulearn.browser_cookies false` and restart the server. For direct CLI use, set `NTULEARN_BROWSER_COOKIES=false` in the process environment.
+1. **Browser cookies.** By default, NTULearn looks for an existing `BbRouter` cookie in Edge, Chrome, Firefox, Brave, or Safari. Each browser's cookie set is tried separately. Run `ntu config set ntulearn.browser_cookies false` to disable discovery for the CLI and local MCP. Restart a running MCP server to apply the change there.
 2. **Environment cookie.** Set `NTULEARN_SESSION_COOKIE` in the process environment to a current NTULearn `BbRouter` value. Both the raw value and `BbRouter=<value>` are accepted. Treat it like a password and keep it out of chat, shell command arguments, and configuration files.
 3. **Playwright sign-in.** Save an account with `ntu auth save` and install Chromium. If NTU requires an interactive challenge, set `NTULEARN_HEADLESS=false` and run the process where you can use the browser. A rejected password is never retried automatically.
 

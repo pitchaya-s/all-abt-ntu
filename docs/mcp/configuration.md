@@ -3,7 +3,7 @@
 ## Configuration file
 
 
-MCP settings are stored in `$XDG_CONFIG_HOME/all-abt-ntu/tools.json` (normally `~/.config/all-abt-ntu/tools.json`), or `%APPDATA%\all-abt-ntu\tools.json` on Windows. MCP setup and the configuration commands update this file. Direct service commands do not read it. For example:
+Local settings are stored in `$XDG_CONFIG_HOME/all-abt-ntu/tools.json` (normally `~/.config/all-abt-ntu/tools.json`), or `%APPDATA%\all-abt-ntu\tools.json` on Windows. The CLI and local MCP share the `env` section. The `profile` and `tools` sections apply only to MCP.
 
 ```json
 {
@@ -35,7 +35,7 @@ uv run ntu config list
 uv run ntu config unset ntulearn.headless
 ```
 
-For a PyPI install, use the same `uvx --from 'all-abt-ntu[cli,mcp,personal]@latest'` prefix as in [local setup](index.md#local-setup) instead of `uv run`. The supported settings under `env` are:
+For a PyPI install, use `uvx --from 'all-abt-ntu[cli]@latest' ntu config`. The supported settings under `env` are:
 
 
 | Group         | Settings                                                                                                                 |

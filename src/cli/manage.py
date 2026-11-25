@@ -22,6 +22,7 @@ from .config import (
     apply_config_env,
     load_config,
     save_config,
+    service_environment,
     setting_entry,
 )
 from .helpers import Profile
@@ -31,14 +32,16 @@ mcp = typer.Typer(invoke_without_command=True, help="Run and configure the MCP s
 auth = typer.Typer(
     no_args_is_help=True, help="Manage credentials in the native OS keyring."
 )
-config_app = typer.Typer(no_args_is_help=True, help="Manage MCP settings.")
+config_app = typer.Typer(
+    no_args_is_help=True, help="Manage settings shared by the CLI and MCP."
+)
 tools_app = typer.Typer(no_args_is_help=True, help="Manage MCP tools.")
 cli_setup = typer.Typer(no_args_is_help=True, help="Set up the CLI.")
 mcp.add_typer(tools_app, name="tools")
 
 
 @cli_setup.command("setup")
-def setup_cli():
+def setup_cli(ctx: typer.Context):
     """Optionally save credentials and install Chromium for personal services."""
     if not all(stream.isatty() for stream in (sys.stdin, sys.stdout, sys.stderr)):
         fail(ConfigError("CLI setup requires an interactive terminal."))
@@ -46,6 +49,7 @@ def setup_cli():
     import questionary
 
     try:
+        ctx.with_resource(service_environment())
         status = credential_status()
         if status["credential_error"]:
             print(
@@ -89,7 +93,9 @@ def setup_cli():
                 )
             print("Playwright Chromium is ready.")
         print("CLI setup complete.")
-    except (ConfigError, OSError, KeyboardInterrupt) as error:
+    except KeyboardInterrupt:
+        fail(ConfigError("CLI setup cancelled."))
+    except (ConfigError, OSError) as error:
         fail(error)
 
 
@@ -227,8 +233,11 @@ def auth_delete():
 
 @config_app.command("list")
 def config_list():
-    """Show the saved MCP environment settings as JSON."""
-    render(load_config()["env"], json_output=True)
+    """Show saved service settings as JSON."""
+    try:
+        render(load_config(validate_mcp=False)["env"], json_output=True)
+    except ConfigError as error:
+        fail(error)
 
 
 @config_app.command("set")
@@ -236,9 +245,11 @@ def config_set(
     name: Annotated[
         str, typer.Argument(help="Setting name, such as ntulearn.headless.")
     ],
-    value: Annotated[str, typer.Argument(help="Value to save for this MCP setting.")],
+    value: Annotated[
+        str, typer.Argument(help="Value to save for this service setting.")
+    ],
 ):
-    """Set an MCP environment setting."""
+    """Set a service setting for the CLI and MCP."""
     try:
         section, separator, key = name.partition(".")
         if not separator or not section or not key:
@@ -248,7 +259,7 @@ def config_set(
         _, rendered = setting_entry(section, key, value, parse=True)
         kind = SETTINGS[section][key][1] if section != "other" else str
         parsed = rendered == "true" if kind is bool else kind(rendered)
-        current = load_config()
+        current = load_config(validate_mcp=False)
         current["env"].setdefault(section, {})[key] = parsed
         path = save_config(current)
         print(f"Updated setting in {path}.")
@@ -262,12 +273,12 @@ def config_unset(
         str, typer.Argument(help="Setting name, such as ntulearn.headless.")
     ],
 ):
-    """Remove a saved MCP setting and use its default."""
+    """Remove a saved service setting."""
     try:
         section, separator, key = name.partition(".")
         if not separator or not section or not key:
             raise ConfigError("Use a setting name such as ntulearn.headless.")
-        current = load_config()
+        current = load_config(validate_mcp=False)
         values = current["env"].get(section, {})
         values.pop(key, None)
         if not values:

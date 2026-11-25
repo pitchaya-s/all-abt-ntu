@@ -573,7 +573,34 @@ class UnifiedCLITests(unittest.TestCase):
             {"item_id": "item-id", "quantity": 3, "action": "set_quantity"},
         )
 
-    def test_cli_ignores_mcp_settings_and_refuses_noninteractive_actions(self):
+    def test_cli_loads_service_settings_independently_of_mcp_policy(self):
+        current = load_config()
+        current["profile"] = "invalid-mcp-profile"
+        current["tools"]["disabled"] = ["ntulearn_list_courses"]
+        current["env"] = {"ntulearn": {"browser_cookies": False}}
+        save_config(current)
+
+        seen = []
+
+        def inspect_settings(operation, *args, **kwargs):
+            seen.append(operation.__self__.session.config.browser_cookies)
+
+        with (
+            patch.dict(os.environ),
+            patch("cli.commands.learn.invoke", side_effect=inspect_settings),
+        ):
+            os.environ.pop("NTULEARN_BROWSER_COOKIES", None)
+            result = self.runner.invoke(self.app, ["learn", "courses", "--json"])
+            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertNotIn("NTULEARN_BROWSER_COOKIES", os.environ)
+
+            os.environ["NTULEARN_BROWSER_COOKIES"] = "true"
+            result = self.runner.invoke(self.app, ["learn", "courses", "--json"])
+            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertEqual(os.environ["NTULEARN_BROWSER_COOKIES"], "true")
+        self.assertEqual(seen, [False, True])
+
+    def test_cli_ignores_mcp_tool_selection_and_refuses_noninteractive_actions(self):
         current = load_config()
         current["tools"]["families"]["disabled"] = ["news"]
         current["tools"]["enabled"] = ["ntulearn_download_file"]

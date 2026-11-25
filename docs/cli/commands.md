@@ -1,6 +1,6 @@
 # CLI commands
 
-Choose a command name for its arguments, options and an example. You can also append `--help` to any command. CLI commands require the `cli` package extra; MCP setup and tool management also require `mcp`. Direct commands use service defaults and environment variables, independently of MCP profiles and tool settings. Command pages identify where `--json` is available. JSON writes results to stdout; diagnostics go to stderr. Personal operations require authentication. Actions and downloads require local confirmation.
+Choose a command name for its arguments, options and an example. You can also append `--help` to any command. CLI commands require the `cli` package extra; MCP setup and tool management also require `mcp`. Direct commands share [service settings](config.md) with local MCP and run independently of its profile and tool selection. Command pages identify where `--json` is available. JSON writes results to stdout; diagnostics go to stderr. Personal operations require authentication. Actions and downloads require local confirmation.
 
 Some resource groups also run their `list` or `show` command when the subcommand is omitted (for example, `ntu learn courses` and `ntu onestop appointments`).
 
@@ -38,9 +38,9 @@ One Stop request applications, appointment bookings and cart checkout run as sta
 
 | Command | What it does |
 | --- | --- |
-| [`ntu config list`](config.md#cmd-config-list) | Show saved MCP environment settings. |
-| [`ntu config set`](config.md#cmd-config-set) | Save a supported MCP setting, such as `ntulearn.headless`. |
-| [`ntu config unset`](config.md#cmd-config-unset) | Remove a saved MCP setting and return to its default. |
+| [`ntu config list`](config.md#cmd-config-list) | Show saved service settings. |
+| [`ntu config set`](config.md#cmd-config-set) | Save a service setting, such as `ntulearn.headless`. |
+| [`ntu config unset`](config.md#cmd-config-unset) | Remove a saved service setting. |
 
 ## stars
 

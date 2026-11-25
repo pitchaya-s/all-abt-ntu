@@ -1,4 +1,4 @@
-# MCP configuration commands
+# Service configuration commands
 
 [Back to command catalog](commands.md)
 
@@ -11,7 +11,7 @@
 <a id="cmd-config-list"></a>
 ### `ntu config list`
 
-Show the saved MCP environment settings.
+Show saved service settings as JSON.
 
 #### Usage
 
@@ -25,12 +25,12 @@ ntu config list
 
 #### Notes
 
-The output is JSON. These settings apply to MCP, not direct service commands.
+The CLI and local MCP server share [service settings](../mcp/configuration.md). MCP profiles and tool selection are managed separately with `ntu mcp`.
 
 <a id="cmd-config-set"></a>
 ### `ntu config set`
 
-Set a supported MCP environment setting.
+Set a service setting for the CLI and local MCP server.
 
 #### Usage
 
@@ -46,12 +46,12 @@ ntu config set ntulearn.headless false
 
 #### Notes
 
-Restart the MCP server for changes to take effect. The configuration file is plain text and must not contain credentials.
+Changes apply to the next CLI command. Restart the MCP server to apply them there. An explicit environment variable takes precedence. Keep credentials out of the configuration file.
 
 <a id="cmd-config-unset"></a>
 ### `ntu config unset`
 
-Remove a saved MCP environment setting.
+Remove a saved service setting.
 
 #### Usage
 

@@ -8,7 +8,7 @@ from shared.version import VERSION
 
 
 def create_app():
-    """Build the CLI without loading MCP configuration."""
+    """Build the CLI without reading settings until a command needs them."""
     app = typer.Typer(
         invoke_without_command=True,
         help="NTU services, local configuration, and MCP server.",

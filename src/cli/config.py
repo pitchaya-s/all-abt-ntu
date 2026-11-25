@@ -3,6 +3,7 @@
 import json
 import math
 import os
+from contextlib import contextmanager
 from pathlib import Path
 import re
 import tempfile
@@ -119,24 +120,26 @@ def validate_env_settings(env: dict) -> None:
             variables.add(variable)
 
 
-def load_config() -> dict:
+def load_config(*, validate_mcp: bool = True) -> dict:
     path = config_path()
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
-        return {
-            "profile": "public",
-            "tools": {
-                "enabled": [],
-                "disabled": [],
-                "families": {"enabled": [], "disabled": []},
-            },
-            "env": {},
-        }
+        data = {}
     except (OSError, ValueError) as error:
         raise ConfigError(f"Cannot read configuration at {path}: {error}") from error
     if not isinstance(data, dict):
         raise ConfigError(f"Invalid configuration at {path}; fix or remove the file.")
+    env = data.setdefault("env", {})
+    if not isinstance(env, dict) or not all(
+        isinstance(section, str) and isinstance(values, dict)
+        for section, values in env.items()
+    ):
+        raise ConfigError(f"Invalid service settings at {path}; check the env section.")
+    validate_env_settings(env)
+    if not validate_mcp:
+        return data
+
     data.setdefault("profile", "public")
     tools: Any = data.setdefault("tools", {})
     if isinstance(tools, dict):
@@ -147,7 +150,6 @@ def load_config() -> dict:
     if isinstance(families, dict):
         families.setdefault("enabled", [])
         families.setdefault("disabled", [])
-    env = data.get("env", {})
     if (
         data.get("profile") not in PROFILES
         or not isinstance(tools, dict)
@@ -168,24 +170,32 @@ def load_config() -> dict:
             for name in families[key]
         )
         or set(families["enabled"]) & set(families["disabled"])
-        or not isinstance(env, dict)
-        or not all(
-            isinstance(section, str) and isinstance(values, dict)
-            for section, values in env.items()
-        )
     ):
         raise ConfigError(f"Invalid configuration at {path}; fix or remove the file.")
-    validate_env_settings(env)
-    data.setdefault("env", {})
     return data
 
 
-def apply_config_env(config: dict) -> None:
+def apply_config_env(config: dict) -> list[str]:
     """Inherit explicit process environment values ahead of saved defaults."""
+    added = []
     for section, settings in config["env"].items():
         for name, value in settings.items():
             variable, rendered = setting_entry(section, name, value)
-            os.environ.setdefault(variable, rendered)
+            if variable not in os.environ:
+                os.environ[variable] = rendered
+                added.append(variable)
+    return added
+
+
+@contextmanager
+def service_environment():
+    """Apply service settings for a CLI command independently of MCP policy."""
+    added = apply_config_env(load_config(validate_mcp=False))
+    try:
+        yield
+    finally:
+        for variable in added:
+            os.environ.pop(variable, None)
 
 
 def save_config(config: dict) -> Path:
