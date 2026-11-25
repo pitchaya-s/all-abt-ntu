@@ -14,7 +14,7 @@
 <a id="cmd-learn-auth-status"></a>
 ### `ntu learn auth status`
 
-Sign in to NTULearn and report whether access is verified.
+Verify NTULearn access, reusing an existing session when available.
 
 #### Usage
 

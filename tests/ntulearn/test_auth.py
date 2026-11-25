@@ -264,8 +264,10 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
                 seen.append(("firefox", domain_name))
                 return [cookie("BbRouter", "expires:1,id:firefox", ".ntu.edu.sg")]
 
-        result = read_browser_cookie_sets(
-            module=BrowserModule(), browsers=("edge", "chrome", "firefox")
+        result = list(
+            read_browser_cookie_sets(
+                module=BrowserModule(), browsers=("edge", "chrome", "firefox")
+            )
         )
         self.assertEqual(
             seen,
@@ -279,6 +281,33 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual({item.name for item in result[0]}, {"BbRouter", "JSESSIONID"})
         self.assertEqual(result[1][0].value, "expires:1,id:firefox")
         self.assertNotIn(SECRET, repr(result))
+
+    def test_default_discovery_checks_additional_browser_adapters(self):
+        browsers = ("chromium", "opera", "opera_gx", "vivaldi", "arc", "librewolf")
+        seen = []
+
+        def reader(browser):
+            def load(*, domain_name):
+                seen.append((browser, domain_name))
+                return [
+                    SimpleNamespace(
+                        name="BbRouter",
+                        value=f"synthetic-{browser}",
+                        domain="ntulearn.ntu.edu.sg",
+                        path="/",
+                        secure=True,
+                    )
+                ]
+
+            return load
+
+        module = SimpleNamespace(**{browser: reader(browser) for browser in browsers})
+        candidates = list(read_browser_cookie_sets(module=module))
+        self.assertEqual(seen, [(browser, "ntu.edu.sg") for browser in browsers])
+        self.assertEqual(
+            [cookies[0].value for cookies in candidates],
+            [f"synthetic-{browser}" for browser in browsers],
+        )
 
     def test_playwright_cookies_keep_all_ntulearn_state_and_reject_other_domains(self):
         result = playwright_cookies(
@@ -327,42 +356,55 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_validated_browser_cookies_skip_sso_and_are_reused(self):
         requests = []
+        browser_reads = []
         sso = AsyncMock()
 
         def handler(request):
             requests.append(request)
+            if "id:rejected" in request.headers.get("cookie", ""):
+                return api_response(request, status=401)
             return self.authenticated_handler(request)
+
+        def reader():
+            browser_reads.append("rejected")
+            yield cookies("expires:1,id:rejected")
+            browser_reads.append("accepted")
+            yield cookies()
+            browser_reads.append("remaining")
+            yield cookies("expires:1,id:remaining")
 
         session = self.make_session(
             handler,
-            browser_reader=lambda: [cookies()],
+            browser_reader=reader,
             sso_login=sso,
             browser_cookies=True,
         )
-        with patch(
-            "services.ntulearn.client.auth.read_environment_cookie"
-        ) as environment:
+        with (
+            patch(
+                "services.ntulearn.client.auth.read_environment_cookie"
+            ) as environment,
+            patch("services.ntulearn.client.auth.read_credentials") as read_keyring,
+            patch(
+                "services.ntulearn.client.session.credential_status"
+            ) as keyring_status,
+        ):
+            status = await session.verify()
             first, freshness = await session.get(COURSES)
             second, cached = await session.get(COURSES)
         environment.assert_not_called()
+        read_keyring.assert_not_called()
+        keyring_status.assert_not_called()
+        self.assertEqual(browser_reads, ["rejected", "accepted"])
         self.assertEqual(first, second)
         self.assertFalse(freshness["from_cache"])
         self.assertTrue(cached["from_cache"])
-        self.assertEqual(len(requests), 2)
+        self.assertEqual(len(requests), 3)
         self.assertIn("BbRouter=expires:1,id:synthetic", requests[-1].headers["cookie"])
         self.assertIn("XSRF-TOKEN=synthetic-xsrf", requests[-1].headers["cookie"])
         sso.assert_not_awaited()
-        with patch(
-            "services.ntulearn.client.session.credential_status",
-            return_value={
-                "credentials_configured": False,
-                "credential_storage": "os_keyring",
-                "credential_error": None,
-            },
-        ):
-            status = await session.status()
         self.assertTrue(status.session_verified)
         self.assertEqual(status.authentication_method, "browser_cookie")
+        self.assertIsNone(status.credentials_configured)
 
     async def test_rejected_browser_and_environment_cookies_fall_back_to_sso(self):
         seen = []
@@ -399,11 +441,6 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(session.auth.state.method, "sso")
 
     async def test_environment_cookie_works_after_browser_rejection_or_opt_out(self):
-        credential_status = {
-            "credentials_configured": False,
-            "credential_storage": "os_keyring",
-            "credential_error": None,
-        }
         for discover, value in (
             (True, "expires:1,id:environment"),
             (False, "BbRouter=expires:1,id:environment"),
@@ -432,9 +469,8 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
                         "services.ntulearn.client.auth.read_credentials"
                     ) as read_keyring,
                     patch(
-                        "services.ntulearn.client.session.credential_status",
-                        return_value=credential_status,
-                    ),
+                        "services.ntulearn.client.session.credential_status"
+                    ) as keyring_status,
                 ):
                     await session.get(COURSES)
                     await session.get(COURSES)
@@ -449,8 +485,10 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
                     * 2,
                 )
                 self.assertEqual(status.authentication_method, "environment_cookie")
+                self.assertIsNone(status.credentials_configured)
                 self.assertNotIn("id:environment", status.model_dump_json())
                 read_keyring.assert_not_called()
+                keyring_status.assert_not_called()
                 sso.assert_not_awaited()
 
     async def test_malformed_environment_cookie_is_not_sent(self):

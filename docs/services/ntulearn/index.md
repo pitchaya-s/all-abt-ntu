@@ -13,11 +13,11 @@ These tools run in the shared `all-abt-ntu-mcp` server. See the [getting started
 
 NTULearn reuses a validated session for as long as it can. When it needs a session, it tries these sources in order:
 
-1. **Browser cookies.** By default, NTULearn looks for an existing `BbRouter` cookie in Edge, Chrome, Firefox, Brave, or Safari. Each browser's cookie set is tried separately. Run `ntu config set ntulearn.browser_cookies false` to disable discovery for the CLI and local MCP. Restart a running MCP server to apply the change there.
+1. **Browser cookies.** By default, NTULearn checks Edge, Chrome, Firefox, Brave, Safari, Chromium, Opera, Opera GX, Vivaldi, Arc, and LibreWolf. It tries each browser separately and stops after NTULearn accepts a session. Run `ntu config set ntulearn.browser_cookies false` to disable discovery for the CLI and local MCP. Restart a running MCP server to apply the change there.
 2. **Environment cookie.** Set `NTULEARN_SESSION_COOKIE` in the process environment to a current NTULearn `BbRouter` value. Both the raw value and `BbRouter=<value>` are accepted. Treat it like a password and keep it out of chat, shell command arguments, and configuration files.
 3. **Playwright sign-in.** Save an account with `ntu auth save` and install Chromium. If NTU requires an interactive challenge, set `NTULEARN_HEADLESS=false` and run the process where you can use the browser. A rejected password is never retried automatically.
 
-Both cookie sources are validated with NTULearn before use and can work without a saved keyring account. NTULearn uses the account that owns the first valid session. Browser discovery depends on the operating system and access to the local browser profile. The environment cookie is sent only to `ntulearn.ntu.edu.sg`.
+Both cookie sources are validated with NTULearn before use. Once a cookie is accepted, NTULearn can read courses and report the session status without opening the keyring or a sign-in window. It uses the account that owns the first valid session. Browser detection depends on the operating system and access to the local profile. Arc and Safari detection require macOS with the current cookie library. The environment cookie is sent only to `ntulearn.ntu.edu.sg`.
 
 For sessions established by Playwright, NTULearn checks the [shared OS keyring](../../architecture/credentials.md#credential-storage) once per data operation. Replacing or revoking the saved account invalidates its session and cache on the next operation. NTULearn keeps authentication state and academic responses in memory. When a session expires, concurrent requests share one recovery attempt.
 

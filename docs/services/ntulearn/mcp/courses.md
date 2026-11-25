@@ -80,13 +80,13 @@ Recursively search content across available enrolled courses, or selected course
 
 ### `ntulearn_auth_status`
 
-Report credential configuration and this process's last verified login, without logging in.
+Report the latest verified session. Cookie sessions skip the keyring check.
 
 **Inputs:** none. Does not log in or require configured credentials.
 
-**Returns:** `credentials_configured`, `credential_storage` of `os_keyring`, a sanitized `credential_error` when unavailable, `session_verified`, `authentication_method`, `last_verified_at`, in-memory session storage mode, and cache TTL. A cookie-based session can be verified while `credentials_configured` is false. A verified session can still expire between reads.
+**Returns:** `credentials_configured`, `credential_storage` of `os_keyring`, a sanitized `credential_error` when unavailable, `session_verified`, `authentication_method`, `last_verified_at`, in-memory session storage mode, and cache TTL. A verified session can still expire between reads.
 
-`credentials_configured` is `true` when the stored account is readable, `false` when the keyring is readable but has no account, and `null` when storage cannot be read. See [Linux keyring troubleshooting](../../../architecture/credentials.md#linux-keyring-access) if terminal `auth status` works but the MCP does not.
+`credentials_configured` is `true` when the stored account is readable, `false` when the keyring has no saved account, and `null` when the keyring was skipped or unavailable. Use `ntu auth status` to check the keyring directly. See [Linux keyring troubleshooting](../../../architecture/credentials.md#linux-keyring-access) if keyring access differs between the terminal and MCP.
 
 **Inputs**
 

@@ -127,7 +127,7 @@ def cmd_auth_status(
         False, "--json", "-j", help="Write JSON to stdout."
     ),
 ):
-    """Sign in to NTULearn and report whether access is verified."""
+    """Verify NTULearn access, reusing an existing session when available."""
     with application_scope() as application:
         return invoke(
             application.learn_session.verify,

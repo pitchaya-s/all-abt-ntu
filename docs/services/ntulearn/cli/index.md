@@ -34,7 +34,7 @@ Use a course code or Blackboard ID to browse content or search. `content tree` w
 
 | Command | What it does |
 | --- | --- |
-| [`ntu learn auth status`](courses.md#cmd-learn-auth-status) | Sign in to NTULearn and report whether access is verified. |
+| [`ntu learn auth status`](courses.md#cmd-learn-auth-status) | Verify NTULearn access, reusing an existing session when available. |
 | [`ntu learn content tree`](courses.md#cmd-learn-content-tree) | Read a course's nested content tree. |
 | [`ntu learn content show`](courses.md#cmd-learn-content-show) | Read one level of course content. |
 | [`ntu learn courses list`](courses.md#cmd-learn-courses-list) | List your enrolled NTULearn courses and organizations, including published availability and course IDs. |

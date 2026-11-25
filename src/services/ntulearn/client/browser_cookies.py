@@ -6,14 +6,26 @@ import os
 import re
 import time
 from dataclasses import dataclass, field
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from typing import Any
 
 BASE_URL = "https://ntulearn.ntu.edu.sg"
 NTULEARN_HOST = "ntulearn.ntu.edu.sg"
 _ALLOWED_DOMAINS = {"ntu.edu.sg", NTULEARN_HOST}
 _COOKIE_NAME = re.compile(r"[!#$%&'*+.^_`|~0-9A-Za-z-]+\Z")
-_BROWSERS = ("edge", "chrome", "firefox", "brave", "safari")
+_BROWSERS = (
+    "edge",
+    "chrome",
+    "firefox",
+    "brave",
+    "safari",
+    "chromium",
+    "opera",
+    "opera_gx",
+    "vivaldi",
+    "arc",
+    "librewolf",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,10 +104,15 @@ def _from_playwright_cookie(cookie: Mapping[str, Any]) -> SessionCookie | None:
     return value if _is_safe(value) else None
 
 
-def _read_from_module(
-    module: Any, browsers: tuple[str, ...]
-) -> list[tuple[SessionCookie, ...]]:
-    candidates = []
+def read_browser_cookie_sets(
+    *, module: Any | None = None, browsers: tuple[str, ...] = _BROWSERS
+) -> Iterator[tuple[SessionCookie, ...]]:
+    """Yield one isolated cookie set per browser as needed."""
+    if module is None:
+        try:
+            module = import_module("browser_cookie3")
+        except ImportError:
+            return
     for browser in browsers:
         getter = getattr(module, browser, None)
         if getter is None:
@@ -111,24 +128,8 @@ def _read_from_module(
             # Browser locks, encryption, permissions, and platform failures are
             # expected. Never put exception text or cookie data in logs.
             continue
-        if any(
-            cookie.name == "BbRouter" and cookie.value.startswith("expires:")
-            for cookie in cookies
-        ):
-            candidates.append(cookies)
-    return candidates
-
-
-def read_browser_cookie_sets(
-    *, module: Any | None = None, browsers: tuple[str, ...] = _BROWSERS
-) -> list[tuple[SessionCookie, ...]]:
-    """Return isolated cookie sets, one per browser, without persisting values."""
-    if module is None:
-        try:
-            module = import_module("browser_cookie3")
-        except ImportError:
-            return []
-    return _read_from_module(module, browsers)
+        if any(cookie.name == "BbRouter" for cookie in cookies):
+            yield cookies
 
 
 def read_environment_cookie() -> SessionCookie | None:

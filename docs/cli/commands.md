@@ -77,7 +77,7 @@ One Stop request applications, appointment bookings and cart checkout run as sta
 | [`ntu learn upcoming`](../services/ntulearn/cli/activity.md#cmd-learn-upcoming) | Collect all calendar pages across your enrolled courses. |
 | [`ntu learn digest`](../services/ntulearn/cli/activity.md#cmd-learn-digest) | Digest of recent announcements, upcoming calendar items and your gradebook across courses. |
 | [`ntu learn users`](../services/ntulearn/cli/people.md#cmd-learn-users) | List course users visible to your account, with their published names and roles. |
-| [`ntu learn auth status`](../services/ntulearn/cli/courses.md#cmd-learn-auth-status) | Sign in to NTULearn and report whether access is verified. |
+| [`ntu learn auth status`](../services/ntulearn/cli/courses.md#cmd-learn-auth-status) | Verify NTULearn access, reusing an existing session when available. |
 | [`ntu learn content tree`](../services/ntulearn/cli/courses.md#cmd-learn-content-tree) | Read a course's nested content tree. |
 | [`ntu learn content show`](../services/ntulearn/cli/courses.md#cmd-learn-content-show) | Read one level of course content. |
 | [`ntu learn courses download`](../services/ntulearn/cli/files.md#cmd-learn-courses-download) | Recursively save readable Blackboard attachments under destination/course_id with content folder names and stable file IDs. |

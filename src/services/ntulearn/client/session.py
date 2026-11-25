@@ -65,7 +65,16 @@ class Session:
         self._video = VideoSession(self)
 
     async def status(self) -> AuthStatus:
-        """Report credential configuration and this process's last verified login, without logging in."""
+        """Report the current session without checking the keyring for cookie sessions."""
+        state = self.auth.state
+        if state is not None and state.method != "sso":
+            return AuthStatus(
+                credentials_configured=None,
+                session_verified=True,
+                authentication_method=state.method,
+                last_verified_at=state.verified_at,
+                cache_ttl_seconds=self.config.cache_ttl_seconds,
+            )
         credentials = await asyncio.to_thread(credential_status)
         state = self.auth.state
         return AuthStatus(

@@ -2,7 +2,7 @@
 
 import asyncio
 import time
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
@@ -39,7 +39,7 @@ class Authenticator:
         config: SessionConfig,
         *,
         browser_cookie_reader: Callable[
-            [], list[tuple[SessionCookie, ...]]
+            [], Iterable[tuple[SessionCookie, ...]]
         ] = read_browser_cookie_sets,
         sso_login: Callable[..., Awaitable[tuple[SessionCookie, ...]]] = login,
     ):
@@ -138,15 +138,21 @@ class Authenticator:
                             self._flight = None
                             self._flight_failed_at = None
 
+    async def _browser_cookie_sets(self) -> AsyncIterator[tuple[SessionCookie, ...]]:
+        try:
+            candidates = iter(await asyncio.to_thread(self.browser_cookie_reader))
+            while (
+                cookies := await asyncio.to_thread(next, candidates, None)
+            ) is not None:
+                yield cookies
+        except Exception:  # noqa: BLE001 - unsupported or inaccessible browser profiles.
+            return
+
     async def _resolve(self) -> AuthState:
         generation = self._generation
         try:
             if self.config.browser_cookies:
-                try:
-                    cookie_sets = await asyncio.to_thread(self.browser_cookie_reader)
-                except Exception:  # noqa: BLE001 - browser profiles may fail for platform-specific reasons.
-                    cookie_sets = []
-                for cookies in cookie_sets:
+                async for cookies in self._browser_cookie_sets():
                     self.transport.set_cookies(cookies, generation)
                     if await self._validate():
                         return self._activate("browser_cookie", generation, None)
