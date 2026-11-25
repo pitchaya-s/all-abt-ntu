@@ -13,6 +13,7 @@ from services.careeraxis.models import CareerAxisError
 from services.careeraxis.browser.session import CareerAxisSession
 from services.careeraxis.browser.snapshots import _PORTAL_SNAPSHOT, _SEARCH_SNAPSHOT
 from shared.credentials import read_credentials, delete_credentials, save_credentials
+from tests.shared.browser import launch_chromium
 from tests.shared.credential_fixtures import stored_credentials
 from tests.careeraxis.fixtures import BASE, SNAPSHOT, FixtureSession, records
 
@@ -179,10 +180,10 @@ class BrowserTests(unittest.TestCase):
 
         cls.pw = sync_playwright().start()
         try:
-            cls.browser = cls.pw.chromium.launch(headless=True)
+            cls.browser = launch_chromium(cls.pw)
         except Exception:
             cls.pw.stop()
-            raise unittest.SkipTest("Optional Chromium is not installed")
+            raise
 
     @classmethod
     def tearDownClass(cls):

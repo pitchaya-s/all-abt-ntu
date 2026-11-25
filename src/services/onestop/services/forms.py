@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import Field
 from ..models import ActionResult, ID, Limit, Token
 
+from contextlib import suppress
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 import re
@@ -38,6 +39,23 @@ LAYOUT_TYPES = [
     "label",
     "rich_text_label",
 ]
+NATIVE_ANSWERS = r"""
+      const s=scope('ntu-widget-sc-cat-item-v2'), i=s.data.sc_cat_item;
+      if(!i || i.sys_id!==args.item_id || !i.can_view) throw new Error('Wrong catalog form');
+      const questions=()=>Object.values(s.data.sc_cat_item._fields||{}).filter(f=>
+        f.name && !args.layout.includes(f.type) && f.type!=='password' && f.type!=='password2');
+      const currentAnswers=()=>{
+        const gf=catalogForm();
+        return JSON.stringify(questions().map(f=>[f.name,String(gf.getValue(f.name)??'')]));
+      };
+      // Keep private defaults inside the browser when verifying the form's answers.
+      const fingerprint=async answers=>{
+        const bytes=new TextEncoder().encode(answers);
+        const hash=await crypto.subtle.digest('SHA-256',bytes);
+        return Array.from(new Uint8Array(hash),b=>b.toString(16).padStart(2,'0')).join('');
+      };
+"""
+DRAFT_CHANGED = "The draft changed. Inspect it again before submitting."
 
 
 @dataclass
@@ -56,6 +74,8 @@ class Draft:
     appointment_selected: bool = False
     selected_slot_id: str | None = None
     attachment_revision: int = 0
+    edit_revision: int = 0
+    form_fingerprint: str | None = None
 
 
 def draft_for(session, revision, draft_id, editable=True):
@@ -83,12 +103,11 @@ def draft_for(session, revision, draft_id, editable=True):
 def preview(draft):
     data = evaluate(
         draft.page,
-        r"""
-      const s=scope('ntu-widget-sc-cat-item-v2'), i=s.data.sc_cat_item;
-      if(!i || i.sys_id!==args.item_id || !i.can_view) throw new Error('Wrong catalog form');
+        NATIVE_ANSWERS
+        + r"""
       const gf=catalogForm();
-      const fields=Object.values(i._fields||{}).filter(f=>f.visible===true &&
-        !args.layout.includes(f.type) && f.label && f.type!=='password' && f.type!=='password2');
+      const answers=currentAnswers();
+      const fields=questions().filter(f=>f.visible===true && f.label);
       const missing=[], invalid=[];
       const output=fields.map(f=>{
         const v=gf.getValue(f.name);
@@ -110,7 +129,7 @@ def preview(draft):
       if(s.data.sys_properties.cartEnabled && s.c.showAddCartBtn()) actions.push('add_to_cart');
       if(s.c.showAddToWishlist()) actions.push('save_favourite');
       if(s.c.showAttachments()) actions.push('upload_attachment');
-      return {title:i.name,fields:output,missing,invalid,actions};
+      return {title:i.name,fields:output,missing,invalid,actions,fingerprint:await fingerprint(answers)};
     """,
         {
             "item_id": draft.item_id,
@@ -118,6 +137,7 @@ def preview(draft):
             "layout": LAYOUT_TYPES,
             "appointment_selected": draft.appointment_selected,
         },
+        asynchronous=True,
     )
     draft.preview = RequestDraft(
         draft_id=draft.draft_id,
@@ -132,6 +152,7 @@ def preview(draft):
         fields=[DraftField(**f) for f in data["fields"]],
         available_actions=data["actions"],
     )
+    draft.form_fingerprint = data["fingerprint"]
     return draft.preview
 
 
@@ -151,16 +172,14 @@ def apply_values(draft, values):
         raise OneStopError(
             "Supply at most 100 field values as strings, up to 50,000 characters each and 200,000 total."
         )
-    draft.slots.clear()
-    draft.appointment_selected = False
-    draft.selected_slot_id = None
     pending = dict(values)
     while pending:
         progress = False
         for name, value in list(pending.items()):
-            state = evaluate(
-                draft.page,
-                r"""
+            try:
+                state = evaluate(
+                    draft.page,
+                    r"""
               const s=scope('ntu-widget-sc-cat-item-v2'), i=s.data.sc_cat_item;
               const f=Object.values(i._fields).find(f=>f.name===args.name);
               if(!f) return 'unknown';
@@ -171,9 +190,14 @@ def apply_values(draft, values):
               s.$evalAsync();
               return 'set';
             """,
-                {"name": name, "value": value, "layout": LAYOUT_TYPES},
-            )
+                    {"name": name, "value": value, "layout": LAYOUT_TYPES},
+                )
+            except Exception:
+                # The native setter may have run before the browser reported a failure.
+                draft.edit_revision += 1
+                raise
             if state == "set":
+                draft.edit_revision += 1
                 draft.values[name] = value
                 pending.pop(name)
                 progress = True
@@ -186,6 +210,9 @@ def apply_values(draft, values):
             raise OneStopError(
                 "A supplied question is hidden. Update its controlling questions first, then inspect the draft again."
             )
+    draft.slots.clear()
+    draft.appointment_selected = False
+    draft.selected_slot_id = None
     return preview(draft)
 
 
@@ -255,7 +282,19 @@ class FormService:
         return self.session.workflow(self._update, draft_id, values)
 
     def _update(self, session, revision, draft_id, values):
-        return apply_values(draft_for(session, revision, draft_id), values)
+        draft = draft_for(session, revision, draft_id)
+        previous_edit = draft.edit_revision
+        try:
+            return apply_values(draft, values)
+        except Exception:
+            if draft.edit_revision == previous_edit:
+                raise
+            session._drafts.pop(draft_id)
+            with suppress(Exception):
+                draft.page.close()
+            raise OneStopError(
+                "The edit failed and may have changed the form. Prepare a new draft before submitting."
+            ) from None
 
     def discard(self, draft_id: Token) -> ActionResult:
         "Close and discard a local draft. This does not withdraw submitted requests. Previously uploaded server attachments follow ServiceNow retention; use delete_attachment first to remove editable temporary attachments."
@@ -289,20 +328,23 @@ class FormService:
 
     def _review(self, session, revision, draft_id, action, slot_id):
         draft = draft_for(session, revision, draft_id, editable=False)
-        if draft.preview is None:
+        info = preview(draft) if draft.state == "prepared" else draft.preview
+        if info is None:
             raise OneStopError("Inspect the request draft before submitting it.")
         slot = draft.slots.get(slot_id or draft.selected_slot_id)
         if slot_id and slot is None and draft.state == "prepared":
             raise OneStopError("Choose a slot from the draft's current availability.")
         when = f" at {slot['window']['start']}" if slot else ""
         return ActionReview(
-            f"{action.replace('_', ' ').capitalize()} {draft.preview.title}{when}.",
+            f"{action.replace('_', ' ').capitalize()} {info.title}{when}.",
             [
                 revision,
                 draft.state,
-                draft.preview.model_dump(mode="json"),
+                info.model_dump(mode="json"),
                 slot,
                 draft.attachment_revision,
+                draft.edit_revision,
+                draft.form_fingerprint,
             ],
         )
 
@@ -314,7 +356,13 @@ class FormService:
             raise OneStopError(
                 "This draft has an uncertain submission. Check your request list before preparing another submission."
             )
+        reviewed_info, reviewed_fingerprint = draft.preview, draft.form_fingerprint
         info = preview(draft)
+        if reviewed_fingerprint is not None and (
+            draft.form_fingerprint != reviewed_fingerprint or info != reviewed_info
+        ):
+            draft.preview, draft.form_fingerprint = reviewed_info, reviewed_fingerprint
+            raise OneStopError(DRAFT_CHANGED)
         if action not in info.available_actions:
             raise OneStopError(
                 "The native portal does not offer this action for this form."
@@ -352,6 +400,7 @@ class FormService:
         def perform():
             from playwright.sync_api import TimeoutError
 
+            stale = False
             draft.state = "submitting"
             draft.page.on("request", record_attempt)
             try:
@@ -359,11 +408,28 @@ class FormService:
                     with draft.page.expect_response(
                         lambda r: matches(r.request), timeout=30000
                     ) as response_info:
-                        evaluate(
+                        triggered = evaluate(
                             draft.page,
-                            "const s=scope('ntu-widget-sc-cat-item-v2'); const methods={submit:'triggerOnSubmit',add_to_cart:'triggerAddToCart',save_favourite:'addToWishlist'}; s[methods[args]](); return true;",
-                            action,
+                            NATIVE_ANSWERS
+                            + r"""
+                          const answers=currentAnswers();
+                          if(await fingerprint(answers)!==args.fingerprint ||
+                             currentAnswers()!==answers) return false;
+                          const methods={submit:'triggerOnSubmit',add_to_cart:'triggerAddToCart',save_favourite:'addToWishlist'};
+                          s[methods[args.action]]();
+                          return true;
+                        """,
+                            {
+                                "item_id": draft.item_id,
+                                "layout": LAYOUT_TYPES,
+                                "fingerprint": draft.form_fingerprint,
+                                "action": action,
+                            },
+                            asynchronous=True,
                         )
+                        if triggered is False:
+                            stale = True
+                            raise OneStopError(DRAFT_CHANGED)
                     response = response_info.value
                 except TimeoutError:
                     draft.state = "uncertain" if attempts else "prepared"
@@ -431,7 +497,7 @@ class FormService:
                 draft.state = "submitted"
                 return draft.receipt
             except Exception:
-                draft.state = "uncertain"
+                draft.state = "prepared" if stale else "uncertain"
                 raise
             finally:
                 draft.page.remove_listener("request", record_attempt)

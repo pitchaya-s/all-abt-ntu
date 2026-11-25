@@ -27,6 +27,7 @@ from services.onestop.models import OneStopError
 from services.onestop.services.portal import PortalService
 from services.onestop.session import BASE, OneStopSession, PortalPage
 from services.onestop.services.tickets import TicketContext, TicketService
+from tests.shared.browser import launch_chromium
 from tests.shared.credential_fixtures import stored_credentials
 
 
@@ -54,6 +55,8 @@ class LocalSession:
 
     def workflow(self, fn, *args):
         return fn(self, "revision", *args)
+
+    inspect_workflow = workflow
 
     def read(self, *args, **kwargs):
         return self.snapshot
@@ -206,10 +209,10 @@ class NativeWorkflowTests(unittest.TestCase):
 
         cls.pw = sync_playwright().start()
         try:
-            cls.browser = cls.pw.chromium.launch(headless=True)
+            cls.browser = launch_chromium(cls.pw)
         except Exception:
             cls.pw.stop()
-            raise unittest.SkipTest("Optional Chromium is not installed")
+            raise
 
     @classmethod
     def tearDownClass(cls):
@@ -325,7 +328,7 @@ class NativeWorkflowTests(unittest.TestCase):
         self.assertEqual(self.calls()[0]["unsubscribeKB"], True)
         self.assertEqual(self.calls()[0]["kbSysId"], RECORD)
 
-    def test_form_changes_respect_visibility_readonly_passwords_and_hide_defaults(self):
+    def form(self):
         self.page.evaluate("""() => {
           const f=install('ntu-widget-sc-cat-item-v2',{sc_cat_item:{sys_id:'a'.repeat(32),name:'Test',can_view:true,_fields:{
             kind:{name:'kind',label:'Kind',type:'string',visible:true,mandatory:true,value:''},
@@ -339,7 +342,7 @@ class NativeWorkflowTests(unittest.TestCase):
           const e=document.createElement('div');e.setAttribute('form-model','data.sc_cat_item');e.setAttribute('mandatory','c.mandatory');
           e.native={formModel:f.data.sc_cat_item,getGlideForm:()=>g};document.body.appendChild(e);
         }""")
-        d = Draft(
+        draft = Draft(
             "synthetic-draft-token",
             ITEM,
             "revision",
@@ -347,6 +350,11 @@ class NativeWorkflowTests(unittest.TestCase):
             datetime.now(timezone.utc) + timedelta(minutes=15),
             time.monotonic() + 900,
         )
+        self.session._drafts[draft.draft_id] = draft
+        return FormService(self.session), draft
+
+    def test_form_changes_respect_visibility_readonly_passwords_and_hide_defaults(self):
+        _, d = self.form()
         info = preview(d)
         self.assertFalse(info.ready)
         self.assertNotIn("private-default", info.model_dump_json())
@@ -359,6 +367,59 @@ class NativeWorkflowTests(unittest.TestCase):
         for field in ("locked", "secret", "unknown"):
             with self.assertRaises(OneStopError):
                 apply_values(d, {field: "forbidden"})
+
+    def test_partial_form_edit_disposes_draft_before_it_can_be_submitted(self):
+        service, draft = self.form()
+        service.get(draft.draft_id)
+        with self.assertRaisesRegex(OneStopError, "unknown, read-only"):
+            service.update(draft.draft_id, {"unknown": "rejected"})
+        service.review(draft.draft_id)
+        with self.assertRaisesRegex(OneStopError, "Prepare a new draft"):
+            service.update(draft.draft_id, {"kind": "changed", "unknown": "rejected"})
+        self.assertTrue(self.page.is_closed())
+        for action in (service.review, service.submit):
+            with self.assertRaisesRegex(OneStopError, "unavailable"):
+                action(draft.draft_id)
+        self.session.before_write.assert_not_called()
+
+    def test_review_and_submission_detect_native_change_to_omitted_defaults(self):
+        service, draft = self.form()
+        original = service.review(draft.draft_id)
+        self.page.evaluate(
+            "widgets[0].data.sc_cat_item._fields.locked.value='new-private-default'"
+        )
+        for _ in range(2):
+            with self.assertRaisesRegex(OneStopError, "draft changed"):
+                service.submit(draft.draft_id)
+        updated = service.review(draft.draft_id)
+        self.assertNotEqual(original.state, updated.state)
+        self.assertNotIn("private-default", str(updated.state))
+        self.session.before_write.assert_not_called()
+
+    def test_native_submission_rechecks_answers_when_triggering_write(self):
+        service, draft = self.form()
+        service.update(draft.draft_id, {"kind": "ready"})
+        path = f"/items/{ITEM}/submit_producer"
+        self.context.route(
+            "**" + path,
+            lambda route: route.fulfill(
+                status=201, json={"result": {"sys_id": RECORD}}
+            ),
+        )
+        self.page.evaluate(
+            "path => {widgets[0].triggerOnSubmit=()=>{calls.push('submit');fetch(path,{method:'POST'});};}",
+            path,
+        )
+        self.session.before_write.side_effect = lambda revision: self.page.evaluate(
+            "widgets[0].data.sc_cat_item._fields.locked.value='new-private-default'"
+        )
+        with self.assertRaisesRegex(OneStopError, "draft changed"):
+            service.submit(draft.draft_id)
+        self.assertFalse(self.calls())
+        self.session.before_write.side_effect = None
+        service.get(draft.draft_id)
+        self.assertEqual(service.submit(draft.draft_id).resource_id, RECORD)
+        self.assertEqual(self.calls(), ["submit"])
 
     def cart(self):
         self.page.evaluate("""() => {
@@ -453,6 +514,38 @@ class NativeWorkflowTests(unittest.TestCase):
             self.assertFalse(self.calls())
             service.take_action(RECORD, "reopen")
             self.assertEqual(self.calls()[-1]["action"], "re-open")
+
+    def test_ticket_reply_requires_a_new_matching_comment_id(self):
+        new_id = "d" * 32
+        self.page.evaluate(
+            """newId => {
+          const old={sys_id:'c'.repeat(32),element:'comments',value:'<p>Repeated text</p>'};
+          const s=install('ntu_ticket_conversations',{canRead:true,sys_id:'b'.repeat(32),
+            mergedEntries:[],stream:{entries:[old]}});
+          s.server.update=async()=>{
+            calls.push({text:s.data.journalEntry,field:s.data.journalEntryField});
+            const entries=[old];
+            if(calls.length===2) entries.push({...old,sys_id:newId});
+            return {stream:{entries}};
+          };
+        }""",
+            new_id,
+        )
+        service = TicketService(self.session, Mock())
+        context = TicketContext(
+            self.session.snapshot, RECORD, "incident", {"can_reply": True}
+        )
+        with patch.object(service, "context", return_value=context):
+            first = service.reply(RECORD, "Repeated text")
+            self.assertEqual(first.outcome, "uncertain")
+            self.assertFalse(first.verified)
+            second = service.reply(RECORD, "Repeated text")
+            self.assertEqual(second.outcome, "completed")
+            self.assertEqual(second.resource_id, new_id)
+            self.assertTrue(second.verified)
+        self.assertEqual(
+            self.calls(), [{"text": "Repeated text", "field": "comments"}] * 2
+        )
 
     def test_notification_request_uses_native_own_preference_endpoint(self):
         self.page.evaluate("""() => {

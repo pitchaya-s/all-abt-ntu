@@ -180,6 +180,9 @@ class AppointmentService:
                 "This slot is not from the draft's latest availability lookup. Search availability again."
             )
         self._calendar(draft)
+        draft.edit_revision += 1
+        draft.appointment_selected = False
+        draft.selected_slot_id = None
         evaluate(
             draft.page,
             r"""

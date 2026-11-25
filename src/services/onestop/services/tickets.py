@@ -174,27 +174,32 @@ class TicketService:
                 session._page,
                 r"""
           const s=scope('ntu_ticket_conversations');
+          if(!s.data.canRead||s.data.sys_id!==args.record_id) throw new Error('Wrong conversation');
+          const merged=s.data.mergedEntries, stream=s.data.stream?.entries;
+          const hasBaseline=Array.isArray(merged)||Array.isArray(stream);
+          const previous=new Set([...(merged||[]),...(stream||[])].map(e=>e.sys_id));
           s.data.journalEntry=args.text; s.data.journalEntryField='comments';
           const r=await s.server.update();
-          return (r.stream?.entries||[]).filter(e=>e.element==='comments')
-            .map(e=>({id:e.sys_id,value:String(e.value||'')}));
+          return hasBaseline?(r.stream?.entries||[]).filter(e=>e.element==='comments'&&
+            typeof e.sys_id==='string'&&/^[0-9a-f]{32}$/.test(e.sys_id)&&!previous.has(e.sys_id))
+            .map(e=>({id:e.sys_id,value:String(e.value||'')})):[];
         """,
-                {"text": text},
+                {"record_id": context.record_id, "text": text},
                 asynchronous=True,
             ),
         )
-        entry = next(
-            (e for e in raw if html_content(e["value"])[0].strip() == text.strip()),
-            None,
-        )
+        matches = {
+            e["id"] for e in raw if html_content(e["value"])[0].strip() == text.strip()
+        }
+        entry_id = matches.pop() if len(matches) == 1 else None
         return action_result(
             "reply_to_request",
             context.snapshot.source_url,
-            sys_id(entry["id"]) if entry else context.record_id,
-            verified=entry is not None,
-            outcome="completed" if entry else "uncertain",
+            entry_id or context.record_id,
+            verified=entry_id is not None,
+            outcome="completed" if entry_id else "uncertain",
             message=None
-            if entry
+            if entry_id
             else "A reply response arrived, but the new entry was not identified. Inspect the conversation before replying again.",
         )
 

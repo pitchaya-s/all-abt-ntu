@@ -4,6 +4,7 @@ from importlib.util import find_spec
 import unittest
 
 from services.onestop.session import _EXTRACT
+from tests.shared.browser import launch_chromium
 
 
 @unittest.skipUnless(
@@ -16,10 +17,7 @@ class ExtractionTests(unittest.TestCase):
         from playwright.sync_api import sync_playwright
 
         with sync_playwright() as p:
-            try:
-                browser = p.chromium.launch(headless=True)
-            except Exception:
-                self.skipTest("Optional Chromium is not installed")
+            browser = launch_chromium(p)
             try:
                 page = browser.new_page()
                 page.set_content(
