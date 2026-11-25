@@ -19,7 +19,7 @@ Choose a command for its arguments, examples and result fields. Use `ntu bus --h
 | --- | --- |
 | [`ntu bus routes`](index.md#cmd-bus-routes) | List public NTU shuttle routes and their published display colors. |
 | [`ntu bus stops`](index.md#cmd-bus-stops) | Search NTU shuttle and LTA bus stops by stop name or code, optionally limited to a route/service. |
-| [`ntu bus arrivals`](index.md#cmd-bus-arrivals) | Get arrival estimates for NTU shuttles and/or LTA services 179, 179A, and 199. |
+| [`ntu bus arrivals`](index.md#cmd-bus-arrivals) | Get arrival estimates for NTU shuttles and LTA buses. |
 | [`ntu bus live`](index.md#cmd-bus-live) | Get current live vehicle positions for one NTU campus shuttle route. |
 | [`ntu bus status`](index.md#cmd-bus-status) | Get the published first/last bus schedule, public-holiday/special-day flags, and temporary notices for an NTU campus shuttle route. |
 
@@ -58,7 +58,7 @@ Terminal output combines matching records for the same stop and shows its routes
 #### Usage
 
 ```sh
-ntu bus stops example
+ntu bus stops "Lee Wee Nam" --route 179
 ```
 
 Use `ntu bus stops --help` for the current interface.
@@ -66,7 +66,7 @@ Use `ntu bus stops --help` for the current interface.
 #### Arguments and options
 
 - `QUERY`: The search terms. Quote multiword text so the shell passes it as one argument.
-- `--route`: The published shuttle route or supported bus service. Choices: `Blue`, `Brown`, `Green`, `Grey`, `Red`, `179`, `179A`, `199`.
+- `--route`: Campus shuttle route or LTA service. Choices: `Blue`, `Brown`, `Green`, `Grey`, `Red`, `179`, `179A`, `179B`, `199`.
 - `--limit`, `-l`: Maximum number of results to return in this page. Default: `20`.
 - `--offset`: Number of results to skip before this page. Default: `0`.
 - `--json`, `-j`: Write the result as JSON to stdout; diagnostics go to stderr.
@@ -80,19 +80,20 @@ For the corresponding MCP operation and its field types, see the [MCP schema](..
 <a id="cmd-bus-arrivals"></a>
 ### `ntu bus arrivals`
 
-Get arrival estimates for NTU shuttles and/or LTA services 179, 179A, and 199.
+Get arrival estimates for NTU shuttles and LTA services 179, 179A, 179B, and 199.
 
 #### Usage
 
 ```sh
 ntu bus arrivals --route Blue --stop "North Spine" --source shuttle
+ntu bus arrivals --stop 27211 --source lta
 ```
 
 Use `ntu bus arrivals --help` for the current interface.
 
 #### Arguments and options
 
-- `--route`: The published shuttle route or supported bus service. Choices: `Blue`, `Brown`, `Green`, `Grey`, `Red`, `179`, `179A`, `199`.
+- `--route`: Campus shuttle route or LTA service. Choices: `Blue`, `Brown`, `Green`, `Grey`, `Red`, `179`, `179A`, `179B`, `199`.
 - `--stop`: A stop name or code.
 - `--source`: Which arrival-data source to use. Choices: `all`, `shuttle`, `lta`. Default: `all`.
 - `--json`, `-j`: Write the result as JSON to stdout; diagnostics go to stderr.

@@ -7,11 +7,13 @@ Check NTU shuttle routes, stops, arrivals, live vehicles and published schedules
 ## Service notes
 
 
-Data comes from the public [NTU Omnibus app](https://apps.ntu.edu.sg/NTUOmnibus/). No NTU account is needed. Responses include the source and retrieval time. Stop data can be cached for five minutes. Positions, arrival estimates, and service status are fetched on request.
+Shuttle data comes from [NTU Omnibus](https://apps.ntu.edu.sg/NTUOmnibus/). LTA stops for **179, 179A, 179B, and 199** come from [BusRouter SG](https://busrouter.sg/), and their arrival estimates come from [ArriveLah](https://github.com/cheeaun/arrivelah). No NTU account or API key is needed.
+
+Responses include the source and retrieval time. Stop data can be cached for five minutes. Positions, arrival estimates, and service status are fetched on request.
 
 Route path geometry is outside the current tool outputs. A missing vehicle or arrival in a snapshot does not establish that a route is not operating.
 
-Stop and arrival results list any queried routes for which Omnibus supplied no stops. In JSON and MCP, this is `routes_without_stop_data`.
+Stop and arrival results list any queried routes for which the source supplied no stops. In JSON and MCP, this is `routes_without_stop_data`.
 
 ### Checks
 

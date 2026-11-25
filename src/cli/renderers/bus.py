@@ -3,12 +3,13 @@
 from .common import listing, table
 
 routes = listing("Routes", "routes", ("route_code", "description", "long_name"))
+_LOAD_LABELS = {"SEA": "Seats available", "SDA": "Standing", "LSD": "Limited standing"}
 
 
 def _stop_coverage(console, data):
     uncovered = data.get("routes_without_stop_data")
     if uncovered:
-        console.print("Omnibus supplied no stop data for: " + ", ".join(uncovered))
+        console.print("No stop data available for: " + ", ".join(uncovered))
 
 
 def stops(console, data, *, related_stops=None):
@@ -56,14 +57,21 @@ def arrivals(console, data):
         table(
             console,
             "Bus arrivals",
-            lta,
+            [
+                {
+                    **row,
+                    "eta_minutes": row.get("eta_minutes") or "No ETA",
+                    "crowding": _LOAD_LABELS.get(row.get("load"), row.get("load")),
+                }
+                for row in lta
+            ],
             (
                 "service_no",
                 "stop_name",
                 "stop_code",
                 "eta_minutes",
                 "next_eta_minutes",
-                "load",
+                "crowding",
             ),
         )
     if not shuttle and not lta:

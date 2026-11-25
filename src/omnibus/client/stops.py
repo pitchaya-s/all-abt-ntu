@@ -2,10 +2,10 @@
 
 from typing import Annotated
 from pydantic import Field
-from ..contracts import Query, RouteFilter
+from ..contracts import LTA_SERVICES, Query, RouteFilter
 
 
-import time
+from time import monotonic
 
 from .. import parser
 from ..models import OmnibusError, Stops
@@ -17,39 +17,39 @@ class StopMethods:
         codes = route_codes or _ROUTE_CODES
         if any(code not in _ROUTE_CODES for code in codes):
             raise OmnibusError(
-                "Choose a campus shuttle route or service 179, 179A, or 199."
+                "Choose a campus shuttle route or a supported LTA service."
             )
         records, urls, retrieved_times, uncovered = [], [], [], []
         all_cached = True
         for code in codes:
             # Share stop metadata across lookups without caching live estimates.
-            # The fixed route keys bound this cache to eight entries per client.
+            # Route filters bound the size of the cache.
             with self._lock:
                 entry = self._stop_cache.get(code)
-                if (
-                    entry is None
-                    or time.monotonic() - entry[0] >= _STOP_CACHE_TTL_SECONDS
-                ):
-                    is_lta = code in {"179", "179A", "199"}
-                    data, url = self._post(
-                        "DataActionGetPickupCheckPoints",
-                        "MainFlow.Shuttle",
-                        screen_variables=dict(
-                            self._empty_map_variables(),
-                            RouteId=code,
-                            IsSBS_Route=is_lta,
-                        ),
-                        client_variables=self._client_variables(code),
-                    )
-                    stops = parser.pickup_stops(data, code, is_lta)
-                    entry = (time.monotonic(), self._now(), stops, url)
+                if entry is None or monotonic() - entry[0] >= _STOP_CACHE_TTL_SECONDS:
+                    if code in LTA_SERVICES:
+                        stops, stop_urls, retrieved_at = self._lta.list_stops(code)
+                    else:
+                        data, url = self._post(
+                            "DataActionGetPickupCheckPoints",
+                            "MainFlow.Shuttle",
+                            screen_variables=dict(
+                                self._empty_map_variables(), RouteId=code
+                            ),
+                            client_variables=self._client_variables(code),
+                        )
+                        stops = parser.pickup_stops(data, code)
+                        stop_urls, retrieved_at = (url,), self._now()
+                    # A newly assembled route can use directory data already in cache.
+                    age = max(0.0, (self._now() - retrieved_at).total_seconds())
+                    entry = (monotonic() - age, retrieved_at, stops, stop_urls)
                     self._stop_cache[code] = entry
                     all_cached = False
-                _, retrieved_at, stops, url = entry
+                _, retrieved_at, stops, stop_urls = entry
                 if not stops:
                     uncovered.append(code)
                 records.extend(stop.model_copy(deep=True) for stop in stops)
-                urls.append(url)
+                urls.extend(stop_urls)
                 retrieved_times.append(retrieved_at)
         return (
             records,

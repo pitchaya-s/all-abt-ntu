@@ -2,10 +2,12 @@
 
 import re
 
+from ..contracts import CAMPUS_ROUTES, LTA_SERVICES
+
 _ORIGIN = "https://apps.ntu.edu.sg"
 _BASE = _ORIGIN + "/NTUOmnibus/"
 _ALLOWED_HOSTS = frozenset({"apps.ntu.edu.sg"})
-_ROUTE_CODES = ("Blue", "Brown", "Green", "Grey", "Red", "179", "179A", "199")
+_ROUTE_CODES = CAMPUS_ROUTES + LTA_SERVICES
 _STOP_CACHE_TTL_SECONDS = 300
 _MAX_RESPONSE_BYTES = 8_000_000
 _MAX_REDIRECTS = 5

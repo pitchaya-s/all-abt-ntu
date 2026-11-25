@@ -7,7 +7,6 @@ from datetime import datetime
 
 from .models import (
     BusPosition,
-    LtaArrival,
     OmnibusError,
     Route,
     RouteColor,
@@ -40,7 +39,11 @@ def _required_text(record, key, label):
 
 
 def _number(value, label, required=False):
-    if value is None or value == "" or (isinstance(value, str) and value.strip().upper() in {"-", "NA", "N/A"}):
+    if (
+        value is None
+        or value == ""
+        or (isinstance(value, str) and value.strip().upper() in {"-", "NA", "N/A"})
+    ):
         if required:
             raise OmnibusError(f"NTU Omnibus omitted {label}.")
         return None
@@ -54,10 +57,18 @@ def _number(value, label, required=False):
 
 
 def _integer(value, label):
-    if value is None or value == "" or (isinstance(value, str) and value.strip().upper() in {"-", "NA", "N/A"}):
+    if (
+        value is None
+        or value == ""
+        or (isinstance(value, str) and value.strip().upper() in {"-", "NA", "N/A"})
+    ):
         return None
     try:
-        if isinstance(value, bool) or isinstance(value, float) and not value.is_integer():
+        if (
+            isinstance(value, bool)
+            or isinstance(value, float)
+            and not value.is_integer()
+        ):
             raise ValueError
         return int(value)
     except (TypeError, ValueError):
@@ -87,7 +98,9 @@ def routes(data, colors_text):
         try:
             colors_data = ast.literal_eval(colors_text)
         except (SyntaxError, ValueError, TypeError):
-            raise OmnibusError("NTU Omnibus returned invalid route-color data.") from None
+            raise OmnibusError(
+                "NTU Omnibus returned invalid route-color data."
+            ) from None
     if not isinstance(colors_data, dict):
         raise OmnibusError("NTU Omnibus returned invalid route-color data.")
 
@@ -117,7 +130,9 @@ def bus_positions(data):
         result = data["Response"]["ActiveBusResult"]
         values = _records(result["Activebus"]["List"], "active-bus")
     except (KeyError, TypeError):
-        raise OmnibusError("NTU Omnibus returned an unexpected active-bus response.") from None
+        raise OmnibusError(
+            "NTU Omnibus returned an unexpected active-bus response."
+        ) from None
 
     buses = []
     for item in values:
@@ -142,19 +157,37 @@ def bus_positions(data):
         try:
             source_timestamp = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
         except ValueError:
-            raise OmnibusError("NTU Omnibus returned an invalid active-bus timestamp.") from None
+            raise OmnibusError(
+                "NTU Omnibus returned an invalid active-bus timestamp."
+            ) from None
     reported_count = _integer(result.get("ActiveBusCount"), "active-bus count")
-    return buses, len(buses) if reported_count is None else reported_count, source_timestamp
+    return (
+        buses,
+        len(buses) if reported_count is None else reported_count,
+        source_timestamp,
+    )
 
 
-def pickup_stops(data, route_code, is_lta):
-    rows = _list_at(data, "PickupPoints", "PickupPointResult", "Pickuppoint", "List", label="pickup-stop")
+def pickup_stops(data, route_code):
+    rows = _list_at(
+        data,
+        "PickupPoints",
+        "PickupPointResult",
+        "Pickuppoint",
+        "List",
+        label="pickup-stop",
+    )
     stops = {}
     for item in rows:
         code = _required_text(item, "Busstopcode", "stop code")
-        stop = Stop(name=optional_text(item.get("Pickupname")) or code, stop_code=code,
-                    route_code=route_code, service_id=optional_text(data.get("ServiceId")),
-                    is_lta_service=is_lta, route_long_name=optional_text(item.get("LongName")))
+        stop = Stop(
+            name=optional_text(item.get("Pickupname")) or code,
+            stop_code=code,
+            route_code=route_code,
+            service_id=optional_text(data.get("ServiceId")),
+            is_lta_service=False,
+            route_long_name=optional_text(item.get("LongName")),
+        )
         stops.setdefault(code, stop)
     return list(stops.values())
 
@@ -167,18 +200,22 @@ def stop_arrival(data, stop):
         raise OmnibusError("NTU Omnibus returned an invalid arrival-availability flag.")
     eta = None if missing else optional_text(data["ETA"])
     next_eta = None if missing else optional_text(data["NextETA"])
-    if stop.is_lta_service:
-        return LtaArrival(service_no=stop.route_code, stop_code=stop.stop_code, stop_name=stop.name,
-                          eta_minutes=eta, next_eta_minutes=next_eta)
-    return ShuttleArrival(route_code=stop.route_code, stop_name=stop.name, stop_code=stop.stop_code,
-                          eta=eta, next_eta=next_eta)
+    return ShuttleArrival(
+        route_code=stop.route_code,
+        stop_name=stop.name,
+        stop_code=stop.stop_code,
+        eta=eta,
+        next_eta=next_eta,
+    )
 
 
 def schedules(data, route_code):
     try:
         values = _records(data["FMS_RouteMinMaxTime"]["List"], "route-schedule")
     except (KeyError, TypeError):
-        raise OmnibusError("NTU Omnibus returned an unexpected route-schedule response.") from None
+        raise OmnibusError(
+            "NTU Omnibus returned an unexpected route-schedule response."
+        ) from None
     output = []
     for item in values:
         raw = optional_text(item.get("Json"))
@@ -187,8 +224,12 @@ def schedules(data, route_code):
         try:
             decoded = json.loads(raw)
         except json.JSONDecodeError:
-            raise OmnibusError("NTU Omnibus returned invalid route-schedule JSON.") from None
-        rows = _list_at(decoded, "RouteMinMaxTimeResult", "RouteMinMaxTime", label="route-schedule")
+            raise OmnibusError(
+                "NTU Omnibus returned invalid route-schedule JSON."
+            ) from None
+        rows = _list_at(
+            decoded, "RouteMinMaxTimeResult", "RouteMinMaxTime", label="route-schedule"
+        )
         for row in rows:
             row_route = optional_text(row.get("Route"))
             if row_route is None or row_route.casefold() != route_code.casefold():
@@ -200,7 +241,9 @@ def schedules(data, route_code):
                     last_bus=optional_text(row.get("LastTime")),
                     schedule_type=optional_text(row.get("ScheduleType")),
                     day_type=optional_text(row.get("DayType")),
-                    display_order=_integer(row.get("DisplayOrder"), "schedule display order"),
+                    display_order=_integer(
+                        row.get("DisplayOrder"), "schedule display order"
+                    ),
                 )
             )
     return output

@@ -164,6 +164,7 @@ class HTTPMethods:
             self._closed = True
             self._http.close()
             self._finalizer.detach()
+        self._lta.http.close()
 
     def _get_bytes(self, url):
         response = self._read(url)

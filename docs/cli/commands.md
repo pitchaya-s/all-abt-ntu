@@ -189,7 +189,7 @@ One Stop request applications, appointment bookings and cart checkout run as sta
 | --- | --- |
 | [`ntu bus routes`](../services/omnibus/cli/index.md#cmd-bus-routes) | List public NTU shuttle routes and their published display colors. |
 | [`ntu bus stops`](../services/omnibus/cli/index.md#cmd-bus-stops) | Search NTU shuttle and LTA bus stops by stop name or code, optionally limited to a route/service. |
-| [`ntu bus arrivals`](../services/omnibus/cli/index.md#cmd-bus-arrivals) | Get arrival estimates for NTU shuttles and/or LTA services 179, 179A, and 199. |
+| [`ntu bus arrivals`](../services/omnibus/cli/index.md#cmd-bus-arrivals) | Get arrival estimates for NTU shuttles and LTA buses. |
 | [`ntu bus live`](../services/omnibus/cli/index.md#cmd-bus-live) | Get current live vehicle positions for one NTU campus shuttle route. |
 | [`ntu bus status`](../services/omnibus/cli/index.md#cmd-bus-status) | Get the published first/last bus schedule, public-holiday/special-day flags, and temporary notices for an NTU campus shuttle route. |
 

@@ -5,6 +5,8 @@ from functools import partial
 
 import typer
 
+from omnibus.contracts import RouteFilter
+
 from ..execution import application_scope
 from ..output import render
 from ..services import invoke
@@ -31,12 +33,10 @@ def cmd_routes(
 @app.command("stops")
 def cmd_stops(
     query: str = typer.Argument("", help="Optional search text or keywords."),
-    route_code: Optional[
-        Literal["Blue", "Brown", "Green", "Grey", "Red", "179", "179A", "199"]
-    ] = typer.Option(
+    route_code: Optional[RouteFilter] = typer.Option(
         None,
         "--route",
-        help="The published shuttle route or supported bus service. Choices: Blue, Brown, Green, Grey, Red, 179, 179A, 199.",
+        help="Campus shuttle route or supported LTA service.",
     ),
     limit: int = typer.Option(20, "--limit", "-l", help="Maximum number of results."),
     offset: int = typer.Option(0, "--offset", help="Number of results to skip."),
@@ -89,12 +89,10 @@ def cmd_stops(
 
 @app.command("arrivals")
 def cmd_arrivals(
-    route_filter: Optional[
-        Literal["Blue", "Brown", "Green", "Grey", "Red", "179", "179A", "199"]
-    ] = typer.Option(
+    route_filter: Optional[RouteFilter] = typer.Option(
         None,
         "--route",
-        help="The published shuttle route or supported bus service. Choices: Blue, Brown, Green, Grey, Red, 179, 179A, 199.",
+        help="Campus shuttle route or supported LTA service.",
     ),
     stop_query: str = typer.Option("", "--stop", help="A stop name or code."),
     source: Annotated[
@@ -107,7 +105,7 @@ def cmd_arrivals(
         False, "--json", "-j", help="Write JSON to stdout."
     ),
 ):
-    """Get arrival estimates for NTU shuttles and/or LTA services 179, 179A, and 199."""
+    """Get arrival estimates for NTU shuttles and LTA buses."""
     with application_scope() as application:
         return invoke(
             application.omnibus.get_arrivals,

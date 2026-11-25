@@ -26,6 +26,7 @@ from .constants import (
     _STOP_CACHE_TTL_SECONDS,
 )
 from .http import HTTPMethods
+from .lta import LTAClient
 from .metadata import MetadataMethods
 from ..models import Stop
 from .routes import RouteMethods
@@ -35,7 +36,12 @@ from .stops import StopMethods
 class OmnibusClient(
     HTTPMethods, MetadataMethods, RouteMethods, StopMethods, ArrivalMethods
 ):
-    def __init__(self, *, transport: httpx.BaseTransport | None = None):
+    def __init__(
+        self,
+        *,
+        transport: httpx.BaseTransport | None = None,
+        lta_transport: httpx.BaseTransport | None = None,
+    ):
         self._http = httpx.Client(
             timeout=httpx.Timeout(20.0, connect=10.0),
             follow_redirects=False,
@@ -46,12 +52,15 @@ class OmnibusClient(
             },
         )
         self._cookies = self._http.cookies.jar
+        self._lta = LTAClient(transport=lta_transport)
         self._finalizer = weakref.finalize(self, self._http.close)
         self._closed = False
         self._lock = RLock()
         self._metadata_cache = None
         self._metadata_cached_at = 0.0
-        self._stop_cache: dict[str, tuple[float, datetime, list[Stop], str]] = {}
+        self._stop_cache: dict[
+            str, tuple[float, datetime, list[Stop], tuple[str, ...]]
+        ] = {}
         self._bootstrapped = False
 
     @staticmethod

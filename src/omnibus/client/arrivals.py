@@ -2,7 +2,14 @@
 
 from typing import Any
 
-from ..contracts import ArrivalSource, CampusRoute, Query, RouteFilter
+from ..contracts import (
+    ArrivalSource,
+    CAMPUS_ROUTES,
+    CampusRoute,
+    LTA_SERVICES,
+    Query,
+    RouteFilter,
+)
 
 
 from .. import parser
@@ -16,18 +23,16 @@ class ArrivalMethods:
         stop_query: Query = "",
         source: ArrivalSource = "all",
     ) -> Arrivals:
-        "Get arrival estimates for NTU shuttles and/or LTA services 179, 179A, and 199. Filter by route and stop name/code; at most 20 matching route-stop pairs can be fetched per call. Broader matches require a narrower filter. LTA estimates use minutes; unavailable estimates and unpublished seconds are null."
+        "Get arrival estimates for NTU shuttles and LTA services 179, 179A, 179B, and 199. Filter by route and stop name or code. A call can fetch up to 20 matching route-stop pairs. LTA estimates come from ArriveLah. Missing estimates are null."
         self._query(stop_query)
-        campus_routes = ("Blue", "Brown", "Green", "Grey", "Red")
-        lta_services = ("179", "179A", "199")
         if source not in {"all", "shuttle", "lta"}:
             raise OmnibusError("Choose all, shuttle, or lta arrival sources.")
         codes = list(
-            campus_routes
+            CAMPUS_ROUTES
             if source == "shuttle"
-            else lta_services
+            else LTA_SERVICES
             if source == "lta"
-            else campus_routes + lta_services
+            else CAMPUS_ROUTES + LTA_SERVICES
         )
         if route_filter:
             if route_filter not in codes:
@@ -50,19 +55,22 @@ class ArrivalMethods:
             )
         shuttle_rows: list[Any] = []
         lta_rows: list[Any] = []
+        predictions_by_stop = {}
         for stop in stops:
-            name = (
-                "GetETAAndNextETA_LTA"
-                if stop.is_lta_service
-                else "GetETAAndNextETA_FMS"
-            )
+            if stop.is_lta_service:
+                if stop.stop_code not in predictions_by_stop:
+                    predictions, url = self._lta.predictions(stop.stop_code)
+                    predictions_by_stop[stop.stop_code] = predictions
+                    source_urls.append(url)
+                estimates = predictions_by_stop[stop.stop_code].get(stop.route_code, ())
+                lta_rows.append(self._lta.arrival(stop, estimates))
+                continue
             data, url = self._post(
-                name,
+                "GetETAAndNextETA_FMS",
                 "MainFlow.Shuttle",
                 inputs={"BusStopCode": stop.stop_code, "RouteCode": stop.route_code},
             )
-            row = parser.stop_arrival(data, stop)
-            (lta_rows if stop.is_lta_service else shuttle_rows).append(row)
+            shuttle_rows.append(parser.stop_arrival(data, stop))
             source_urls.append(url)
         return Arrivals(
             retrieved_at=self._now(),

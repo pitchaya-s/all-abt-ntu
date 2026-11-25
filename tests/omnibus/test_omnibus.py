@@ -17,8 +17,9 @@ from omnibus.client import (
     _STOP_CACHE_TTL_SECONDS,
     OmnibusClient,
 )
+from omnibus.client.lta import ARRIVAL_URL, SERVICES_URL, STOPS_URL
 from omnibus.models import OmnibusError
-from tests.omnibus.fixtures import RESPONSES, FixtureClient
+from tests.omnibus.fixtures import LTA_PREDICTIONS, RESPONSES, FixtureClient
 
 
 class ClientTests(unittest.TestCase):
@@ -26,34 +27,34 @@ class ClientTests(unittest.TestCase):
         c = FixtureClient()
         first = c.list_stops("", None, 1, 0)
         self.assertFalse(first.cached)
-        self.assertEqual(len(c.calls), 8)
+        self.assertEqual(len(c.calls), 5)
         repeated = c.list_stops("gate", "179", 20, 0)
         self.assertTrue(repeated.cached)
-        self.assertEqual(len(c.calls), 8)
+        self.assertEqual(len(c.calls), 5)
         self.assertEqual(repeated.total_count, 1)
         self.assertEqual(c.list_stops("", None, 1, 1).retrieved_at, first.retrieved_at)
-        self.assertEqual(len(c._stop_cache), 8)
+        self.assertEqual(len(c._stop_cache), 9)
         with self.assertRaises(OmnibusError):
             c.list_stops("", "unknown", 20, 0)
-        self.assertEqual(len(c.calls), 8)
+        self.assertEqual(len(c.calls), 5)
 
     def test_stop_cache_expires_per_route_and_reports_oldest_snapshot(self):
         c = FixtureClient()
         now = datetime(2026, 10, 26, tzinfo=timezone.utc)
         with (
-            patch("omnibus.client.stops.time.monotonic", return_value=100),
+            patch("omnibus.client.stops.monotonic", return_value=100),
             patch.object(c, "_now", return_value=now),
         ):
             first = c.list_stops("", "Blue", 20, 0)
         with (
-            patch("omnibus.client.stops.time.monotonic", return_value=101),
+            patch("omnibus.client.stops.monotonic", return_value=101),
             patch.object(c, "_now", return_value=now + timedelta(seconds=1)),
         ):
             mixed = c.list_stops("", None, 20, 0)
         self.assertFalse(mixed.cached)
         self.assertEqual(mixed.retrieved_at, first.retrieved_at)
         with patch(
-            "omnibus.client.stops.time.monotonic",
+            "omnibus.client.stops.monotonic",
             return_value=100 + _STOP_CACHE_TTL_SECONDS - 1,
         ):
             repeated = c.list_stops("", "Blue", 20, 0)
@@ -62,7 +63,7 @@ class ClientTests(unittest.TestCase):
         later = now + timedelta(seconds=_STOP_CACHE_TTL_SECONDS)
         with (
             patch(
-                "omnibus.client.stops.time.monotonic",
+                "omnibus.client.stops.monotonic",
                 return_value=100 + _STOP_CACHE_TTL_SECONDS,
             ),
             patch.object(c, "_now", return_value=later),
@@ -72,7 +73,7 @@ class ClientTests(unittest.TestCase):
         self.assertFalse(expired.cached)
         self.assertEqual(expired.retrieved_at, later)
         self.assertTrue(still_cached.cached)
-        self.assertEqual(len(c.calls), 9)
+        self.assertEqual(len(c.calls), 6)
 
     def test_stop_cache_does_not_share_mutable_models_with_callers(self):
         c = FixtureClient()
@@ -131,10 +132,10 @@ class ClientTests(unittest.TestCase):
                 with self.assertRaises(OmnibusError):
                     c.list_stops("", "Blue", 20, 0)
             self.assertFalse(c._stop_cache)
-        with patch("omnibus.client.stops.time.monotonic", return_value=100):
+        with patch("omnibus.client.stops.monotonic", return_value=100):
             c.list_stops("", "Blue", 20, 0)
         with patch(
-            "omnibus.client.stops.time.monotonic",
+            "omnibus.client.stops.monotonic",
             return_value=100 + _STOP_CACHE_TTL_SECONDS,
         ):
             with patch.object(c, "_post", side_effect=OmnibusError("offline")):
@@ -186,7 +187,13 @@ class ClientTests(unittest.TestCase):
         result = c.get_arrivals("179", "gate", "all")
         self.assertFalse(result.shuttle_arrivals)
         self.assertEqual(result.lta_arrivals[0].eta_minutes, "5")
-        self.assertIsNone(result.lta_arrivals[0].eta_seconds)
+        self.assertEqual(result.lta_arrivals[0].eta_seconds, 286)
+        self.assertEqual(result.lta_arrivals[0].next_eta_seconds, 600)
+        self.assertEqual(result.lta_arrivals[0].load, "SEA")
+        self.assertEqual(
+            c.lta_calls, [SERVICES_URL, STOPS_URL, ARRIVAL_URL + "?id=12345"]
+        )
+        self.assertFalse(c.calls)
         self.assertNotIn("GetETAAndNextETA_FMS", [call[0] for call in c.calls])
         c.calls.clear()
         self.assertEqual(
@@ -212,11 +219,18 @@ class ClientTests(unittest.TestCase):
     ):
         c = FixtureClient()
         stop = c.list_stops("gate", "179", 20, 0).stops[0]
-        missing = parser.stop_arrival(
-            {"ETA": "0", "NextETA": "0", "IsETA_NotFound": True}, stop
+        self.assertEqual(stop.stop_code, "12345")
+        result = c.get_arrivals(stop_query="12345", source="lta")
+        by_route = {row.service_no: row for row in result.lta_arrivals}
+        self.assertEqual(set(by_route), {"179", "179B"})
+        self.assertIsNone(by_route["179B"].eta_minutes)
+        self.assertIsNone(by_route["179B"].next_eta_minutes)
+        self.assertEqual(
+            c.lta_calls, [SERVICES_URL, STOPS_URL, ARRIVAL_URL + "?id=12345"]
         )
-        self.assertIsNone(missing.eta_minutes)
-        self.assertIsNone(missing.next_eta_minutes)
+        self.assertFalse(c.calls)
+        c.get_arrivals("179", "12345", "lta")
+        self.assertEqual(c.lta_calls.count(ARRIVAL_URL + "?id=12345"), 2)
         with patch.object(
             c, "_stop_records", return_value=([stop] * 21, [], c._now(), False, [])
         ):
@@ -230,13 +244,24 @@ class ClientTests(unittest.TestCase):
 
     def test_unexpected_source_shapes_are_not_reported_as_empty_data(self):
         for fn, args in [
-            (parser.pickup_stops, ({}, "Blue", False)),
+            (parser.pickup_stops, ({}, "Blue")),
             (parser.bus_positions, ({},)),
             (parser.routes, ({"RouteList": {"List": []}}, "[]")),
             (parser.stop_arrival, ({}, None)),
         ]:
             with self.assertRaises(OmnibusError):
                 fn(*args)
+
+    def test_malformed_arrivelah_estimate_raises_instead_of_returning_no_buses(self):
+        c = FixtureClient()
+        with (
+            patch.dict(LTA_PREDICTIONS, {"services": [{"no": "179", "next": {}}]}),
+            self.assertRaisesRegex(OmnibusError, "ArriveLah.*invalid arrival estimate"),
+        ):
+            c.get_arrivals("179", "12345", "lta")
+        self.assertEqual(
+            c.get_arrivals("179", "12345", "lta").lta_arrivals[0].eta_seconds, 286
+        )
 
     def test_metadata_discovers_versions_keeps_public_controller_action_and_caches(
         self,
@@ -431,3 +456,11 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
                     self.assertTrue(
                         (await client.call_tool("omnibus_" + name, args)).is_error
                     )
+                arrivals = await client.call_tool(
+                    "omnibus_get_arrivals",
+                    {"route_filter": "179B", "stop_query": "12345", "source": "lta"},
+                )
+                self.assertFalse(arrivals.is_error)
+                self.assertEqual(
+                    arrivals.structured_content["lta_arrivals"][0]["service_no"], "179B"
+                )

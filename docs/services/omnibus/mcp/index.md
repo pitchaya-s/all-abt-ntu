@@ -60,7 +60,7 @@ Unknown fields are not accepted.
 
 Search NTU shuttle and LTA bus stops by stop name or code, optionally limited to a route/service. Follow next_offset for more results.
 
-Inputs: optional `query` (stop name or code), `route_code` (campus route or `179`, `179A`, `199`), `limit` (1–100, default 20), and `offset` (default 0).
+Inputs: optional `query` (stop name or code), `route_code` (campus route or `179`, `179A`, `179B`, `199`), `limit` (1–100, default 20), and `offset` (default 0).
 
 Returns matching route-stop associations, with `total_count` and `next_offset`. A stop associated with more than one route can appear more than once. `cached` is true when every requested route came from the stop cache; `retrieved_at` is the oldest contributing route snapshot, including when fresh and cached routes are combined.
 
@@ -69,7 +69,7 @@ Returns matching route-stop associations, with `total_count` and `next_offset`. 
 | Field | Type | Required | Details |
 | --- | --- | --- | --- |
 | `query` | `string` | No | maximum length: `120`; default: `""` |
-| `route_code` | `"Blue"`, `"Brown"`, `"Green"`, `"Grey"`, `"Red"`, `"179"`, `"179A"`, `"199"` or `null` | No | default: `null` |
+| `route_code` | `"Blue"`, `"Brown"`, `"Green"`, `"Grey"`, `"Red"`, `"179"`, `"179A"`, `"179B"`, `"199"` or `null` | No | default: `null` |
 | `limit` | `integer` | No | minimum: `1`; maximum: `100`; default: `20` |
 | `offset` | `integer` | No | minimum: `0`; default: `0` |
 
@@ -89,17 +89,17 @@ Unknown fields are not accepted.
 
 ### `omnibus_get_arrivals`
 
-Get arrival estimates for NTU shuttles and/or LTA services 179, 179A, and 199. Filter by route and stop name/code; at most 20 matching route-stop pairs can be fetched per call. Broader matches require a narrower filter. LTA estimates use minutes; unavailable estimates and unpublished seconds are null.
+Get arrival estimates for NTU shuttles and LTA services 179, 179A, 179B, and 199. Filter by route and stop name or code. A call can fetch up to 20 matching route-stop pairs.
 
-Inputs: optional `route_filter` (campus route or `179`, `179A`, `199`), `stop_query`, and `source` (`all`, `shuttle`, or `lta`; default `all`).
+Inputs: optional `route_filter` (campus route or `179`, `179A`, `179B`, `199`), `stop_query`, and `source` (`all`, `shuttle`, or `lta`; default `all`).
 
-Returns `shuttle_arrivals` and `lta_arrivals` separately. LTA minute estimates are retained; seconds/load are null when the public per-stop action does not publish them. `IsETA_NotFound` becomes null estimates rather than a zero-minute arrival. A call fetches at most 20 matching route-stop pairs; broader matches return an explicit error asking for a narrower stop/route filter. Services 179, 179A and 199 are exposed by the arrival and stop tools, not the campus shuttle vehicle-position endpoint. Estimates may be unavailable.
+Returns `shuttle_arrivals` and `lta_arrivals` separately. LTA estimates from ArriveLah include seconds and minutes rounded up. Missing estimates are `null`. LTA crowding, when reported, is `SEA` (seats available), `SDA` (standing room), or `LSD` (limited standing room).
 
 **Inputs**
 
 | Field | Type | Required | Details |
 | --- | --- | --- | --- |
-| `route_filter` | `"Blue"`, `"Brown"`, `"Green"`, `"Grey"`, `"Red"`, `"179"`, `"179A"`, `"199"` or `null` | No | default: `null` |
+| `route_filter` | `"Blue"`, `"Brown"`, `"Green"`, `"Grey"`, `"Red"`, `"179"`, `"179A"`, `"179B"`, `"199"` or `null` | No | default: `null` |
 | `stop_query` | `string` | No | maximum length: `120`; default: `""` |
 | `source` | `"all"`, `"shuttle"`, `"lta"` | No | default: `"all"` |
 

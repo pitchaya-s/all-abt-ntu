@@ -5,6 +5,7 @@ import asyncio
 from jsonschema import Draft202012Validator
 from mcp import Client
 
+from omnibus.contracts import LTA_SERVICES
 from server import create_server
 
 
@@ -48,13 +49,10 @@ async def main():
                 row["stop_code"] == stop["stop_code"]
                 for row in arrivals["shuttle_arrivals"]
             )
-            for route in ("179", "179A", "199"):
+            for route in LTA_SERVICES:
                 stops = await call("omnibus_list_stops", route_code=route, limit=1)
-                if stops["routes_without_stop_data"]:
-                    print(
-                        f"LTA {route}: upstream provided no stops. Arrivals unverified."
-                    )
-                    continue
+                assert stops["stops"] and not stops["routes_without_stop_data"]
+                assert any("data.busrouter.sg/" in url for url in stops["source_urls"])
                 stop = stops["stops"][0]
                 arrivals = await call(
                     "omnibus_get_arrivals",
@@ -63,8 +61,11 @@ async def main():
                     source="lta",
                 )
                 assert any(
-                    row["stop_code"] == stop["stop_code"]
+                    row["stop_code"] == stop["stop_code"] and row["service_no"] == route
                     for row in arrivals["lta_arrivals"]
+                )
+                assert any(
+                    "arrivelah2.busrouter.sg/" in url for url in arrivals["source_urls"]
                 )
     finally:
         await server.ntu_application.close()
