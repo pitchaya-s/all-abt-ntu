@@ -26,16 +26,22 @@ Local settings are stored in `$XDG_CONFIG_HOME/all-abt-ntu/tools.json` (normally
 
 Family settings apply to tools added later. An individually enabled tool can be used within a disabled family; an individually disabled tool stays off within an enabled family. Personal actions and downloads remain disabled unless explicitly enabled. `tools enable` and `tools disable` accept families or individual names and update the file.
 
-All sections are optional; omitted values use their defaults. You can edit the file or use the CLI:
+All sections are optional, and omitted values use their defaults. To view the settings on demand, run this command.
 
 ```sh
-uv run ntu config set ntulearn.headless false
-uv run ntu config set stars.cache_ttl_seconds 600
-uv run ntu config list
-uv run ntu config unset ntulearn.headless
+uvx --from 'all-abt-ntu[cli]@latest' ntu config list
 ```
 
-For a PyPI install, use `uvx --from 'all-abt-ntu[cli]@latest' ntu config`. The supported settings under `env` are:
+With `ntu` installed, run the configuration commands directly.
+
+```sh
+ntu config set ntulearn.headless false
+ntu config set stars.cache_ttl_seconds 600
+ntu config list
+ntu config unset ntulearn.headless
+```
+
+The table lists the supported settings under `env`.
 
 
 | Group         | Settings                                                                                                                 |

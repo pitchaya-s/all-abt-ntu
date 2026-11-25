@@ -15,7 +15,7 @@ Or configure the MCP server:
 uvx --from 'all-abt-ntu[cli,mcp,personal]@latest' ntu mcp setup
 ```
 
-See [CLI](cli/index.md) and [MCP](mcp/index.md) for installation details and usage.
+See [CLI](cli/index.md) and [MCP](mcp/index.md) for installation and usage. The MCP guide also shows how to [run with an installed ntu](mcp/index.md#use-an-installed-ntu).
 
 For a public first command, try `ntu map search "LT1"` or `ntu bus routes`. Run `ntu --help` to explore services and append `--help` to a command for its arguments. Most data commands accept `--json` for scripting.
 
@@ -37,7 +37,7 @@ Public services need no credentials. `ntu cli setup` can save credentials and in
 ntu auth save
 ```
 
-If you only use MCP through `uvx`, run `uvx --from 'all-abt-ntu[cli,personal]@latest' ntu auth save` instead. Browser-based services also need Playwright's [matching Chromium build](mcp/index.md#chromium).
+If you run MCP through `uvx`, use `uvx --from 'all-abt-ntu[cli,personal]@latest' ntu auth save`. Browser-based services also need Playwright's [matching Chromium build](mcp/index.md#chromium).
 
 Your password is hidden while typing and stored encrypted locally in your OS keyring. The server never includes it in MCP responses sent to the LLM.
 

@@ -3,14 +3,40 @@
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
+import sysconfig
 import tempfile
 
 from ..config import ConfigError
 
 NAME = "all-abt-ntu-mcp"
-COMMAND = ["uvx", "--from", "all-abt-ntu[mcp,personal]@latest", "ntu", "mcp"]
+UVX_COMMAND = ["uvx", "--from", "all-abt-ntu[mcp,personal]@latest", "ntu", "mcp"]
+
+
+def mcp_launch_command() -> list[str]:
+    """Use a persistent launcher for the Python environment running setup."""
+    prefix = Path(sys.prefix).resolve()
+    if (
+        re.fullmatch(r"archive-v[0-9]+", prefix.parent.name)
+        and (prefix.parent.parent / "CACHEDIR.TAG").is_file()
+    ):
+        # uvx runs from a cached environment that uv can remove at any time.
+        return UVX_COMMAND.copy()
+
+    name = "ntu.exe" if sys.platform == "win32" else "ntu"
+    invoked = Path(sys.argv[0])
+    # Retain tool-install symlinks so their destination can change on upgrade.
+    if invoked.name.lower() in {"ntu", name} and invoked.parent != Path("."):
+        launcher = invoked.with_name(name).absolute()
+        if launcher.is_file():
+            return [str(launcher), "mcp"]
+
+    launcher = Path(sysconfig.get_path("scripts")) / name
+    if launcher.is_file():
+        return [str(launcher.absolute()), "mcp"]
+    return UVX_COMMAND.copy()
 
 
 def configure_codex_forwarding() -> None:
@@ -57,7 +83,7 @@ def configure_codex_forwarding() -> None:
         )
 
 
-def register_command(provider: str) -> None:
+def register_command(provider: str, launcher: list[str]) -> None:
     import questionary
 
     try:
@@ -78,7 +104,7 @@ def register_command(provider: str) -> None:
     command = [provider, "mcp", "add"]
     if provider == "claude":
         command += ["--scope", "user"]
-    command += [NAME, "--", *COMMAND]
+    command += [NAME, "--", *launcher]
     try:
         result = subprocess.run(command, capture_output=True, text=True, check=False)
     except OSError as error:
@@ -91,7 +117,7 @@ def register_command(provider: str) -> None:
     print(f"Configured {NAME} in {provider}.")
 
 
-def register_opencode() -> None:
+def register_opencode(launcher: list[str]) -> None:
     directory = (
         Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "opencode"
     )
@@ -116,7 +142,7 @@ def register_opencode() -> None:
         servers = data.setdefault("mcp", {})
         entry = {
             "type": "local",
-            "command": COMMAND,
+            "command": launcher,
             "enabled": True,
             "timeout": 240000,
         }
@@ -212,13 +238,16 @@ def configure_clients() -> None:
     ).unsafe_ask()
     if providers is None:
         raise ConfigError("Client configuration cancelled; tool choices were saved.")
+    if not providers:
+        return
+    launcher = mcp_launch_command()
     failures = []
     for provider in providers:
         try:
             if provider == "opencode":
-                register_opencode()
+                register_opencode(launcher)
             else:
-                register_command(provider)
+                register_command(provider, launcher)
         except ConfigError as error:
             failures.append(str(error))
     if failures:

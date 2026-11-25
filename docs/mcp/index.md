@@ -2,34 +2,51 @@
 
 ## Local setup
 
-Run setup in your terminal:
+Run MCP setup on demand with `uvx`.
 
 ```sh
 uvx --from 'all-abt-ntu[cli,mcp,personal]@latest' ntu mcp setup
 ```
 
-Choose a profile, select tool families, and choose the MCP clients to configure. Setup can register the server with Codex, Claude Code and OpenCode, or you can skip client configuration. Codex and Claude Code must be installed to use their registration commands. On Linux, setup configures Codex to forward the current D-Bus session variables for OS keyring access. OpenCode setup supports JSON and JSONC configurations; if both files exist, configure the server manually to avoid conflicting settings. Setup and tool-management commands require both the `cli` and `mcp` extras; the server itself needs only `mcp`, plus `personal` for authenticated tools.
+Choose a profile, tools, and clients. Setup registers `uvx` for on-demand runs or the absolute path to `ntu` for installed runs.
 
-To start the public stdio server directly without installing the CLI dependencies:
+To start the public stdio server directly, run the following command.
 
 ```sh
 uvx --from 'all-abt-ntu[mcp]@latest' ntu mcp --profile public
 ```
 
+### Use an installed ntu
+
+Install `ntu` with MCP support if you prefer to run the executable directly.
+
+```sh
+uv tool install 'all-abt-ntu[cli,mcp,personal]@latest'
+ntu mcp setup
+```
+
+If you previously installed `ntu` with fewer extras, add `--force` to the install command. To launch the installed executable from an MCP client, use the alternate command in its configuration example below. If a client cannot find `ntu` on its `PATH`, use the absolute path to the executable.
+
+To start the installed public server directly, run the following command.
+
+```sh
+ntu mcp --profile public
+```
+
 ## Choose tools
 
-To list or change families and individual tools later, run:
+Use `uvx` to list tool families or change which tools are enabled.
 
 ```sh
 uvx --from 'all-abt-ntu[cli,mcp,personal]@latest' ntu mcp tools list
 uvx --from 'all-abt-ntu[cli,mcp,personal]@latest' ntu mcp tools list --all
 uvx --from 'all-abt-ntu[cli,mcp,personal]@latest' ntu mcp tools disable ntulearn
-uvx --from 'all-abt-ntu[cli,mcp,personal]@latest' ntu mcp tools enable ntulearn
-uvx --from 'all-abt-ntu[cli,mcp,personal]@latest' ntu mcp tools disable mazemap_get_directions
 uvx --from 'all-abt-ntu[cli,mcp,personal]@latest' ntu mcp tools enable mazemap_get_directions
 ```
 
-Run `setup` again to change your profile or family selection. `tools list` shows families; `--all` shows individual tools. `[~]` means a family is partially enabled. Commands manage tools available in the active profile. Disabling a family also disables tools added to it later. Explicitly enabling a family enables all its tools in the active profile, including actions and downloads; individual tools can then be disabled. Restart the MCP server after changes. Settings do not affect the hosted server.
+Run `setup` again to change your profile or family selection. `tools list` shows families, and `--all` shows individual tools. `[~]` means a family is partially enabled. Commands manage tools available in the active profile. Disabling a family also disables tools added to it later. Explicitly enabling a family enables all its tools in the active profile, including actions and downloads. You can disable individual tools afterward. Restart the MCP server after changes. Settings do not affect the hosted server.
+
+With the installed executable, run the same subcommands directly, such as `ntu mcp tools list --all`.
 
 Without saved settings, the server uses the public profile. See [Configuration file](configuration.md#configuration-file) for the file format and service settings.
 
@@ -64,7 +81,7 @@ With other methods, use HTTPS and authentication and review how your data is han
 
 ## Codex
 
-Add to `~/.codex/config.toml`:
+Add this block to `~/.codex/config.toml`.
 
 ```toml
 [mcp_servers.all-abt-ntu-mcp]
@@ -74,31 +91,43 @@ startup_timeout_sec = 120
 tool_timeout_sec = 240
 ```
 
-On Linux, depending on your distribution and Secret Service or KWallet setup, you may need to add this optional line to the same MCP server block for keyring access:
+To launch an installed `ntu`, use these values in the same block.
+
+```toml
+command = "ntu"
+args = ["mcp"]
+```
+
+On Linux, add this line to the same server block if it needs access to your desktop keyring.
 
 ```toml
 env_vars = ["DBUS_SESSION_BUS_ADDRESS", "XDG_RUNTIME_DIR"]
 ```
 
-These variables forward the current desktop session; they contain no NTU credentials. Start Codex from a terminal where `ntu auth status` succeeds. Restart Codex and check `codex mcp list`. Personal tools use your locally saved keyring account.
+For keyring-based sign-in, start Codex from a terminal where `ntu auth status` succeeds. NTULearn can also authenticate using a [validated cookie session](../services/ntulearn/index.md#sessions). Restart Codex and check `codex mcp list`.
 
-If an earlier setup stored a fixed D-Bus address, rerun setup and confirm replacement of the Codex entry to switch to forwarding the current session variables.
+Remove any fixed D-Bus address from the server block so `env_vars` can forward the current session when Codex starts.
 
 ## Claude Code
 
-Register for your user:
+Register the server for your user.
 
 ```sh
 claude mcp add --scope user all-abt-ntu-mcp \
   -- uvx --from 'all-abt-ntu[mcp,personal]@latest' ntu mcp
-claude mcp list
 ```
 
-Personal tools use your locally saved keyring account. Check `claude mcp list` or `/mcp` inside Claude Code. See [Claude Code's MCP guide](https://code.claude.com/docs/en/mcp) for details.
+To use an installed `ntu`, register this command.
+
+```sh
+claude mcp add --scope user all-abt-ntu-mcp -- ntu mcp
+```
+
+Check `claude mcp list` or `/mcp` inside Claude Code. See [Claude Code's MCP guide](https://code.claude.com/docs/en/mcp) for details.
 
 ## OpenCode
 
-Add to `~/.config/opencode/opencode.json`:
+Add this configuration to `~/.config/opencode/opencode.json` or `opencode.jsonc`. If both files exist, configure the active file manually.
 
 ```json
 {
@@ -114,7 +143,13 @@ Add to `~/.config/opencode/opencode.json`:
 }
 ```
 
-Personal tools use your locally saved keyring account. Check `opencode mcp list`. See [OpenCode's MCP guide](https://docs.opencode.ai/docs/mcp-servers/) for details.
+To launch an installed `ntu`, use this `command` array.
+
+```json
+["ntu", "mcp"]
+```
+
+Check `opencode mcp list`. See [OpenCode's MCP guide](https://docs.opencode.ai/docs/mcp-servers/) for details.
 
 ## Manual install
 
@@ -133,10 +168,16 @@ The process uses MCP stdio, so it stays open while its MCP client is connected. 
 
 ## Chromium
 
-Browser-based services need Playwright and its matching Chromium build. You can list personal MCP tools and use public tools before installing Chromium. If you use the PyPI package, install Chromium from the same package environment:
+Browser-based services need Playwright and its matching Chromium build. You can list personal MCP tools and use public tools before installing Chromium. If your client launches the server through `uvx`, install Chromium through the same package selection.
 
 ```sh
-uvx --from 'all-abt-ntu[personal]@latest' playwright install chromium
+uvx --from 'all-abt-ntu[mcp,personal]@latest' playwright install chromium
+```
+
+If you installed `ntu` from PyPI, run setup and select Chromium installation.
+
+```sh
+ntu cli setup
 ```
 
 For a repository checkout, include `--extra personal` in the appropriate `uv sync` command above, then run `uv run --no-sync playwright install chromium`. Playwright versions can require different Chromium builds, so repeat the matching command after upgrading. NTULearn can reuse an existing validated browser session for reads without launching Chromium.

@@ -63,7 +63,7 @@ ntu auth delete
 
 Your password is entered through a hidden prompt and stored locally in your OS keyring; there is no plaintext fallback. Your keyring must be available and unlocked. Never enter a password into an AI conversation or MCP client configuration.
 
-If you use MCP through `uvx` without installing the CLI, save credentials with:
+If you run MCP through `uvx`, save credentials with the following command.
 
 ```sh
 uvx --from 'all-abt-ntu[cli,personal]@latest' ntu auth save
@@ -169,7 +169,16 @@ To run a public stdio server directly:
 uvx --from 'all-abt-ntu[mcp]@latest' ntu mcp --profile public
 ```
 
-The [MCP setup guide](https://pitchaya-s.github.io/all-abt-ntu/mcp/) covers client configuration, profiles, Chromium and manual installation. See the [tool reference](https://pitchaya-s.github.io/all-abt-ntu/mcp/tools/) for available tools.
+You can also install `ntu` and use `ntu mcp` directly.
+
+```sh
+uv tool install 'all-abt-ntu[cli,mcp,personal]@latest'
+ntu mcp setup
+```
+
+Start the installed public server directly with `ntu mcp --profile public`.
+
+The [MCP setup guide](https://pitchaya-s.github.io/all-abt-ntu/mcp/) covers client configuration, profiles, Chromium, and the [installed launcher](https://pitchaya-s.github.io/all-abt-ntu/mcp/#use-an-installed-ntu). See the [tool reference](https://pitchaya-s.github.io/all-abt-ntu/mcp/tools/) for available tools.
 
 ### Manual MCP installation
 
