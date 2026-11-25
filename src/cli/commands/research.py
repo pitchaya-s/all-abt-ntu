@@ -430,7 +430,9 @@ def cmd_oai_records(
         Optional[str], typer.Option(help="End of the date range in ISO format.")
     ] = None,
     resumption_token: Optional[str] = typer.Option(
-        None, "--token", help="The continuation token returned by the OAI server."
+        None,
+        "--token",
+        help="Continue with a token from the previous page. Omit prefix, set, date and offset options.",
     ),
     headers_only: bool = typer.Option(
         False,

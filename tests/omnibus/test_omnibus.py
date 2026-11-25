@@ -242,6 +242,17 @@ class ClientTests(unittest.TestCase):
         with self.assertRaises(OmnibusError):
             parser._integer(1.5, "bus count")
 
+    def test_shuttle_missing_arrival_placeholders_are_null(self):
+        client = FixtureClient()
+        self.addCleanup(client.close)
+        stop = client.list_stops(route_code="Blue").stops[0]
+        arrival = parser.stop_arrival({"ETA": "-", "NextETA": "-"}, stop)
+        self.assertIsNone(arrival.eta)
+        self.assertIsNone(arrival.next_eta)
+        due = parser.stop_arrival({"ETA": "0", "NextETA": "7"}, stop)
+        self.assertEqual(due.eta, "0")
+        self.assertEqual(due.next_eta, "7")
+
     def test_unexpected_source_shapes_are_not_reported_as_empty_data(self):
         for fn, args in [
             (parser.pickup_stops, ({}, "Blue")),

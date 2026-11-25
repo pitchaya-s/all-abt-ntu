@@ -197,7 +197,7 @@ def save_auth():
             warnings.simplefilter("error", GetPassWarning)
             password = getpass("NTU password: ")
         save_credentials(username, password)
-        print("Credentials saved in the OS keyring. Automatic login enabled.")
+        print("Credentials saved in the OS keyring.")
     except GetPassWarning:
         fail(CredentialError("Cannot hide password input; no credentials were saved."))
     except (CredentialError, EOFError, KeyboardInterrupt) as error:
@@ -226,7 +226,7 @@ def auth_delete():
         fail(CredentialError("Credential deletion was not confirmed."))
     try:
         delete_credentials()
-        print("Stored credentials deleted. Automatic login disabled.")
+        print("Credentials deleted from the OS keyring.")
     except CredentialError as error:
         fail(error)
 

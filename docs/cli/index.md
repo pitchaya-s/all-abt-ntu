@@ -72,7 +72,7 @@ ntu library search "machine learning" --field title --match contains --limit 10 
 ntu faculty search "Tan" --page 1
 ntu news search "artificial intelligence" --sort latest --page 1
 ntu services search "coffee" --location "North Spine" --limit 10 --offset 0
-ntu bus arrivals --route Blue --stop "North Spine" --source shuttle
+ntu bus arrivals --route Blue --stop "Hall 6"
 ntu onestop catalog search "transcript" --limit 10 --offset 0
 ```
 

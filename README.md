@@ -130,7 +130,7 @@ Explore the rest of campus:
 
 ```sh
 ntu map search "LT1" --limit 10 --offset 0
-ntu bus arrivals --route Blue --stop "North Spine" --source shuttle
+ntu bus arrivals --route Blue --stop "Hall 6"
 ntu library search "machine learning" --field title --match contains --limit 10 --offset 0
 ntu news search "artificial intelligence" --sort latest --page 1
 ntu services search "coffee" --location "North Spine" --limit 10 --offset 0

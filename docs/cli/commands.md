@@ -187,7 +187,7 @@ One Stop request applications, appointment bookings and cart checkout run as sta
 
 | Command | What it does |
 | --- | --- |
-| [`ntu bus routes`](../services/omnibus/cli/index.md#cmd-bus-routes) | List public NTU shuttle routes and their published display colors. |
+| [`ntu bus routes`](../services/omnibus/cli/index.md#cmd-bus-routes) | List NTU campus shuttle routes. |
 | [`ntu bus stops`](../services/omnibus/cli/index.md#cmd-bus-stops) | Search NTU shuttle and LTA bus stops by stop name or code, optionally limited to a route/service. |
 | [`ntu bus arrivals`](../services/omnibus/cli/index.md#cmd-bus-arrivals) | Get arrival estimates for NTU shuttles and LTA buses. |
 | [`ntu bus live`](../services/omnibus/cli/index.md#cmd-bus-live) | Get current live vehicle positions for one NTU campus shuttle route. |

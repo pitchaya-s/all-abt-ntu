@@ -8,7 +8,7 @@ Check shuttle routes and arrival estimates.
 
 ```sh
 ntu bus routes
-ntu bus arrivals --route Blue --stop "North Spine" --source shuttle
+ntu bus arrivals --route Blue --stop "Hall 6"
 ```
 
 ## Commands
@@ -17,7 +17,7 @@ Choose a command for its arguments, examples and result fields. Use `ntu bus --h
 
 | Command | What it does |
 | --- | --- |
-| [`ntu bus routes`](index.md#cmd-bus-routes) | List public NTU shuttle routes and their published display colors. |
+| [`ntu bus routes`](index.md#cmd-bus-routes) | List NTU campus shuttle routes. |
 | [`ntu bus stops`](index.md#cmd-bus-stops) | Search NTU shuttle and LTA bus stops by stop name or code, optionally limited to a route/service. |
 | [`ntu bus arrivals`](index.md#cmd-bus-arrivals) | Get arrival estimates for NTU shuttles and LTA buses. |
 | [`ntu bus live`](index.md#cmd-bus-live) | Get current live vehicle positions for one NTU campus shuttle route. |
@@ -28,7 +28,7 @@ Choose a command for its arguments, examples and result fields. Use `ntu bus --h
 <a id="cmd-bus-routes"></a>
 ### `ntu bus routes`
 
-List public NTU shuttle routes and their published display colors.
+List NTU campus shuttle routes.
 
 #### Usage
 
@@ -85,7 +85,7 @@ Get arrival estimates for NTU shuttles and LTA services 179, 179A, 179B, and 199
 #### Usage
 
 ```sh
-ntu bus arrivals --route Blue --stop "North Spine" --source shuttle
+ntu bus arrivals --route Blue --stop "Hall 6"
 ntu bus arrivals --stop "Lee Wee Nam" --source lta
 ```
 
@@ -95,7 +95,7 @@ Use `ntu bus arrivals --help` for the current interface.
 
 - `--route`: Campus shuttle route or LTA service. Choices: `Blue`, `Brown`, `Green`, `Grey`, `Red`, `179`, `179A`, `179B`, `199`.
 - `--stop`: Search by stop name.
-- `--source`: Which arrival-data source to use. Choices: `all`, `shuttle`, `lta`. Default: `all`.
+- `--source`: Show campus shuttles (`shuttle`), LTA buses (`lta`), or both (`all`, the default).
 - `--json`, `-j`: Write the result as JSON to stdout; diagnostics go to stderr.
 
 #### Result
@@ -119,7 +119,7 @@ Use `ntu bus live --help` for the current interface.
 
 #### Arguments and options
 
-- `--route`: The published shuttle route or supported bus service. Choices: `Blue`, `Brown`, `Green`, `Grey`, `Red`. Default: `Blue`.
+- `--route`: Campus shuttle route. Choices: `Blue`, `Brown`, `Green`, `Grey`, `Red`. Default: `Blue`.
 - `--json`, `-j`: Write the result as JSON to stdout; diagnostics go to stderr.
 
 #### Result
@@ -143,7 +143,7 @@ Use `ntu bus status --help` for the current interface.
 
 #### Arguments and options
 
-- `--route`: The published shuttle route or supported bus service. Choices: `Blue`, `Brown`, `Green`, `Grey`, `Red`. Default: `Blue`.
+- `--route`: Campus shuttle route. Choices: `Blue`, `Brown`, `Green`, `Grey`, `Red`. Default: `Blue`.
 - `--json`, `-j`: Write the result as JSON to stdout; diagnostics go to stderr.
 
 #### Result

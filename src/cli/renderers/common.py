@@ -1,6 +1,7 @@
 """Small presentation primitives shared by service-specific renderers."""
 
 from collections.abc import Callable, Mapping, Sequence
+from shlex import quote
 from typing import Any
 
 from rich.console import Console
@@ -167,7 +168,11 @@ def pagination(console: Console, data: Data) -> None:
     elif isinstance(pagination_data, Mapping) and pagination_data.get(
         "resumption_token"
     ):
-        console.print(f"More results: --token {pagination_data['resumption_token']}")
+        token = quote(pagination_data["resumption_token"])
+        mode = " --headers-only" if data.get("headers_only") else ""
+        console.print(
+            f"More results: --token {token}{mode}", markup=False, soft_wrap=True
+        )
     notices(console, data)
 
 
@@ -211,15 +216,28 @@ def sections(
     return show
 
 
-auth_status = detail(
-    "Authentication",
-    (
-        "session_verified",
-        "authentication_method",
-        "credential_error",
-        "credentials_configured",
-    ),
-)
+def auth_status(console: Console, data: Data) -> None:
+    method = data.get("authentication_method")
+    methods = {
+        "browser_cookie": "Browser session",
+        "environment_cookie": "Supplied session cookie",
+        "sso": "NTU single sign-on",
+    }
+    if isinstance(method, str):
+        method = methods.get(method, method)
+    details(
+        console,
+        "Authentication",
+        {**data, "authentication_method": method},
+        (
+            "session_verified",
+            "authentication_method",
+            "credential_error",
+            "credentials_configured",
+        ),
+    )
+
+
 action = detail(
     "Result", ("outcome", "message", "verified", "resource_id", "references")
 )

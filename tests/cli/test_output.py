@@ -3,12 +3,14 @@
 from contextlib import redirect_stdout
 from io import StringIO
 import json
+import shlex
 import unittest
 from unittest.mock import patch
 
 from cli.cli import create_app
 from cli.output import render
 from cli.renderers import bus, learn, onestop, research, stars
+from cli.renderers.common import auth_status, pagination
 from omnibus.models import Stop, Stops
 from datetime import datetime, timezone
 from typer.testing import CliRunner
@@ -102,14 +104,60 @@ class OutputTests(unittest.TestCase):
                     "next_eta_minutes": "5",
                     "load": "SEA",
                 },
+                {"service_no": "179A", "stop_name": "Example Hall"},
             ]
         }
         output = self.output(data, bus.arrivals)
         for expected in ("Example Hall", "Due", "5 min", "Seats available"):
             self.assertIn(expected, output)
+        self.assertRegex(output, r"179A\s+│\s+Example Hall\s+│\s+-\s+│")
         self.assertNotIn("54321", output)
         self.assertEqual(
             json.loads(self.output(data, bus.arrivals, json_output=True)), data
+        )
+
+    def test_shuttle_arrivals_show_units_and_missing_predictions(self):
+        data = {
+            "shuttle_arrivals": [
+                {
+                    "route_code": "Blue",
+                    "stop_name": "Hall 6",
+                    "eta": "0",
+                    "next_eta": "6",
+                },
+                {"route_code": "Grey", "stop_name": "Hall 6", "eta": None},
+            ]
+        }
+        output = self.output(data, bus.arrivals)
+        for expected in ("Hall 6", "Due", "6 min"):
+            self.assertIn(expected, output)
+        self.assertRegex(output, r"Grey\s+│\s+Hall 6\s+│\s+-\s+│")
+
+    def test_arrivals_explain_stop_misses_and_route_coverage(self):
+        data = {"stop_query": "[North Spine]", "route_filter": "Blue"}
+        output = self.output(data, bus.arrivals)
+        self.assertIn('No stops match "[North Spine]" on route Blue.', output)
+        self.assertIn("ntu bus stops --route Blue", output)
+        output = self.output(
+            {**data, "routes_without_stop_data": ["Blue"]}, bus.arrivals
+        )
+        self.assertIn("No stop data available for: Blue", output)
+        self.assertNotIn("No stops match", output)
+
+    def test_oai_continuation_quotes_token_and_keeps_header_mode(self):
+        token = "start here & [data] ' " + "x" * 100
+        data = {"pagination": {"resumption_token": token}, "headers_only": True}
+        output = self.output(data, pagination)
+        self.assertEqual(
+            shlex.split(output.strip().removeprefix("More results: ")),
+            ["--token", token, "--headers-only"],
+        )
+
+    def test_auth_status_labels_session_sources_in_terminal_only(self):
+        data = {"session_verified": True, "authentication_method": "browser_cookie"}
+        self.assertIn("Browser session", self.output(data, auth_status))
+        self.assertEqual(
+            json.loads(self.output(data, auth_status, json_output=True)), data
         )
 
     def test_readable_results_keep_machine_fields_in_json(self):

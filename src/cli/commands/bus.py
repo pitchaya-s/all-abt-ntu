@@ -23,7 +23,7 @@ def cmd_routes(
         False, "--json", "-j", help="Write JSON to stdout."
     ),
 ):
-    """List public NTU shuttle routes and their published display colors."""
+    """List NTU campus shuttle routes."""
     with application_scope() as application:
         return invoke(
             application.omnibus.list_routes, {}, json_output, presenter=views.routes
@@ -32,7 +32,7 @@ def cmd_routes(
 
 @app.command("stops")
 def cmd_stops(
-    query: str = typer.Argument("", help="Optional search text or keywords."),
+    query: str = typer.Argument("", help="Search by stop name."),
     route_code: Optional[RouteFilter] = typer.Option(
         None,
         "--route",
@@ -97,15 +97,13 @@ def cmd_arrivals(
     stop_query: str = typer.Option("", "--stop", help="Search by stop name."),
     source: Annotated[
         Literal["all", "shuttle", "lta"],
-        typer.Option(
-            help="Which arrival-data source to use. Choices: all, shuttle, lta. Default: all."
-        ),
+        typer.Option(help="Show campus shuttles, LTA buses, or both."),
     ] = "all",
     json_output: bool = typer.Option(
         False, "--json", "-j", help="Write JSON to stdout."
     ),
 ):
-    """Get arrival estimates for NTU shuttles and LTA buses."""
+    """Check live arrivals. Use --route or --stop to narrow the results."""
     with application_scope() as application:
         return invoke(
             application.omnibus.get_arrivals,
@@ -120,7 +118,7 @@ def cmd_live(
     route_code: Literal["Blue", "Brown", "Green", "Grey", "Red"] = typer.Option(
         "Blue",
         "--route",
-        help="The published shuttle route or supported bus service. Choices: Blue, Brown, Green, Grey, Red. Default: Blue.",
+        help="Campus shuttle route.",
     ),
     json_output: bool = typer.Option(
         False, "--json", "-j", help="Write JSON to stdout."
@@ -141,7 +139,7 @@ def cmd_status(
     route_code: Literal["Blue", "Brown", "Green", "Grey", "Red"] = typer.Option(
         "Blue",
         "--route",
-        help="The published shuttle route or supported bus service. Choices: Blue, Brown, Green, Grey, Red. Default: Blue.",
+        help="Campus shuttle route.",
     ),
     json_output: bool = typer.Option(
         False, "--json", "-j", help="Write JSON to stdout."

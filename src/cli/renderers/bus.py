@@ -53,7 +53,14 @@ def arrivals(console, data):
         table(
             console,
             "Shuttle arrivals",
-            shuttle,
+            [
+                {
+                    **row,
+                    "eta": _eta(row.get("eta")) or "-",
+                    "next_eta": _eta(row.get("next_eta")),
+                }
+                for row in shuttle
+            ],
             ("route_code", "stop_name", "eta", "next_eta"),
         )
     if lta:
@@ -63,7 +70,7 @@ def arrivals(console, data):
             [
                 {
                     **row,
-                    "eta": _eta(row.get("eta_minutes")) or "No ETA",
+                    "eta": _eta(row.get("eta_minutes")) or "-",
                     "next_eta": _eta(row.get("next_eta_minutes")),
                     "crowding": _LOAD_LABELS.get(row.get("load"), row.get("load")),
                 }
@@ -78,7 +85,17 @@ def arrivals(console, data):
             ),
         )
     if not shuttle and not lta:
-        console.print("Arrivals: No estimates available.")
+        route = data.get("route_filter")
+        uncovered = data.get("routes_without_stop_data") or []
+        if route not in uncovered:
+            query = (data.get("stop_query") or "").strip()
+            route_name = f" on route {route}" if route else ""
+            if query:
+                console.print(f'No stops match "{query}"{route_name}.', markup=False)
+                route_option = f" --route {route}" if route else ""
+                console.print(f"Find stop names with: ntu bus stops{route_option}")
+            elif not uncovered:
+                console.print(f"No stops found{route_name}.")
     _stop_coverage(console, data)
 
 

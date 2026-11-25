@@ -51,7 +51,7 @@ class ArrivalMethods:
         ]
         if len(stops) > 20:
             raise OmnibusError(
-                "More than 20 route-stop matches. Narrow stop_query or route_filter before requesting live arrivals."
+                "More than 20 stops match this request. Choose one route or a more specific stop name for live arrivals."
             )
         shuttle_rows: list[Any] = []
         lta_rows: list[Any] = []

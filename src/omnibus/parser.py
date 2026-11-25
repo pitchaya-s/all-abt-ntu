@@ -192,14 +192,19 @@ def pickup_stops(data, route_code):
     return list(stops.values())
 
 
+def _arrival_minutes(value):
+    minutes = optional_text(value)
+    return None if minutes and minutes.casefold() in {"-", "na", "n/a"} else minutes
+
+
 def stop_arrival(data, stop):
     if not isinstance(data, dict) or "ETA" not in data or "NextETA" not in data:
         raise OmnibusError("NTU Omnibus returned an unexpected stop-arrival response.")
     missing = data.get("IsETA_NotFound", False)
     if type(missing) is not bool:
         raise OmnibusError("NTU Omnibus returned an invalid arrival-availability flag.")
-    eta = None if missing else optional_text(data["ETA"])
-    next_eta = None if missing else optional_text(data["NextETA"])
+    eta = None if missing else _arrival_minutes(data["ETA"])
+    next_eta = None if missing else _arrival_minutes(data["NextETA"])
     return ShuttleArrival(
         route_code=stop.route_code,
         stop_name=stop.name,
