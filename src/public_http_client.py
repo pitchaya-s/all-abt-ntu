@@ -287,13 +287,16 @@ class PublicHTTPClient:
                 self._cache.pop(url, None)
 
     def _fetch(self, url):
-        current_url = url
         for attempt in range(MAX_ATTEMPTS):
             try:
-                status, headers, body = self._request_chain(current_url)
-            except httpx.RequestError:
+                status, headers, body, response_url = self._request_chain(url)
+            except httpx.RequestError as error:
                 if attempt + 1 < MAX_ATTEMPTS:
-                    defer_host_requests(current_url, min(4.0, 2.0**attempt))
+                    try:
+                        failure_url = str(error.request.url)
+                    except RuntimeError:
+                        failure_url = url
+                    defer_host_requests(failure_url, min(4.0, 2.0**attempt))
                     continue
                 raise PublicRequestError(
                     f"Could not reach {self.service} after two attempts; try again later."
@@ -308,7 +311,7 @@ class PublicHTTPClient:
             if status in _RETRYABLE and attempt + 1 < MAX_ATTEMPTS:
                 delay = self._retry_delay(headers.get("retry-after"))
                 if delay <= MAX_RETRY_DELAY_SECONDS:
-                    defer_host_requests(current_url, delay)
+                    defer_host_requests(response_url, delay)
                     continue
             if status >= 400:
                 raise PublicRequestError(
@@ -342,7 +345,7 @@ class PublicHTTPClient:
                 headers = response.headers
                 status = response.status_code
                 if status in _RETRYABLE or status >= 400:
-                    return status, headers, b""
+                    return status, headers, b"", current_url
                 content_type = (
                     headers.get("content-type", "").split(";", 1)[0].strip().lower()
                 )
@@ -365,7 +368,7 @@ class PublicHTTPClient:
                             f"{self.service} response exceeded the 8 MB safety limit.",
                             response_too_large=True,
                         )
-                return status, headers, bytes(body)
+                return status, headers, bytes(body), current_url
         raise PublicRequestError(
             f"{self.service} returned too many redirects; retrieval stopped."
         )

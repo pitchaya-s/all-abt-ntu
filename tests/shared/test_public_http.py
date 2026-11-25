@@ -232,6 +232,28 @@ class PublicHTTPTests(unittest.TestCase):
                 client.get(URL)
             self.assertEqual(len(seen), 1)
 
+    def test_redirected_rate_limit_applies_to_the_host_that_sent_it(self):
+        redirect = "https://static.example.org/feed"
+        statuses = iter((429, 200))
+
+        def handle(request):
+            if request.url.host == "example.org":
+                return httpx.Response(302, headers={"location": redirect})
+            return httpx.Response(
+                next(statuses),
+                headers={"retry-after": "2", "content-type": "application/json"},
+                content=b"{}",
+            )
+
+        client = self.make_client(handle)
+        with (
+            patch("public_http_client.time.sleep"),
+            patch("public_http_client.defer_host_requests") as defer,
+        ):
+            body, _ = client.get(URL)
+        self.assertEqual(body, b"{}")
+        defer.assert_called_once_with(redirect, 2)
+
     def test_independent_requests_can_overlap(self):
         both_started = Barrier(2)
         requests = []
