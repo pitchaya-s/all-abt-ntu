@@ -13,7 +13,8 @@ PROFILES = ("public", "personal")
 PERSONAL_INSTRUCTIONS = (
     "Personal tools use an opt-in native OS keyring entry; personal records are cached only in memory. "
     "Never request passwords through chat or tool arguments. Users manage credentials in their own terminal "
-    "with ntu auth save/status/delete. Deleting credentials blocks personal calls. "
+    "with ntu auth save/status/delete. Deleting credentials stops keyring-based sign-in. "
+    "NTULearn can also reuse a locally opted-in browser session. "
     "When credential_error is present, credentials_configured is null: storage could not be read. "
     "Do not infer credentials were never saved or tell users to replace them without checking access. "
     "Personal tables omit rows only when headers and records reconstruct them exactly. "
@@ -50,7 +51,12 @@ def create_server(
                 careeraxis.mcp.INSTRUCTIONS,
             )
         )
-    server = MCPServer("all-abt-ntu-mcp", version=VERSION, instructions=instructions)
+    server = MCPServer(
+        "all-abt-ntu-mcp",
+        version=VERSION,
+        instructions=instructions,
+        log_level="WARNING",
+    )
     public_server.register_tools(server, application)
     if profile != "public":
         from shared.catalog import register_personal
@@ -65,18 +71,23 @@ def main(
     *,
     check_dependencies: bool = True,
     disabled_tools=(),
+    select_disabled_tools=None,
     application=None,
 ) -> None:
     server = create_server(
         profile, check_dependencies=check_dependencies, application=application
     )
-    if disabled_tools:
-        available = {tool.name for tool in asyncio.run(server.list_tools())}
-        for name in available.intersection(disabled_tools):
-            server.remove_tool(name)
 
     async def serve() -> None:
         try:
+            if disabled_tools or select_disabled_tools is not None:
+                tools = await server.list_tools()
+                disabled = set(disabled_tools)
+                if select_disabled_tools is not None:
+                    disabled.update(select_disabled_tools(tools))
+                for tool in tools:
+                    if tool.name in disabled:
+                        server.remove_tool(tool.name)
             await server.run_stdio_async()
         finally:
             await getattr(server, "ntu_application").close()

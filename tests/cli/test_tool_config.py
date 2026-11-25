@@ -3,6 +3,7 @@ import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from mcp import Client
@@ -74,12 +75,15 @@ class ToolConfigTests(unittest.TestCase):
     def test_saved_profile_and_explicit_override_are_used(self):
         self.seed("personal", {"news_search"})
         with patch("server.main") as run:
-            with patch("cli.tools.commands.action_names", return_value=set()):
-                self.call()
-                run.assert_called_once_with("personal", disabled_tools=["news_search"])
+            self.call()
+            self.assertEqual(run.call_args.args, ("personal",))
+            select = run.call_args.kwargs["select_disabled_tools"]
+            self.assertEqual(select([]), {"news_search"})
         with patch("server.main") as run:
             self.call("--profile", "public")
-            run.assert_called_once_with("public", disabled_tools=["news_search"])
+            self.assertEqual(run.call_args.args, ("public",))
+            select = run.call_args.kwargs["select_disabled_tools"]
+            self.assertEqual(select([]), {"news_search"})
 
     def test_corrupt_config_fails_closed(self):
         path = config_path()
@@ -355,7 +359,8 @@ class ToolConfigTests(unittest.TestCase):
         self.assertIn("[ ] news_search", self.call("tools", "list", "--all"))
         with patch("server.main") as run:
             self.call()
-            self.assertIn("news_search", run.call_args.kwargs["disabled_tools"])
+            select = run.call_args.kwargs["select_disabled_tools"]
+            self.assertIn("news_search", select([SimpleNamespace(name="news_search")]))
         from cli.tools.commands import effective_disabled
 
         with patch(

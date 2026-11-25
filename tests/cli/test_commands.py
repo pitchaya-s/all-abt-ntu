@@ -153,11 +153,15 @@ class UnifiedCLITests(unittest.TestCase):
             patch("server.main") as server,
             patch(
                 "cli.tools.commands.effective_disabled", return_value={"news_search"}
-            ),
+            ) as disabled,
         ):
             result = self.runner.invoke(self.app, ["mcp", "--profile", "personal"])
         self.assertEqual(result.exit_code, 0, result.output)
-        server.assert_called_once_with("personal", disabled_tools=["news_search"])
+        self.assertEqual(server.call_args.args, ("personal",))
+        listed_tools = []
+        select = server.call_args.kwargs["select_disabled_tools"]
+        self.assertEqual(select(listed_tools), {"news_search"})
+        disabled.assert_called_once_with(select.args[0], "personal", listed_tools)
 
     def test_direct_command_does_not_load_mcp_registration(self):
         program = (

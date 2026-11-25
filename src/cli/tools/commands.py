@@ -34,8 +34,14 @@ def registered_tools(profile: str):
     try:
         from server import create_server
 
-        server = create_server(profile, check_dependencies=False)
-        return asyncio.run(server.list_tools())
+        async def discover():
+            server = create_server(profile, check_dependencies=False)
+            try:
+                return await server.list_tools()
+            finally:
+                await server.ntu_application.close()
+
+        return asyncio.run(discover())
     except ModuleNotFoundError as error:
         if profile != "public" and error.name and error.name.startswith("playwright"):
             raise ConfigError(
@@ -82,27 +88,35 @@ def ensure_chromium() -> None:
     print("Playwright Chromium is ready.")
 
 
-def action_names() -> set[str]:
+def action_names(registered=None) -> set[str]:
+    if registered is None:
+        registered = registered_tools("personal")
     return {
         tool.name
-        for tool in registered_tools("personal")
+        for tool in registered
         if not tool.annotations or tool.annotations.read_only_hint is not True
     }
 
 
-def effective_disabled(config: dict, profile: str) -> set[str]:
+def effective_disabled(config: dict, profile: str, registered=None) -> set[str]:
     tools = config["tools"]
     enabled = set(tools["enabled"])
     disabled = set(tools["disabled"])
     disabled_families = set(tools["families"]["disabled"])
     if disabled_families:
+        names = (
+            tool_names(profile)
+            if registered is None
+            else (tool.name for tool in registered)
+        )
         disabled.update(
             name
-            for name in tool_names(profile)
+            for name in names
             if name.split("_", 1)[0] in disabled_families and name not in enabled
         )
     if profile == "personal":
-        disabled.update(action_names() - enabled)
+        actions = action_names() if registered is None else action_names(registered)
+        disabled.update(actions - enabled)
     return disabled
 
 
