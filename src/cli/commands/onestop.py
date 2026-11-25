@@ -8,6 +8,7 @@ from ..helpers import attachment_target, group, parse_json
 from ..output import render
 from ..execution import application_scope
 from ..services import invoke
+from ..renderers import onestop as views
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -65,7 +66,12 @@ def cmd_auth_status(
 ):
     """Sign in to One Stop and report whether access is verified."""
     with application_scope() as application:
-        return invoke(application.onestop_session.verify, {}, json_output)
+        return invoke(
+            application.onestop_session.verify,
+            {},
+            json_output,
+            presenter=views.auth_status,
+        )
 
 
 @g_catalog.command("categories")
@@ -80,7 +86,10 @@ def cmd_catalog_categories(
     """List the signed-in student's visible One Stop catalog categories and subcategories, parent IDs and published item counts."""
     with application_scope() as application:
         return invoke(
-            application.onestop.list_categories, {"refresh": refresh}, json_output
+            application.onestop.list_categories,
+            {"refresh": refresh},
+            json_output,
+            presenter=views.catalog_categories,
         )
 
 
@@ -113,6 +122,7 @@ def cmd_catalog_search(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.catalog_search,
         )
 
 
@@ -137,6 +147,7 @@ def cmd_catalog_item(
             application.onestop.get_catalog_item,
             {"item_id": item_id, "refresh": refresh},
             json_output,
+            presenter=views.catalog_item,
         )
 
 
@@ -158,6 +169,7 @@ def cmd_knowledge_search(
             application.onestop.search_knowledge,
             {"query": query, "limit": limit, "offset": offset, "refresh": refresh},
             json_output,
+            presenter=views.knowledge_search,
         )
 
 
@@ -196,6 +208,7 @@ def cmd_knowledge_article(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.knowledge_article,
         )
 
 
@@ -234,6 +247,7 @@ def cmd_requests_list(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.requests_list,
         )
 
 
@@ -258,6 +272,7 @@ def cmd_requests_show(
             application.onestop.get_my_request,
             {"request_id": request_id, "refresh": refresh},
             json_output,
+            presenter=views.requests_show,
         )
 
 
@@ -269,7 +284,12 @@ def cmd_dashboard(
 ):
     """Read your One Stop homepage announcements, actions/payment links, upcoming appointments and popular links."""
     with application_scope() as application:
-        return invoke(application.onestop_portal.dashboard, {}, json_output)
+        return invoke(
+            application.onestop_portal.dashboard,
+            {},
+            json_output,
+            presenter=views.dashboard,
+        )
 
 
 @app.command("announcements")
@@ -286,6 +306,7 @@ def cmd_announcements(
             application.onestop_portal.list_announcements,
             {"limit": limit, "offset": offset},
             json_output,
+            presenter=views.announcements,
         )
 
 
@@ -303,6 +324,7 @@ def cmd_actions(
             application.onestop_portal.list_actions,
             {"limit": limit, "offset": offset},
             json_output,
+            presenter=views.actions,
         )
 
 
@@ -320,6 +342,7 @@ def cmd_links(
             application.onestop_portal.list_popular_links,
             {"limit": limit, "offset": offset},
             json_output,
+            presenter=views.links,
         )
 
 
@@ -331,7 +354,12 @@ def cmd_profile_default(
 ):
     """Read your own displayed profile fields, editable flags, preferences/choices, notification setting and picture-upload capability."""
     with application_scope() as application:
-        return invoke(application.onestop_portal.get_profile, {}, json_output)
+        return invoke(
+            application.onestop_portal.get_profile,
+            {},
+            json_output,
+            presenter=views.profile_default,
+        )
 
 
 @g_payments.command("services")
@@ -349,6 +377,7 @@ def cmd_payments_services(
             application.onestop_portal.list_payment_services,
             {"query": query, "limit": limit, "offset": offset},
             json_output,
+            presenter=views.payments_services,
         )
 
 
@@ -370,6 +399,7 @@ def cmd_payments_service(
             application.onestop_portal.get_payment_service,
             {"service_id": service_id},
             json_output,
+            presenter=views.payments_service,
         )
 
 
@@ -391,6 +421,7 @@ def cmd_knowledge_feedback(
             application.onestop_knowledge.get_feedback,
             {"article_id": article_id},
             json_output,
+            presenter=views.knowledge_feedback,
         )
 
 
@@ -414,6 +445,7 @@ def cmd_knowledge_comments_default(
             application.onestop_knowledge.list_comments,
             {"article_id": article_id, "limit": limit, "offset": offset},
             json_output,
+            presenter=views.knowledge_comments_default,
         )
 
 
@@ -441,6 +473,7 @@ def cmd_requests_activity(
             application.onestop_tickets.activity,
             {"request_id": request_id, "record_id": record_id},
             json_output,
+            presenter=views.requests_activity,
         )
 
 
@@ -465,7 +498,12 @@ def cmd_attachments_list(
     """List attachments on a verified own request/item, a readable knowledge article/comment, or an active local draft."""
     with application_scope() as application:
         target = attachment_target(target, record_id)
-        return invoke(application.onestop_files.list, {"target": target}, json_output)
+        return invoke(
+            application.onestop_files.list,
+            {"target": target},
+            json_output,
+            presenter=views.attachments_list,
+        )
 
 
 @g_cart.command("__default__", hidden=True)
@@ -476,7 +514,9 @@ def cmd_cart_default(
 ):
     """Read your native shopping cart, item quantities/prices, saved-cart IDs/names and checkout defaults."""
     with application_scope() as application:
-        return invoke(application.onestop_cart.get, {}, json_output)
+        return invoke(
+            application.onestop_cart.get, {}, json_output, presenter=views.cart_default
+        )
 
 
 @g_cart_saved.command("show")
@@ -497,6 +537,7 @@ def cmd_cart_saved_show(
             application.onestop_cart.get_saved,
             {"saved_cart_id": saved_cart_id},
             json_output,
+            presenter=views.cart_saved_show,
         )
 
 
@@ -508,7 +549,12 @@ def cmd_favourites_default(
 ):
     """Read your saved catalog favourites and which are pinned to the homepage."""
     with application_scope() as application:
-        return invoke(application.onestop_favourites.list, {}, json_output)
+        return invoke(
+            application.onestop_favourites.list,
+            {},
+            json_output,
+            presenter=views.favourites_default,
+        )
 
 
 @g_appointments.command("__default__", hidden=True)
@@ -525,6 +571,7 @@ def cmd_appointments_default(
             application.onestop_appointments.list,
             {"limit": limit, "offset": offset},
             json_output,
+            presenter=views.appointments_default,
         )
 
 
@@ -545,6 +592,7 @@ def cmd_profile_set(
             {"field_name": field_name, "value": value},
             json_output,
             side_effect=True,
+            presenter=views.profile_set,
         )
 
 
@@ -562,6 +610,7 @@ def cmd_profile_picture(
             {"file_path": file_path},
             json_output,
             side_effect=True,
+            presenter=views.profile_picture,
         )
 
 
@@ -584,6 +633,7 @@ def cmd_profile_notifications(
             {"enabled": enabled == "on"},
             json_output,
             side_effect=True,
+            presenter=views.profile_notifications,
         )
 
 
@@ -616,6 +666,7 @@ def cmd_profile_preference(
             {"name": name, "value": value},
             json_output,
             side_effect=True,
+            presenter=views.profile_preference,
         )
 
 
@@ -638,6 +689,7 @@ def cmd_payments_checkout_link(
             {"service_id": service_id},
             json_output,
             side_effect=True,
+            presenter=views.payments_checkout_link,
         )
 
 
@@ -668,6 +720,7 @@ def cmd_knowledge_comments_add(
             {"article_id": article_id, "text": text, "parent_id": parent_id},
             json_output,
             side_effect=True,
+            presenter=views.knowledge_comments_add,
         )
 
 
@@ -696,6 +749,7 @@ def cmd_knowledge_comments_delete(
             {"article_id": article_id, "comment_id": comment_id},
             json_output,
             side_effect=True,
+            presenter=views.knowledge_comments_delete,
         )
 
 
@@ -733,6 +787,7 @@ def cmd_knowledge_comments_like(
             },
             json_output,
             side_effect=True,
+            presenter=views.knowledge_comments_like,
         )
 
 
@@ -771,6 +826,7 @@ def cmd_knowledge_rate(
             },
             json_output,
             side_effect=True,
+            presenter=views.knowledge_rate,
         )
 
 
@@ -814,6 +870,7 @@ def cmd_knowledge_helpful(
             },
             json_output,
             side_effect=True,
+            presenter=views.knowledge_helpful,
         )
 
 
@@ -839,6 +896,7 @@ def cmd_knowledge_flag(
             {"article_id": article_id, "text": text},
             json_output,
             side_effect=True,
+            presenter=views.knowledge_flag,
         )
 
 
@@ -873,6 +931,7 @@ def cmd_knowledge_subscribe(
             },
             json_output,
             side_effect=True,
+            presenter=views.knowledge_subscribe,
         )
 
 
@@ -898,6 +957,7 @@ def cmd_knowledge_favourite(
             {"article_id": article_id, "favourite": favourite == "on"},
             json_output,
             side_effect=True,
+            presenter=views.knowledge_favourite,
         )
 
 
@@ -926,6 +986,7 @@ def cmd_knowledge_send_to_self(
             {"article_id": article_id, "channel": channel},
             json_output,
             side_effect=True,
+            presenter=views.knowledge_send_to_self,
         )
 
 
@@ -957,6 +1018,7 @@ def cmd_requests_reply(
             {"request_id": request_id, "text": text, "record_id": record_id},
             json_output,
             side_effect=True,
+            presenter=views.requests_reply,
         )
 
 
@@ -995,6 +1057,7 @@ def cmd_requests_action(
             },
             json_output,
             side_effect=True,
+            presenter=views.requests_action,
         )
 
 
@@ -1025,6 +1088,7 @@ def cmd_attachments_upload(
             {"target": target, "file_path": file_path},
             json_output,
             side_effect=True,
+            presenter=views.attachments_upload,
         )
 
 
@@ -1067,6 +1131,7 @@ def cmd_attachments_download(
             },
             json_output,
             side_effect=True,
+            presenter=views.attachments_download,
         )
 
 
@@ -1099,6 +1164,7 @@ def cmd_attachments_delete(
             {"target": target, "attachment_id": attachment_id},
             json_output,
             side_effect=True,
+            presenter=views.attachments_delete,
         )
 
 
@@ -1132,6 +1198,7 @@ def cmd_attachments_rename(
             {"target": target, "attachment_id": attachment_id, "file_name": file_name},
             json_output,
             side_effect=True,
+            presenter=views.attachments_rename,
         )
 
 
@@ -1155,6 +1222,7 @@ def cmd_cart_quantity(
             {"item_id": item_id, "quantity": quantity, "action": "set_quantity"},
             json_output,
             side_effect=True,
+            presenter=views.cart_quantity,
         )
 
 
@@ -1177,6 +1245,7 @@ def cmd_cart_remove(
             {"item_id": item_id, "action": "remove"},
             json_output,
             side_effect=True,
+            presenter=views.cart_remove,
         )
 
 
@@ -1193,6 +1262,7 @@ def cmd_cart_clear(
             {"action": "clear"},
             json_output,
             side_effect=True,
+            presenter=views.cart_clear,
         )
 
 
@@ -1215,6 +1285,7 @@ def cmd_cart_saved_load(
             {"saved_cart_id": saved_cart_id, "action": "load_saved"},
             json_output,
             side_effect=True,
+            presenter=views.cart_saved_load,
         )
 
 
@@ -1237,6 +1308,7 @@ def cmd_cart_saved_replace(
             {"saved_cart_id": saved_cart_id, "action": "replace_with_saved"},
             json_output,
             side_effect=True,
+            presenter=views.cart_saved_replace,
         )
 
 
@@ -1259,6 +1331,7 @@ def cmd_cart_saved_delete(
             {"saved_cart_id": saved_cart_id, "action": "delete_saved"},
             json_output,
             side_effect=True,
+            presenter=views.cart_saved_delete,
         )
 
 
@@ -1282,6 +1355,7 @@ def cmd_cart_saved_create(
             },
             json_output,
             side_effect=True,
+            presenter=views.cart_saved_create,
         )
 
 
@@ -1304,6 +1378,7 @@ def cmd_favourites_pin(
             {"favourite_id": favourite_id, "action": "pin"},
             json_output,
             side_effect=True,
+            presenter=views.favourites_pin,
         )
 
 
@@ -1326,6 +1401,7 @@ def cmd_favourites_unpin(
             {"favourite_id": favourite_id, "action": "unpin"},
             json_output,
             side_effect=True,
+            presenter=views.favourites_unpin,
         )
 
 
@@ -1348,6 +1424,7 @@ def cmd_favourites_remove(
             {"favourite_id": favourite_id, "action": "remove"},
             json_output,
             side_effect=True,
+            presenter=views.favourites_remove,
         )
 
 
@@ -1364,6 +1441,7 @@ def cmd_favourites_clear(
             {"action": "clear"},
             json_output,
             side_effect=True,
+            presenter=views.favourites_clear,
         )
 
 
@@ -1398,16 +1476,16 @@ def cmd_catalog_favourite(
             },
             json_output,
             side_effect=True,
+            presenter=views.catalog_favourite,
         )
 
 
-def _show_workflow(value):
+def _show_workflow(value, presenter):
     """Display a review without exposing temporary workflow identifiers."""
     if hasattr(value, "model_dump"):
-        value = value.model_dump(
-            mode="json", exclude={"draft_id", "checkout_id", "item_id"}
-        )
-    render(value)
+        render(value, presenter=presenter)
+    else:
+        render(value)
 
 
 def _choose(choices, label):
@@ -1484,7 +1562,7 @@ def _fill_draft(draft, *, allow_appointment=False):
                 show_result=False,
                 side_effect=True,
             )
-            _show_workflow(draft)
+            _show_workflow(draft, views.draft_preview)
         raise typer.BadParameter(
             "The form still has missing or invalid fields after ten updates."
         )
@@ -1516,7 +1594,7 @@ def _add_draft_attachments(draft):
                 False,
                 show_result=False,
             )
-            _show_workflow(draft)
+            _show_workflow(draft, views.draft_preview)
         typer.echo("Reached the limit of 20 attachments for this workflow.", err=True)
         return draft
 
@@ -1539,7 +1617,7 @@ def cmd_requests_apply(
                 show_result=False,
                 side_effect=True,
             )
-            _show_workflow(draft)
+            _show_workflow(draft, views.draft_preview)
             draft = _fill_draft(draft)
             draft = _add_draft_attachments(draft)
             if not draft.ready:
@@ -1549,6 +1627,7 @@ def cmd_requests_apply(
                 {"draft_id": draft.draft_id, "action": "submit"},
                 False,
                 side_effect=True,
+                presenter=views.requests_apply,
             )
 
 
@@ -1566,12 +1645,13 @@ def cmd_cart_checkout():
                 show_result=False,
                 side_effect=True,
             )
-            _show_workflow(preview)
+            _show_workflow(preview, views.checkout_preview)
             return invoke(
                 application.onestop_cart.submit_checkout,
                 {"checkout_id": preview.checkout_id},
                 False,
                 side_effect=True,
+                presenter=views.cart_checkout,
             )
 
 
@@ -1593,7 +1673,7 @@ def cmd_appointments_book(
                 show_result=False,
                 side_effect=True,
             )
-            _show_workflow(draft)
+            _show_workflow(draft, views.draft_preview)
             draft = _fill_draft(draft, allow_appointment=True)
             draft = _add_draft_attachments(draft)
             configuration = invoke(
@@ -1602,7 +1682,7 @@ def cmd_appointments_book(
                 False,
                 show_result=False,
             )
-            _show_workflow(configuration)
+            _show_workflow(configuration, views.appointment_preview)
             if not configuration.enabled:
                 raise typer.BadParameter(
                     "The native form does not offer appointment booking."
@@ -1624,6 +1704,7 @@ def cmd_appointments_book(
                 {"draft_id": draft.draft_id, "slot_id": slot},
                 False,
                 side_effect=True,
+                presenter=views.appointments_book,
             )
 
 

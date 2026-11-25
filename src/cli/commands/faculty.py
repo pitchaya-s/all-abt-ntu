@@ -6,6 +6,7 @@ import typer
 
 from ..execution import application_scope
 from ..services import invoke
+from ..renderers import faculty as views
 
 app = typer.Typer(no_args_is_help=True, help="Find NTU faculty and research interests.")
 
@@ -37,6 +38,7 @@ def cmd_search(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.search,
         )
 
 
@@ -58,4 +60,5 @@ def cmd_interests(
             application.faculty.list_interests,
             {"query": query, "limit": limit, "offset": offset, "refresh": refresh},
             json_output,
+            presenter=views.interests,
         )

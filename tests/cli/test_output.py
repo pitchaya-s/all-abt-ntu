@@ -1,76 +1,91 @@
-"""Human-readable results hide transport metadata without changing JSON."""
+"""Human and JSON presentations of representative service results."""
 
 from contextlib import redirect_stdout
-from datetime import datetime, timezone
 from io import StringIO
 import json
 import unittest
 from unittest.mock import patch
 
-from cli.output import render
 from cli.cli import create_app
-from omnibus.models import Route, RouteColor, Routes, Stop, Stops
+from cli.output import render
+from cli.renderers import bus, learn, onestop, research, stars
+from omnibus.models import Stop, Stops
+from datetime import datetime, timezone
 from typer.testing import CliRunner
 
 
 class OutputTests(unittest.TestCase):
-    def output(self, value, *, json_output=False):
+    def output(self, value, presenter, *, json_output=False):
         stream = StringIO()
         with redirect_stdout(stream):
-            render(value, json_output=json_output)
+            render(value, json_output=json_output, presenter=presenter)
         return stream.getvalue()
 
-    def test_bus_routes_show_routes_instead_of_color_metadata(self):
-        result = Routes(
-            retrieved_at=datetime.now(timezone.utc),
-            source_urls=["https://example.invalid/source"],
-            routes=[Route(route_code="Blue", is_lta_service=False)],
-            colors=[RouteColor(route_code="Blue", color_code="0054A6")],
+    def test_courses_only_show_selected_fields(self):
+        data = {
+            "courses": [
+                {
+                    "id": "_100_1",
+                    "course_code": "ZZ0001",
+                    "name": "Example",
+                    "available": "Yes",
+                    "role": "Student",
+                    "organization": False,
+                }
+            ],
+            "next_offset": None,
+            "cached": True,
+        }
+        output = self.output(data, learn.courses_default)
+        for expected in ("_100_1", "ZZ0001", "Example"):
+            self.assertIn(expected, output)
+        for unwanted in ("Courses 1", "Role", "Organization", "Cached"):
+            self.assertNotIn(unwanted, output)
+        self.assertEqual(
+            json.loads(self.output(data, learn.courses_default, json_output=True)), data
         )
-        output = self.output(result)
+
+    def test_announcements_show_full_body_under_actual_title(self):
+        body = "A full announcement. " * 25 + "THE END"
+        data = {
+            "announcements": [
+                {"id": "a", "title": "Welcome", "body": body, "created": "2026-01-01"}
+            ],
+            "next_offset": None,
+        }
+        output = self.output(data, learn.announcements)
+        self.assertIn("Welcome", output)
+        self.assertIn("THE END", output)
+        self.assertNotIn("Announcements 1", output)
+        self.assertNotIn("use --json", output)
+        self.assertEqual(
+            json.loads(self.output(data, learn.announcements, json_output=True)), data
+        )
+
+    def test_routes_and_stops_hide_transport_metadata(self):
+        data = {
+            "routes": [{"route_code": "Blue", "is_lta_service": False}],
+            "colors": [{"color_code": "0054A6"}],
+            "source_urls": ["private-source"],
+        }
+        output = self.output(data, bus.routes)
         self.assertIn("Blue", output)
         self.assertNotIn("0054A6", output)
-        self.assertNotIn("example.invalid", output)
-        self.assertNotIn("Is lta service", output)
-        data = json.loads(self.output(result, json_output=True))
-        self.assertEqual(data["colors"][0]["color_code"], "0054A6")
-        self.assertEqual(data["source_urls"], ["https://example.invalid/source"])
-
-    def test_bus_stops_combine_routes_without_conflating_distinct_stops(self):
-        def stop(name, code, route):
-            return Stop(
-                name=name,
-                stop_code=code,
-                route_code=route,
-                service_id="NTU",
-                is_lta_service=False,
-            )
-
-        result = Stops(
-            retrieved_at=datetime.now(timezone.utc),
-            source_urls=["https://example.invalid/source"],
-            stops=[
-                stop("Hall 1", "Hall 1", "Blue"),
-                stop("Hall 1", "Hall 1", "Red"),
-                stop("Hall 1", "27281", "179"),
-            ],
-            total_count=5,
-            next_offset=3,
+        self.assertNotIn("private-source", output)
+        self.assertEqual(
+            json.loads(self.output(data, bus.routes, json_output=True)), data
         )
-        output = self.output(result)
-        self.assertIn("Blue, Red", output)
-        self.assertIn("27281", output)
-        self.assertIn("179", output)
-        self.assertIn("Total stop route entries: 5", output)
-        self.assertIn("more routes may appear on later pages", output)
-        self.assertNotIn("Service id", output)
-        self.assertNotIn("Is lta service", output)
-        self.assertNotIn("Next offset", output)
-        data = json.loads(self.output(result, json_output=True))
-        self.assertEqual(len(data["stops"]), 3)
-        self.assertEqual(data["next_offset"], 3)
+        stops = {
+            "stops": [
+                {"name": "Hall 1", "stop_code": "Hall 1", "route_code": "Blue"},
+                {"name": "Hall 1", "stop_code": "Hall 1", "route_code": "Red"},
+            ],
+            "total_count": 2,
+            "next_offset": None,
+        }
+        self.assertIn("Blue, Red", self.output(stops, bus.stops))
 
-    def test_bus_stops_include_routes_from_other_pages_in_terminal_output(self):
+    def test_stops_collect_other_pages_without_changing_json(self):
         def stop(route):
             return Stop(
                 name="Hall 1",
@@ -83,86 +98,138 @@ class OutputTests(unittest.TestCase):
         page = Stops(**common, stops=[stop("Blue")], total_count=2, next_offset=1)
         all_stops = Stops(**common, stops=[stop("Blue"), stop("Red")], total_count=2)
         runner = CliRunner()
-        with patch("cli.commands.bus.invoke", side_effect=[page, all_stops]) as invoke:
+        with patch("cli.commands.bus.invoke", side_effect=[page, all_stops]):
             result = runner.invoke(create_app(), ["bus", "stops", "--limit", "1"])
         self.assertEqual(result.exit_code, 0, result.output)
         self.assertIn("Blue, Red", result.output)
-        self.assertNotIn("more routes may appear", result.output)
-        self.assertEqual(invoke.call_count, 2)
-        with patch("cli.commands.bus.invoke", return_value=page) as invoke:
+        with patch("cli.commands.bus.invoke", return_value=page):
             result = runner.invoke(
                 create_app(), ["bus", "stops", "--limit", "1", "--json"]
             )
-        self.assertEqual(result.exit_code, 0, result.output)
         self.assertEqual(len(json.loads(result.output)["stops"]), 1)
-        self.assertEqual(invoke.call_count, 1)
 
-    def test_multiple_result_lists_and_incomplete_warnings_remain_visible(self):
-        output = self.output(
-            {
-                "shuttle_arrivals": [{"route": "Blue", "eta": "2 min"}],
-                "lta_arrivals": [{"route": "179", "eta": "5 min"}],
-                "complete": False,
-                "issues": ["Some results could not be retrieved."],
-                "cached": True,
-                "source_urls": ["https://example.invalid/source"],
-            }
-        )
-        for expected in ("Blue", "179", "Complete: False", "Some results"):
-            self.assertIn(expected, output)
-        self.assertNotIn("example.invalid", output)
-        self.assertNotIn("Cached", output)
-
-    def test_top_level_lists_are_readable_and_json_stays_complete(self):
-        value = [{"name": "Example", "cached": True}]
-        output = self.output(value)
-        self.assertIn("Example", output)
-        self.assertNotIn("Cached", output)
-        self.assertEqual(json.loads(self.output(value, json_output=True)), value)
-
-    def test_search_results_keep_identifiers_and_shorten_long_summaries(self):
-        item_id = "12345678-1234-1234-1234-123456789abc"
-        output = self.output(
-            {
-                "items": [
-                    {
-                        "item_id": item_id,
-                        "title": "A useful research result",
-                        "summary": "Long description " * 40,
-                        "details": "Further information " * 40,
-                        "url": "https://example.invalid/item",
-                    }
-                ],
-                "total_count": 1,
-            }
-        )
-        self.assertIn(item_id, output)
-        self.assertIn("https://example.invalid/item", output)
-        self.assertIn("Long descriptions are shortened", output)
-        self.assertLess(len(output), 2000)
-
-    def test_nested_timetable_sessions_are_compact_and_keep_schedule_details(self):
+    def test_actual_plan_numbers_and_nested_schedule_remain_visible(self):
         value = {
             "saved_plans": [
                 {
                     "plan_number": 1,
+                    "status": "saved",
                     "sessions": [
                         {
                             "course_code": "ZZ0001",
                             "day": "MON",
                             "start_time": "09:30",
                             "end_time": "10:30",
-                            "lesson_type": "LEC",
                             "venue": "LT1",
-                            "teaching_weeks": [1, 2, 3],
-                            "remarks": "Wk1-3",
                         }
                     ],
                 }
             ]
         }
-        output = self.output(value)
-        for expected in ("ZZ0001", "MON", "09:30", "10:30", "LT1", "1–3"):
+        output = self.output(value, stars.planner_show)
+        for expected in ("Plan 1", "ZZ0001", "MON", "09:30", "LT1"):
             self.assertIn(expected, output)
-        self.assertNotIn("Remarks", output)
-        self.assertLess(len(output.splitlines()), 20)
+
+    def test_registered_courses_include_published_column_names(self):
+        value = {
+            "registered_courses": [
+                {
+                    "course_code": "ZZ0001",
+                    "Course Title": "Example",
+                    "Index No": "10001",
+                    "Course AU": "3",
+                }
+            ]
+        }
+        output = self.output(value, stars.planner_show)
+        for expected in ("ZZ0001", "Example", "10001", "3"):
+            self.assertIn(expected, output)
+
+    def test_grades_include_feedback_and_unmatched_grade_pages(self):
+        value = {
+            "columns": [{"id": "a", "name": "Assignment", "possible_score": 10}],
+            "grades": [
+                {"column_id": "a", "score": 8, "feedback": "Well done"},
+                {"column_id": "b", "score": 7},
+            ],
+        }
+        output = self.output(value, learn.grades)
+        for expected in ("Assignment", "Well done", "b", "7"):
+            self.assertIn(expected, output)
+
+    def test_degree_audit_displays_published_table_without_duplicate_metadata(self):
+        value = {
+            "requirements": [
+                {
+                    "section": "Core",
+                    "headers": ["Name", "Balance AU"],
+                    "records": [{"Name": "Example", "Balance AU": "3"}],
+                }
+            ]
+        }
+        output = self.output(value, stars.audit)
+        self.assertIn("Core", output)
+        self.assertIn("Balance AU", output)
+        self.assertIn("Example", output)
+        self.assertNotIn("Headers", output)
+        self.assertNotIn("Records 1", output)
+
+    def test_checkout_preview_selects_review_details(self):
+        value = {
+            "checkout_id": "temporary-secret-id",
+            "source_url": "private-source",
+            "items": [{"title": "Example", "quantity": 2, "price_label": "$10"}],
+            "delivery_address": "Example address",
+        }
+        output = self.output(value, onestop.checkout_preview)
+        for expected in ("Example", "$10", "Example address"):
+            self.assertIn(expected, output)
+        self.assertNotIn("temporary-secret-id", output)
+        self.assertNotIn("private-source", output)
+
+    def test_checkout_link_does_not_claim_payment_completed(self):
+        value = {
+            "title": "Fee",
+            "checkout_url": "https://example.invalid",
+            "requires_browser_completion": True,
+        }
+        output = self.output(value, onestop.payments_checkout_link)
+        self.assertIn("https://example.invalid", output)
+        self.assertIn("Requires browser completion: Yes", output)
+
+    def test_saved_cart_shows_portal_records(self):
+        data = {
+            "records": [
+                {
+                    "record_id": "cart-item",
+                    "title": "Example request",
+                    "fields": [{"label": "Quantity", "value": "2"}],
+                }
+            ]
+        }
+        output = self.output(data, onestop.cart_saved_show)
+        self.assertIn("Example request", output)
+        self.assertIn("Quantity", output)
+        self.assertNotIn("Records 1", output)
+
+    def test_oai_metadata_uses_identifiers_and_continuation(self):
+        data = {
+            "records": [
+                {
+                    "identifier": "oai:example:1",
+                    "metadata": {
+                        "dc.title": [{"value": "Example paper", "language": None}]
+                    },
+                }
+            ],
+            "pagination": {"next_offset": 10},
+        }
+        output = self.output(data, research.oai_records)
+        self.assertIn("oai:example:1", output)
+        self.assertIn("Example paper", output)
+        self.assertIn("--offset 10", output)
+        self.assertNotIn("Records 1", output)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -18,6 +18,7 @@ def invoke(
     *,
     side_effect=False,
     show_result=True,
+    presenter=None,
 ):
     try:
 
@@ -48,7 +49,7 @@ def invoke(
                 raise ValueError("Action was not confirmed; nothing was changed.")
         result = run(operation, arguments, side_effect=side_effect)
         if show_result:
-            render(result, json_output)
+            render(result, json_output, presenter=presenter)
         return result
     except Exception as error:
         fail(error)

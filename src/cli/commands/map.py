@@ -6,6 +6,7 @@ import typer
 
 from ..execution import application_scope
 from ..services import invoke
+from ..renderers import map as views
 
 app = typer.Typer(
     no_args_is_help=True, help="Find campus places and walking directions."
@@ -24,7 +25,10 @@ def cmd_campuses(
     """List campuses in NTU's MazeMap collection with IDs and center coordinates."""
     with application_scope() as application:
         return invoke(
-            application.mazemap.list_campuses, {"refresh": refresh}, json_output
+            application.mazemap.list_campuses,
+            {"refresh": refresh},
+            json_output,
+            presenter=views.campuses,
         )
 
 
@@ -54,6 +58,7 @@ def cmd_buildings(
             application.mazemap.list_buildings,
             {"campus_id": campus_id, "query": query, "refresh": refresh},
             json_output,
+            presenter=views.buildings,
         )
 
 
@@ -86,6 +91,7 @@ def cmd_search(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.search,
         )
 
 
@@ -107,6 +113,7 @@ def cmd_place(
             application.mazemap.get_place,
             {"poi_id": poi_id, "refresh": refresh},
             json_output,
+            presenter=views.place,
         )
 
 
@@ -157,4 +164,5 @@ def cmd_directions(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.directions,
         )

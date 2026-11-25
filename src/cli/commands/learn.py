@@ -11,6 +11,7 @@ import typer
 from ..helpers import group, local_datetime, parse_json
 from ..execution import application_scope
 from ..services import invoke
+from ..renderers import learn as views
 
 app = typer.Typer(
     no_args_is_help=True, help="Browse your NTULearn courses, materials, and activity."
@@ -114,7 +115,12 @@ def cmd_auth_status(
 ):
     """Sign in to NTULearn and report whether access is verified."""
     with application_scope() as application:
-        return invoke(application.learn_session.verify, {}, json_output)
+        return invoke(
+            application.learn_session.verify,
+            {},
+            json_output,
+            presenter=views.auth_status,
+        )
 
 
 @g_courses.command("__default__", hidden=True)
@@ -134,6 +140,7 @@ def cmd_courses_default(
             application.learn.list_courses,
             {"limit": limit, "offset": offset, "refresh": refresh},
             json_output,
+            presenter=views.courses_default,
         )
 
 
@@ -171,6 +178,7 @@ def cmd_content_default(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.content_default,
         )
 
 
@@ -214,6 +222,7 @@ def cmd_content_tree(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.content_tree,
         )
 
 
@@ -250,6 +259,7 @@ def cmd_attachments(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.attachments,
         )
 
 
@@ -300,6 +310,7 @@ def cmd_files_read(
                 "max_pages": max_pages,
             },
             json_output,
+            presenter=views.files_read,
         )
 
 
@@ -349,6 +360,7 @@ def cmd_files_download(
             },
             json_output,
             side_effect=True,
+            presenter=views.files_download,
         )
 
 
@@ -391,6 +403,7 @@ def cmd_videos_download(
             },
             json_output,
             side_effect=True,
+            presenter=views.videos_download,
         )
 
 
@@ -451,6 +464,7 @@ def cmd_courses_download(
             },
             json_output,
             side_effect=True,
+            presenter=views.courses_download,
         )
 
 
@@ -480,6 +494,7 @@ def cmd_announcements(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.announcements,
         )
 
 
@@ -513,6 +528,7 @@ def cmd_grades(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.grades,
         )
 
 
@@ -550,6 +566,7 @@ def cmd_calendar(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.calendar,
         )
 
 
@@ -597,6 +614,7 @@ def cmd_upcoming(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.upcoming,
         )
 
 
@@ -643,6 +661,7 @@ def cmd_digest(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.digest,
         )
 
 
@@ -696,6 +715,7 @@ def cmd_messages_list(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.messages_list,
         )
 
 
@@ -743,6 +763,7 @@ def cmd_messages_read(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.messages_read,
         )
 
 
@@ -774,6 +795,7 @@ def cmd_users(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.users,
         )
 
 
@@ -805,6 +827,7 @@ def cmd_groups_default(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.groups_default,
         )
 
 
@@ -843,6 +866,7 @@ def cmd_groups_members(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.groups_members,
         )
 
 
@@ -895,6 +919,7 @@ def cmd_search_default(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.search_default,
         )
 
 
@@ -946,6 +971,7 @@ def cmd_search_all(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.search_all,
         )
 
 

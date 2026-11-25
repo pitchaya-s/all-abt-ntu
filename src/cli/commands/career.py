@@ -7,6 +7,7 @@ import typer
 from ..helpers import group
 from ..execution import application_scope
 from ..services import invoke
+from ..renderers import career as views
 
 app = typer.Typer(
     no_args_is_help=True, help="Explore CareerAxis opportunities and career resources."
@@ -37,7 +38,12 @@ def cmd_auth_status(
 ):
     """Sign in to CareerAxis and report whether access is verified."""
     with application_scope() as application:
-        return invoke(application.careeraxis_session.verify, {}, json_output)
+        return invoke(
+            application.careeraxis_session.verify,
+            {},
+            json_output,
+            presenter=views.auth_status,
+        )
 
 
 @g_opportunities.command("search")
@@ -58,6 +64,7 @@ def cmd_opportunities_search(
             application.careeraxis.search_opportunities,
             {"query": query, "page": page, "limit": limit, "refresh": refresh},
             json_output,
+            presenter=views.opportunities_search,
         )
 
 
@@ -80,6 +87,7 @@ def cmd_opportunities_show(
             application.careeraxis.get_opportunity,
             {"url": url, "refresh": refresh},
             json_output,
+            presenter=views.opportunities_show,
         )
 
 
@@ -101,6 +109,7 @@ def cmd_events_search(
             application.careeraxis.search_events,
             {"query": query, "page": page, "limit": limit, "refresh": refresh},
             json_output,
+            presenter=views.events_search,
         )
 
 
@@ -122,6 +131,7 @@ def cmd_resources_search(
             application.careeraxis.search_resources,
             {"query": query, "page": page, "limit": limit, "refresh": refresh},
             json_output,
+            presenter=views.resources_search,
         )
 
 
@@ -156,6 +166,7 @@ def cmd_employers_search(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.employers_search,
         )
 
 
@@ -177,6 +188,7 @@ def cmd_appointments_topics(
             application.careeraxis.search_appointment_topics,
             {"query": query, "page": page, "limit": limit, "refresh": refresh},
             json_output,
+            presenter=views.appointments_topics,
         )
 
 
@@ -198,6 +210,7 @@ def cmd_internships_search(
             application.careeraxis.search_internship_jobs,
             {"query": query, "page": page, "limit": limit, "refresh": refresh},
             json_output,
+            presenter=views.internships_search,
         )
 
 
@@ -220,4 +233,5 @@ def cmd_record(
             application.careeraxis.get_portal_record,
             {"url": url, "refresh": refresh},
             json_output,
+            presenter=views.record,
         )

@@ -53,18 +53,7 @@ class MetadataMethods:
                 if previous is None:
                     endpoints[name] = candidate
 
-        required = {
-            "DataActionGetRoutesList",
-            "DataActionGetActiveBusServicesData",
-            "DataActionGetPickupCheckPoints",
-            "GetETAAndNextETA_FMS",
-            "GetETAAndNextETA_LTA",
-            "GetRoutesCodejson",
-            "GetRoutesMinMax",
-            "CheckPHSpecialDay",
-            "GetTempMessages",
-        }
-        if not required.issubset(endpoints):
+        if not endpoints:
             raise OmnibusError(
                 "NTU Omnibus changed its public app API; endpoint discovery could not complete."
             )

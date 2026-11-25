@@ -165,7 +165,7 @@ Get public General Access exam dates and times for a course in the latest or spe
 
 **Inputs:** `course_code`; optionally both `academic_year` and `semester` of `1` or `2`. Omitting both selects NTU's latest published exam term.
 
-**Returns:** exam date, day, start/end time, duration, publication notice, source, and retrieval time. `exam_status` distinguishes `available` from `not_listed`. General Access does not provide personal exam-seat assignments.
+**Returns:** exam date, day, start/end time, duration, published venue when available, publication notice, source, and retrieval time. `exam_status` distinguishes `available` from `not_listed`. General Access does not provide personal exam-seat assignments.
 
 **Inputs**
 

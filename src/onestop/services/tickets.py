@@ -42,12 +42,42 @@ class TicketService:
         if not target:
             raise OneStopError("This record is not a verified item of your request.")
         q = parse_qs(urlsplit(details.source_url).query)
-        page_id = q["id"][0] if target.record_id == request_id else "sc_request"
-        snapshot = session.read(
-            page_id,
-            {"sys_id": target.record_id, "table": target.record_type, "view": "ntusp"},
-            refresh=True,
-        )
+        snapshot = None
+        if target.record_id != request_id:
+            # The parent request page may itself display the verified child.
+            # Prefer that page only when its native widget identifies the exact
+            # selected record; otherwise read the child's own page below.
+            parent = session.read(
+                q["id"][0],
+                {
+                    "sys_id": request_id,
+                    "table": details.request.record_type,
+                    "view": "ntusp",
+                },
+                refresh=True,
+            )
+            if parent.revision != revision:
+                raise OneStopError(
+                    "The saved account changed while checking request ownership."
+                )
+            fields = parent.data.get("ticket_fields", {})
+            if (
+                fields.get("canRead") is True
+                and fields.get("sys_id") == target.record_id
+                and fields.get("table") == target.record_type
+            ):
+                snapshot = parent
+        if snapshot is None:
+            page_id = q["id"][0] if target.record_id == request_id else "sc_request"
+            snapshot = session.read(
+                page_id,
+                {
+                    "sys_id": target.record_id,
+                    "table": target.record_type,
+                    "view": "ntusp",
+                },
+                refresh=True,
+            )
         if snapshot.revision != revision:
             raise OneStopError(
                 "The saved account changed while checking request ownership."

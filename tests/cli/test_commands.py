@@ -7,6 +7,7 @@ import sys
 import tempfile
 import unittest
 from contextlib import nullcontext
+from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
@@ -17,6 +18,7 @@ from typer.testing import CliRunner
 
 from cli.cli import create_app
 from cli.config import load_config, save_config
+from omnibus.models import Stops
 
 
 class UnifiedCLITests(unittest.TestCase):
@@ -389,7 +391,12 @@ class UnifiedCLITests(unittest.TestCase):
                 patch(f"cli.commands.{module}.invoke") as dispatch,
             ):
                 if module == "bus":
-                    dispatch.return_value = SimpleNamespace(stops=[])
+                    dispatch.return_value = Stops(
+                        stops=[],
+                        total_count=0,
+                        source_urls=[],
+                        retrieved_at=datetime.now(timezone.utc),
+                    )
                 result = self.runner.invoke(self.app, arguments)
                 self.assertEqual(result.exit_code, 0, result.output)
                 target = dispatch.call_args.args[0]
@@ -707,9 +714,13 @@ class UnifiedCLITests(unittest.TestCase):
         )
 
     def test_workflow_previews_hide_temporary_identifiers(self):
+        from contextlib import redirect_stdout
+        from io import StringIO
+
         from pydantic import BaseModel
 
         from cli.commands.onestop import _show_workflow
+        from cli.renderers.onestop import draft_preview
 
         class Preview(BaseModel):
             draft_id: str = "internal-draft"
@@ -717,9 +728,11 @@ class UnifiedCLITests(unittest.TestCase):
             item_id: str = "internal-item"
             title: str = "Example"
 
-        with patch("cli.commands.onestop.render") as render:
-            _show_workflow(Preview())
-        self.assertEqual(render.call_args.args[0], {"title": "Example"})
+        output = StringIO()
+        with redirect_stdout(output):
+            _show_workflow(Preview(), draft_preview)
+        self.assertIn("Example", output.getvalue())
+        self.assertNotIn("internal-", output.getvalue())
 
     def test_checkout_and_booking_workflows(self):
         from cli.commands.onestop import cmd_appointments_book, cmd_cart_checkout

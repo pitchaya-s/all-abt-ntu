@@ -7,6 +7,7 @@ import typer
 from ..helpers import group
 from ..execution import application_scope
 from ..services import invoke
+from ..renderers import library as views
 
 app = typer.Typer(
     no_args_is_help=True, help="Search library resources and explore facilities."
@@ -60,6 +61,7 @@ def cmd_search(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.search,
         )
 
 
@@ -90,6 +92,7 @@ def cmd_record(
             application.library.get_record,
             {"record_id": record_id, "context": context, "refresh": refresh},
             json_output,
+            presenter=views.record,
         )
 
 
@@ -120,6 +123,7 @@ def cmd_availability(
             application.library.get_availability,
             {"record_id": record_id, "context": context, "refresh": refresh},
             json_output,
+            presenter=views.availability,
         )
 
 
@@ -138,6 +142,7 @@ def cmd_facilities_default(
             application.library_facilities.list_facilities,
             {"refresh": refresh},
             json_output,
+            presenter=views.facilities_default,
         )
 
 
@@ -161,6 +166,7 @@ def cmd_map_availability(
             application.library_facilities.get_map_availability,
             {"map_slug": map_slug, "date": date, "time": time, "refresh": refresh},
             json_output,
+            presenter=views.map_availability,
         )
 
 
@@ -201,6 +207,7 @@ def cmd_facilities_schedule(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.facilities_schedule,
         )
 
 

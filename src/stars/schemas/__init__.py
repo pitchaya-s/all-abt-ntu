@@ -259,6 +259,7 @@ class ExamResult(TypedDict):
     start_time: str | None
     end_time: str | None
     duration_minutes: int | None
+    venue: NotRequired[str]
     duration_text: NotRequired[str]
     raw_date: NotRequired[str]
     raw_day: NotRequired[str | None]

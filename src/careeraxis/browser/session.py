@@ -188,6 +188,8 @@ class CareerAxisSession:
         self._last_request = time.monotonic()
 
     def _navigate(self, path, credentials):
+        from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
         self._open()
         self._pace()
         page = self._page
@@ -203,7 +205,12 @@ class CareerAxisSession:
         while time.monotonic() < deadline:
             current_url = page.url
             parsed = urlsplit(current_url)
-            body = page.locator("body").inner_text(timeout=5000)
+            try:
+                body = page.locator("body").inner_text(timeout=5000)
+            except PlaywrightTimeoutError:
+                # A navigation can temporarily replace the document body.
+                # Retry inside the existing bounded login deadline.
+                continue
             if page.url != current_url:
                 continue
             if (
@@ -514,6 +521,27 @@ class CareerAxisSession:
 
     @staticmethod
     def _expand_event_filters(page):
+        from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+        try:
+            page.wait_for_function(
+                """() => {
+                  const visible = el => el && el.getClientRects().length > 0
+                    && getComputedStyle(el).visibility !== 'hidden';
+                  return visible(document.querySelector('#text-search'))
+                    || [...document.querySelectorAll('button')].some(
+                      el => visible(el) && el.textContent.trim() === 'Show filter');
+                }""",
+                timeout=20000,
+            )
+        except PlaywrightTimeoutError:
+            raise CareerAxisError(
+                "CareerAxis did not finish loading the event search controls; retry later."
+            ) from None
+        fields = page.locator("#text-search")
+        for index in range(fields.count()):
+            if fields.nth(index).is_visible() and fields.nth(index).is_enabled():
+                return
         buttons = page.get_by_role("button", name="Show filter", exact=True)
         for index in range(buttons.count()):
             button = buttons.nth(index)

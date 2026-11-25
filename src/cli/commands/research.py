@@ -9,6 +9,7 @@ import typer
 from ..helpers import group, parse_json
 from ..execution import application_scope
 from ..services import invoke
+from ..renderers import research as views
 
 app = typer.Typer(
     no_args_is_help=True, help="Search and browse the DR-NTU research repository."
@@ -67,6 +68,7 @@ def cmd_search(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.search,
         )
 
 
@@ -93,6 +95,7 @@ def cmd_item_default(
             partial(repository.get_item, application.research),
             {"item_id": item_id, "refresh": refresh},
             json_output,
+            presenter=views.item_default,
         )
 
 
@@ -128,6 +131,7 @@ def cmd_browse_communities(
                 "kind": "communities",
             },
             json_output,
+            presenter=views.browse_communities,
         )
 
 
@@ -163,6 +167,7 @@ def cmd_browse_collections(
                 "kind": "collections",
             },
             json_output,
+            presenter=views.browse_collections,
         )
 
 
@@ -220,6 +225,7 @@ def cmd_facets(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.facets,
         )
 
 
@@ -255,6 +261,7 @@ def cmd_item_bundles(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.item_bundles,
         )
 
 
@@ -290,6 +297,7 @@ def cmd_bundle_files(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.bundle_files,
         )
 
 
@@ -327,6 +335,7 @@ def cmd_dataset(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.dataset,
         )
 
 
@@ -347,6 +356,7 @@ def cmd_oai_info(
             partial(oai.identify, application.research_oai),
             {"refresh": refresh},
             json_output,
+            presenter=views.oai_info,
         )
 
 
@@ -370,6 +380,7 @@ def cmd_oai_formats(
             partial(oai.formats, application.research_oai),
             {"identifier": identifier, "refresh": refresh},
             json_output,
+            presenter=views.oai_formats,
         )
 
 
@@ -400,6 +411,7 @@ def cmd_oai_sets(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.oai_sets,
         )
 
 
@@ -452,6 +464,7 @@ def cmd_oai_records(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.oai_records,
         )
 
 
@@ -484,6 +497,7 @@ def cmd_oai_record(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.oai_record,
         )
 
 

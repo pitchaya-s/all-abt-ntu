@@ -6,6 +6,7 @@ import typer
 
 from ..execution import application_scope
 from ..services import invoke
+from ..renderers import news as views
 
 app = typer.Typer(no_args_is_help=True, help="Browse NTU news and articles.")
 
@@ -44,6 +45,7 @@ def cmd_search(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.search,
         )
 
 
@@ -59,7 +61,10 @@ def cmd_categories(
     """List current news category labels and filter IDs from NTU's official news form."""
     with application_scope() as application:
         return invoke(
-            application.news.list_categories, {"refresh": refresh}, json_output
+            application.news.list_categories,
+            {"refresh": refresh},
+            json_output,
+            presenter=views.categories,
         )
 
 
@@ -91,4 +96,5 @@ def cmd_article(
             application.news.get_article,
             {"url": url, "offset": offset, "max_chars": max_chars, "refresh": refresh},
             json_output,
+            presenter=views.article,
         )

@@ -9,6 +9,7 @@ import typer
 from ..helpers import group, parse_json, read_json_file
 from ..execution import application_scope
 from ..services import invoke
+from ..renderers import stars as views
 
 app = typer.Typer(
     no_args_is_help=True, help="Search courses, schedules, indexes, and prerequisites."
@@ -63,6 +64,7 @@ def cmd_courses_search(
                 "offset": offset,
             },
             json_output,
+            presenter=views.courses_search,
         )
 
 
@@ -91,6 +93,7 @@ def cmd_course(
                 "semester": semester,
             },
             json_output,
+            presenter=views.course,
         )
 
 
@@ -159,6 +162,7 @@ def cmd_prerequisites(
                 "max_nodes": max_nodes,
             },
             json_output,
+            presenter=views.prerequisites,
         )
 
 
@@ -191,6 +195,7 @@ def cmd_indexes_default(
                 "offset": offset,
             },
             json_output,
+            presenter=views.indexes_default,
         )
 
 
@@ -226,6 +231,7 @@ def cmd_index(
                 "semester": semester,
             },
             json_output,
+            presenter=views.index,
         )
 
 
@@ -265,6 +271,7 @@ def cmd_indexes_compare(
                 "against_sessions": against_sessions,
             },
             json_output,
+            presenter=views.indexes_compare,
         )
 
 
@@ -305,6 +312,7 @@ def cmd_indexes_match(
                 "against_sessions": against_sessions,
             },
             json_output,
+            presenter=views.indexes_match,
         )
 
 
@@ -339,6 +347,7 @@ def cmd_exams(
                 "semester": semester,
             },
             json_output,
+            presenter=views.exams,
         )
 
 
@@ -357,6 +366,7 @@ def cmd_graduate(
             academic.get_graduate_course_schedule,
             {"course_code": course_code},
             json_output,
+            presenter=views.graduate,
         )
 
 
@@ -414,6 +424,7 @@ def cmd_rooms_schedule(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.rooms_schedule,
         )
 
 
@@ -425,7 +436,12 @@ def cmd_auth_status(
 ):
     """Sign in to STARS and report whether access is verified."""
     with application_scope() as application:
-        return invoke(application.stars_personal.verify, {}, json_output)
+        return invoke(
+            application.stars_personal.verify,
+            {},
+            json_output,
+            presenter=views.auth_status,
+        )
 
 
 @g_planner.command("show")
@@ -445,6 +461,7 @@ def cmd_planner_show(
             partial(personal.get_stars_planner, application),
             {"refresh": refresh},
             json_output,
+            presenter=views.planner_show,
         )
 
 
@@ -484,6 +501,7 @@ def cmd_planner_save(
             },
             json_output,
             side_effect=True,
+            presenter=views.planner_save,
         )
 
 
@@ -497,7 +515,12 @@ def cmd_audit(
     with application_scope() as application:
         from stars.tools import personal
 
-        return invoke(partial(personal.get_degree_audit, application), {}, json_output)
+        return invoke(
+            partial(personal.get_degree_audit, application),
+            {},
+            json_output,
+            presenter=views.audit,
+        )
 
 
 def complete_room_type(incomplete: str):
@@ -611,6 +634,7 @@ def cmd_rooms_available(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.rooms_available,
         )
 
 

@@ -84,6 +84,15 @@ class SessionTests(unittest.TestCase):
         self.session = CareerAxisSession()
         self.addCleanup(self.session.close)
 
+    def test_event_filter_does_not_close_an_already_visible_search(self):
+        page = Mock()
+        field = page.locator.return_value
+        field.count.return_value = 1
+        field.nth.return_value.is_visible.return_value = True
+        field.nth.return_value.is_enabled.return_value = True
+        self.session._expand_event_filters(page)
+        page.get_by_role.assert_not_called()
+
     def test_status_detects_rotation_and_deletion_without_logging_in(self):
         s = self.session
         with stored_credentials():
@@ -192,6 +201,12 @@ class BrowserTests(unittest.TestCase):
 
     def tearDown(self):
         self.context.close()
+
+    def test_resources_empty_message_is_recognized(self):
+        self.page.set_content("<main>Could not find any resources.</main>")
+        result = self.page.evaluate(_PORTAL_SNAPSHOT, "resources")
+        self.assertTrue(result["no_results"])
+        self.assertEqual(result["items"], [])
 
     def listing(self, section=None, append=False):
         self.page.evaluate(

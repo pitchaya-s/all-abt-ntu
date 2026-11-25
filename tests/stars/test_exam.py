@@ -20,9 +20,20 @@ FILTER_HTML = '<select name="p_subj"><option>ZZ0001</option></select>'
 
 
 class UndergraduateExamParserTests(unittest.TestCase):
+    def test_parses_optional_published_venue(self) -> None:
+        html = EXAM_HTML.replace(
+            "<b>Duration</b>\n</font></td>",
+            "<b>Duration</b>\n</font></td><td>Venue</td>",
+        ).replace("2 hr\n</td>", "2 hr\n</td><td>EXAMPLE HALL</td>")
+        result = parse_undergraduate_exam_schedule(html, "ZZ0001")
+        self.assertEqual(result["exams"][0]["venue"], "EXAMPLE HALL")
+
     def test_parses_published_course_exam_and_notice(self) -> None:
         result = parse_undergraduate_exam_schedule(EXAM_HTML, "zz0001")
-        self.assertEqual((result["course_code"], result["course_name"]), ("ZZ0001", "EXAMPLE COURSE ONE"))
+        self.assertEqual(
+            (result["course_code"], result["course_name"]),
+            ("ZZ0001", "EXAMPLE COURSE ONE"),
+        )
         self.assertEqual((result["academic_year"], result["semester"]), (2026, "1"))
         self.assertEqual(result["exam_status"], "available")
         self.assertEqual(
@@ -41,7 +52,9 @@ class UndergraduateExamParserTests(unittest.TestCase):
         self.assertIn("subject to changes", result["notice"].lower())
 
     def test_preserves_unrecognized_exam_times(self) -> None:
-        html = EXAM_HTML.replace("23 November 2026", "Date to be announced").replace("1.00 pm", "Time TBA")
+        html = EXAM_HTML.replace("23 November 2026", "Date to be announced").replace(
+            "1.00 pm", "Time TBA"
+        )
         exam = parse_undergraduate_exam_schedule(html, "ZZ0001")["exams"][0]
         self.assertIsNone(exam["date"])
         self.assertEqual(exam["raw_date"], "Date to be announced")
@@ -54,7 +67,9 @@ class UndergraduateExamParserTests(unittest.TestCase):
         self.assertEqual(result["exam_status"], "not_listed")
         self.assertEqual(result["exam_count"], 0)
         with self.assertRaisesRegex(NTUPageError, "no exam table"):
-            parse_undergraduate_exam_schedule("<html>service unavailable</html>", "ZZ0001")
+            parse_undergraduate_exam_schedule(
+                "<html>service unavailable</html>", "ZZ0001"
+            )
 
     def test_selects_latest_or_requested_published_term(self) -> None:
         html = (
@@ -64,8 +79,18 @@ class UndergraduateExamParserTests(unittest.TestCase):
         )
         latest = parse_undergraduate_exam_plan(html)
         requested = parse_undergraduate_exam_plan(html, 2025, "2")
-        self.assertEqual((latest["plan_number"], latest["academic_year"], latest["semester"]), ("115", 2026, "1"))
-        self.assertEqual((requested["plan_number"], requested["academic_year"], requested["semester"]), ("105", 2025, "2"))
+        self.assertEqual(
+            (latest["plan_number"], latest["academic_year"], latest["semester"]),
+            ("115", 2026, "1"),
+        )
+        self.assertEqual(
+            (
+                requested["plan_number"],
+                requested["academic_year"],
+                requested["semester"],
+            ),
+            ("105", 2025, "2"),
+        )
         with self.assertRaises(CourseUnavailable):
             parse_undergraduate_exam_plan(html, 2024, "1")
 
@@ -98,7 +123,9 @@ class UndergraduateExamClientTests(unittest.TestCase):
         detail = parse_qs(requests[-1].data.decode(), keep_blank_values=True)
         self.assertEqual(detail["p_subj"], ["ZZ0001"])
         self.assertEqual(detail["p_matric"], [""])
-        self.assertEqual(detail["academic_session"], ["Semester 1 Academic Year 2026-2027"])
+        self.assertEqual(
+            detail["academic_session"], ["Semester 1 Academic Year 2026-2027"]
+        )
 
     def test_validates_term_and_reports_ntus_network_errors(self) -> None:
         with patch("stars.client.exams._fetch_html_request") as fetch:

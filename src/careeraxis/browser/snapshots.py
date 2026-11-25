@@ -125,7 +125,7 @@ _PORTAL_SNAPSHOT = r"""(section) => {
   const hasNext = labels.some(label => /^(next|next page|load more results|show more|›|»)$/.test(label))
     || (Number.isFinite(currentPage) && pageNumbers.some(number => number > currentPage));
   const bodyText = clean(document.body && document.body.innerText);
-  const noResults = /\b(no (jobs?|events?|resources?|organisations?|topics?|matching results?) found|nothing found|0 (jobs?|events?|results?))\b/i.test(bodyText);
+  const noResults = /\b(no (jobs?|events?|resources?|organisations?|topics?|matching results?) found|could not find any (jobs?|events?|resources?|organisations?|topics?)|nothing found|0 (jobs?|events?|results?))\b/i.test(bodyText);
   return {items, has_next_page: hasNext, no_results: noResults};
 }"""
 

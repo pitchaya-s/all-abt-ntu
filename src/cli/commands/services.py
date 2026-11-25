@@ -6,6 +6,7 @@ import typer
 
 from ..execution import application_scope
 from ..services import invoke
+from ..renderers import services as views
 
 app = typer.Typer(no_args_is_help=True, help="Find campus food, shops, and services.")
 
@@ -49,6 +50,7 @@ def cmd_search(
                 "refresh": refresh,
             },
             json_output,
+            presenter=views.search,
         )
 
 
@@ -64,5 +66,8 @@ def cmd_filters(
     """List official campus service type and category labels with filter IDs."""
     with application_scope() as application:
         return invoke(
-            application.campus_services.list_filters, {"refresh": refresh}, json_output
+            application.campus_services.list_filters,
+            {"refresh": refresh},
+            json_output,
+            presenter=views.filters,
         )

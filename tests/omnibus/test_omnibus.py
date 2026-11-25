@@ -258,6 +258,29 @@ class ClientTests(unittest.TestCase):
             self.assertIs(c._metadata(), first)
             self.assertEqual(count, network.call_count)
 
+    def test_missing_optional_endpoint_does_not_block_other_operations(self):
+        c = OmnibusClient()
+        manifest = {
+            "manifest": {
+                "versionToken": "v",
+                "urlVersions": {p: "?v=1" for p in _ASSETS},
+            }
+        }
+        script = (
+            b'callDataAction("DataActionGetRoutesList", "screenservices/routes", "v")'
+        )
+
+        def get(url):
+            if "moduleinfo" in url:
+                return json.dumps(manifest).encode()
+            return script if "/scripts/" in url else b"<html></html>"
+
+        with patch.object(c, "_get_bytes", side_effect=get):
+            self.assertIn("DataActionGetRoutesList", c._metadata()["endpoints"])
+            with self.assertRaisesRegex(OmnibusError, "GetETAAndNextETA_LTA"):
+                c._post("GetETAAndNextETA_LTA", "MainFlow.Shuttle")
+        c.close()
+
     def test_post_uses_discovered_versions_and_retries_csrf_only_once(self):
         c = OmnibusClient()
         metadata = {

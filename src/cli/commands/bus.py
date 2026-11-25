@@ -1,12 +1,14 @@
 """Bus service commands."""
 
 from typing import Annotated, Literal, Optional
+from functools import partial
 
 import typer
 
 from ..execution import application_scope
 from ..output import render
 from ..services import invoke
+from ..renderers import bus as views
 
 app = typer.Typer(
     no_args_is_help=True, help="Check shuttle routes, stops, arrivals, and status."
@@ -21,7 +23,9 @@ def cmd_routes(
 ):
     """List public NTU shuttle routes and their published display colors."""
     with application_scope() as application:
-        return invoke(application.omnibus.list_routes, {}, json_output)
+        return invoke(
+            application.omnibus.list_routes, {}, json_output, presenter=views.routes
+        )
 
 
 @app.command("stops")
@@ -52,10 +56,10 @@ def cmd_stops(
             application.omnibus.list_stops, arguments, json_output, show_result=False
         )
         if json_output or not page.stops:
-            render(page, json_output=json_output)
+            render(page, json_output=json_output, presenter=views.stops)
             return page
         if offset == 0 and page.next_offset is None:
-            render(page, related_stops=page.stops)
+            render(page, presenter=partial(views.stops, related_stops=page.stops))
             return page
 
         # Stop records are paginated by route. Collect cached pages so each stop
@@ -79,7 +83,7 @@ def cmd_stops(
             cursor = batch.next_offset
         else:
             raise ValueError("The bus service returned too many pages of stops.")
-        render(page, related_stops=related)
+        render(page, presenter=partial(views.stops, related_stops=related))
         return page
 
 
@@ -109,6 +113,7 @@ def cmd_arrivals(
             application.omnibus.get_arrivals,
             {"route_filter": route_filter, "stop_query": stop_query, "source": source},
             json_output,
+            presenter=views.arrivals,
         )
 
 
@@ -126,7 +131,10 @@ def cmd_live(
     """Get current live vehicle positions for one NTU campus shuttle route."""
     with application_scope() as application:
         return invoke(
-            application.omnibus.get_live_buses, {"route_code": route_code}, json_output
+            application.omnibus.get_live_buses,
+            {"route_code": route_code},
+            json_output,
+            presenter=views.live,
         )
 
 
@@ -147,4 +155,5 @@ def cmd_status(
             application.omnibus.get_service_status,
             {"route_code": route_code},
             json_output,
+            presenter=views.status,
         )

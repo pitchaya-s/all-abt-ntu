@@ -11,6 +11,7 @@ class _ExamPlan(TypedDict):
     academic_year: int
     semester: str
 
+
 class _ExamPlans(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
@@ -26,7 +27,11 @@ class _ExamPlans(HTMLParser):
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attributes = dict(attrs)
-        if tag == "input" and (attributes.get("type") or "").lower() == "radio" and attributes.get("name") == "p_plan_no":
+        if (
+            tag == "input"
+            and (attributes.get("type") or "").lower() == "radio"
+            and attributes.get("name") == "p_plan_no"
+        ):
             self._finish_option()
             self._value = attributes.get("value")
         elif tag == "br":
@@ -39,6 +44,7 @@ class _ExamPlans(HTMLParser):
     def handle_data(self, data: str) -> None:
         if self._value is not None:
             self._label.append(data)
+
 
 def parse_undergraduate_exam_plan(
     html: str, academic_year: int | None = None, semester: str | None = None
@@ -59,18 +65,23 @@ def parse_undergraduate_exam_plan(
             )
     if not plans:
         if "for undergraduate programmes" in html.casefold():
-            raise CourseUnavailable("NTU has not published a public undergraduate exam timetable yet.")
+            raise CourseUnavailable(
+                "NTU has not published a public undergraduate exam timetable yet."
+            )
         raise NTUPageError("NTU returned an unrecognized undergraduate exam-term page.")
 
     selected: _ExamPlan | None
     if academic_year is None:
-        selected = max(plans, key=lambda plan: (plan["academic_year"], plan["semester"]))
+        selected = max(
+            plans, key=lambda plan: (plan["academic_year"], plan["semester"])
+        )
     else:
         selected = next(
             (
                 plan
                 for plan in plans
-                if plan["academic_year"] == academic_year and plan["semester"] == semester
+                if plan["academic_year"] == academic_year
+                and plan["semester"] == semester
             ),
             None,
         )
@@ -89,6 +100,7 @@ def parse_undergraduate_exam_plan(
         "academic_session": f"Semester {selected_semester} Academic Year {year}-{year + 1}",
     }
 
+
 def _exam_date(value: str) -> str | None:
     for date_format in ("%d %B %Y", "%d %b %Y"):
         try:
@@ -96,6 +108,7 @@ def _exam_date(value: str) -> str | None:
         except ValueError:
             pass
     return None
+
 
 def _exam_time(value: str) -> str | None:
     match = re.fullmatch(r"\s*(\d{1,2})[.:](\d{2})\s*(AM|PM)\s*", value, re.IGNORECASE)
@@ -107,13 +120,21 @@ def _exam_time(value: str) -> str | None:
     hour = hour % 12 + (12 if match[3].upper() == "PM" else 0)
     return f"{hour:02d}:{minute:02d}"
 
+
 def _exam_duration(value: str) -> int | None:
-    match = re.fullmatch(r"\s*(\d+(?:\.\d+)?)\s*(hr|hrs|hour|hours|min|mins|minute|minutes)\s*", value, re.I)
+    match = re.fullmatch(
+        r"\s*(\d+(?:\.\d+)?)\s*(hr|hrs|hour|hours|min|mins|minute|minutes)\s*",
+        value,
+        re.I,
+    )
     if not match:
         return None
     return round(float(match[1]) * (60 if match[2].lower().startswith("h") else 1))
 
-def parse_undergraduate_exam_schedule(html: str, expected_code: str) -> dict[str, object]:
+
+def parse_undergraduate_exam_schedule(
+    html: str, expected_code: str
+) -> dict[str, object]:
     """Parse NTU's public General Access exam results; do not infer exam seat details."""
     parser = _Rows()
     parser.feed(html)
@@ -128,16 +149,32 @@ def parse_undergraduate_exam_schedule(html: str, expected_code: str) -> dict[str
         None,
     )
     if header_index is None:
-        raise NTUPageError("NTU returned an unrecognized undergraduate exam page; no exam table was found.")
+        raise NTUPageError(
+            "NTU returned an unrecognized undergraduate exam page; no exam table was found."
+        )
+    header = [cell.strip().casefold() for cell in parser.rows[header_index]]
+    if header not in (
+        ["date", "day", "time", "course", "course title", "duration"],
+        ["date", "day", "time", "course", "course title", "duration", "venue"],
+    ):
+        raise NTUPageError("NTU's undergraduate exam table has unrecognized columns.")
 
     page_text = " ".join(parser.text_parts)
-    term_match = re.search(r"Semester\s+([12])\s+Academic Year\s+(\d{4})-(\d{4})", page_text, re.I)
+    term_match = re.search(
+        r"Semester\s+([12])\s+Academic Year\s+(\d{4})-(\d{4})", page_text, re.I
+    )
     if not term_match:
-        raise NTUPageError("NTU's undergraduate exam page did not identify its academic year and semester.")
+        raise NTUPageError(
+            "NTU's undergraduate exam page did not identify its academic year and semester."
+        )
 
     code = expected_code.upper()
     notice = next(
-        (row[0].strip() for row in parser.rows[:header_index] if row and "exam information shown" in row[0].casefold()),
+        (
+            row[0].strip()
+            for row in parser.rows[:header_index]
+            if row and "exam information shown" in row[0].casefold()
+        ),
         None,
     )
     exams: list[dict[str, object]] = []
@@ -145,10 +182,14 @@ def parse_undergraduate_exam_schedule(html: str, expected_code: str) -> dict[str
     for row in parser.rows[header_index + 1 :]:
         if len(row) <= 3 or row[3].strip().upper() != code:
             continue
-        if len(row) != 6:
-            raise NTUPageError("NTU's undergraduate exam table changed shape; expected six columns per exam.")
+        if len(row) != len(header):
+            raise NTUPageError(
+                "NTU's undergraduate exam table has an incomplete exam row."
+            )
 
-        raw_date, raw_day, raw_time, _, row_course_name, duration_text = (cell.strip() for cell in row)
+        raw_date, raw_day, raw_time, _, row_course_name, duration_text = (
+            cell.strip() for cell in row[:6]
+        )
         if course_name is None:
             course_name = row_course_name
         exam_date = _exam_date(raw_date)
@@ -156,11 +197,17 @@ def parse_undergraduate_exam_schedule(html: str, expected_code: str) -> dict[str
         duration_minutes = _exam_duration(duration_text)
         end_time = None
         if start_time is not None and duration_minutes is not None:
-            end_minutes = int(start_time[:2]) * 60 + int(start_time[3:]) + duration_minutes
+            end_minutes = (
+                int(start_time[:2]) * 60 + int(start_time[3:]) + duration_minutes
+            )
             if end_minutes < 24 * 60:
                 end_time = f"{end_minutes // 60:02d}:{end_minutes % 60:02d}"
 
-        day = raw_day[:3].upper() if raw_day[:3].upper() in {"MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"} else None
+        day = (
+            raw_day[:3].upper()
+            if raw_day[:3].upper() in {"MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"}
+            else None
+        )
         exam: dict[str, object] = {
             "date": exam_date,
             "day": day,
@@ -169,6 +216,8 @@ def parse_undergraduate_exam_schedule(html: str, expected_code: str) -> dict[str
             "duration_minutes": duration_minutes,
             "duration_text": duration_text,
         }
+        if len(row) == 7 and row[6].strip():
+            exam["venue"] = row[6].strip()
         if exam_date is None:
             exam["raw_date"] = raw_date
         if day is None:

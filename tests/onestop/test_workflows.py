@@ -54,6 +54,39 @@ class LocalSession:
 
 
 class SubmissionTests(unittest.TestCase):
+    def test_ticket_context_accepts_verified_child_on_parent_page_only(self):
+        parent = "d" * 32
+        details = SimpleNamespace(
+            records=[SimpleNamespace(record_id=RECORD, record_type="sc_req_item")],
+            request=SimpleNamespace(record_type="sc_request"),
+            source_url=BASE + "/ntussp?id=sc_request",
+        )
+        reader = Mock()
+        reader.get_my_request.return_value = details
+        session = Mock()
+        session.read.return_value = SimpleNamespace(
+            revision="revision",
+            data={
+                "ticket_fields": {
+                    "canRead": True,
+                    "sys_id": RECORD,
+                    "table": "sc_req_item",
+                }
+            },
+        )
+        service = TicketService(session, reader)
+        with patch("onestop.services.tickets.evaluate", return_value={}):
+            context = service.context(session, "revision", parent)
+        self.assertEqual(context.record_id, RECORD)
+        self.assertEqual(session.read.call_count, 1)
+        self.assertEqual(session.read.call_args.args[1]["sys_id"], parent)
+
+        session.reset_mock()
+        session.read.return_value.data["ticket_fields"]["sys_id"] = ITEM
+        with self.assertRaisesRegex(OneStopError, "did not verify"):
+            service.context(session, "revision", parent)
+        self.assertEqual(session.read.call_count, 2)
+
     def test_commit_checks_identity_and_sanitizes_uncertain_single_attempt(self):
         s = LocalSession()
         fn = Mock(side_effect=RuntimeError("private-cookie-and-password"))
